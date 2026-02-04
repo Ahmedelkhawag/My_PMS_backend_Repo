@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using PMS.Domain.Enums;
+using PMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -8,7 +9,7 @@ using System.Text;
 
 namespace PMS.Domain.Entities
 {
-    public class AppUser : IdentityUser
+    public class AppUser : IdentityUser, ISoftDeletable
     {
         [Required]
         public override string UserName { get; set; }
@@ -22,12 +23,21 @@ namespace PMS.Domain.Entities
         public Gender? Gender { get; set; }
         public string NationalId { get; set; }
         public string Nationality { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool ChangePasswordApprove { get; set; } = true;
         public string? FullName { get; set; }
-        public Guid StatusID { get; set; }
-        public virtual Status Status { get; set; }
+        public Guid? StatusID { get; set; }
+        public virtual Status? Status { get; set; }
         public string? CountryID { get; set; }
         public virtual Country? Country { get; set; }
         public DateTime? DateOfBirth { get; set; } = DateTime.MinValue;
-        public string? ProfileImage { get; set; }
+        public string? ProfileImagePath { get; set; }
+        public int? HotelId { get; set; }
+
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public string? DeletedBy { get; set; }
+        public virtual ICollection<EmployeeDocument> EmployeeDocs { get; set; }
+
     }
 }

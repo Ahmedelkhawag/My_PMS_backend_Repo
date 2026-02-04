@@ -10,6 +10,7 @@ namespace PMS.Application.Interfaces.UOF
     {
         IBaseRepository<Country> Countries { get; }
         IBaseRepository<Status> Statuses { get; }
+        IBaseRepository<EmployeeDocument> EmployeeDocuments { get; }
 
         //  SaveChanges
         Task<int> CompleteAsync();

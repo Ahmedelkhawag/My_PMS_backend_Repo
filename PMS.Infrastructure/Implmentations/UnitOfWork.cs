@@ -14,6 +14,7 @@ namespace PMS.Infrastructure.Implmentations
 
         public IBaseRepository<Country> Countries { get; private set; }
         public IBaseRepository<Status> Statuses { get; private set; }
+        public IBaseRepository<EmployeeDocument> EmployeeDocuments { get; private set; }
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -21,6 +22,7 @@ namespace PMS.Infrastructure.Implmentations
 
             Countries = new BaseRepository<Country>(_context);
             Statuses = new BaseRepository<Status>(_context);
+            EmployeeDocuments = new BaseRepository<EmployeeDocument>(_context);
         }
 
         public async Task<int> CompleteAsync()

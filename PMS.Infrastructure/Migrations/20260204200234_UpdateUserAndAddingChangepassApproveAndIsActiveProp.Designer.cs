@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
@@ -11,9 +12,11 @@ using PMS.Infrastructure.Context;
 namespace PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260204200234_UpdateUserAndAddingChangepassApproveAndIsActiveProp")]
+    partial class UpdateUserAndAddingChangepassApproveAndIsActiveProp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -179,12 +182,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -202,9 +199,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<bool>("LockoutEnabled")
@@ -244,7 +238,7 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("StatusID")
+                    b.Property<Guid>("StatusID")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("TwoFactorEnabled")
@@ -393,7 +387,9 @@ namespace PMS.Infrastructure.Migrations
 
                     b.HasOne("PMS.Domain.Entities.Status", "Status")
                         .WithMany()
-                        .HasForeignKey("StatusID");
+                        .HasForeignKey("StatusID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Country");
 

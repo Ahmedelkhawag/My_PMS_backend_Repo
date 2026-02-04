@@ -11,5 +11,8 @@ namespace PMS.Application.DTOs
         public string UserName { get; set; }
         [Required]
         public string Password { get; set; }
+
+        [Required]
+        public int HotelId { get; set; }
     }
 }
