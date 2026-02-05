@@ -25,5 +25,7 @@ namespace PMS.Application.DTOs.Auth
         public string? Role { get; set; }
 
         public bool? IsActive { get; set; }
+
+        public List<IFormFile>? EmployeeDocs { get; set; }
     }
 }

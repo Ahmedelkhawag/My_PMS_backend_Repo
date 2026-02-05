@@ -12,7 +12,7 @@ namespace PMS.Application.DTOs
         [Required]
         public string Password { get; set; }
 
-        [Required]
-        public int HotelId { get; set; }
+        //[Required]
+        //public int HotelId { get; set; }
     }
 }

@@ -60,20 +60,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             // 2. استخراج HotelId من الأدمن الحالي (Logged-in User)
             // بنجيب الـ ID بتاع الادمن من التوكن
-            var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(currentUserId))
-                return new AuthModel { Message = "Unauthorized: Cannot determine admin user." };
+            //var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            //if (string.IsNullOrEmpty(currentUserId))
+            //    return new AuthModel { Message = "Unauthorized: Cannot determine admin user." };
 
-            // بنروح الداتابيز نجيب بيانات الادمن ده عشان نعرف هو تبع فندق ايه
-            var adminUser = await _userManager.FindByIdAsync(currentUserId);
-            if (adminUser == null || adminUser.HotelId == null)
-            {
-                // ملحوظة: لو السوبر ادمن هو اللي بيسجل، وهو مش مربوط بفندق، ممكن نعديها أو نطلب HotelId
-                // هنا هنفترض إن "اللي بيسجل" لازم يكون مدير فندق أو السوبر ادمن بيختار فندق
-                // حسب طلبك: Extract from Admin's token. 
-                // لو الادمن ملوش فندق، دي مشكلة بيزنس لازم تقررها، بس مبدئياً هنرجع ايرور
-                return new AuthModel { Message = "Current admin is not assigned to a Hotel." };
-            }
+            //// بنروح الداتابيز نجيب بيانات الادمن ده عشان نعرف هو تبع فندق ايه
+            //  var adminUser = await _userManager.FindByIdAsync(currentUserId);
+            //if (adminUser == null || adminUser.HotelId == null)
+            //{
+            //    // ملحوظة: لو السوبر ادمن هو اللي بيسجل، وهو مش مربوط بفندق، ممكن نعديها أو نطلب HotelId
+            //    // هنا هنفترض إن "اللي بيسجل" لازم يكون مدير فندق أو السوبر ادمن بيختار فندق
+            //    // حسب طلبك: Extract from Admin's token. 
+            //    // لو الادمن ملوش فندق، دي مشكلة بيزنس لازم تقررها، بس مبدئياً هنرجع ايرور
+            //    return new AuthModel { Message = "Current admin is not assigned to a Hotel." };
+            //}
 
             // 3. رفع الصورة الشخصية (Profile Image)
             string? profileImgPath = null;
@@ -95,7 +95,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Gender = Enum.TryParse<PMS.Domain.Enums.Gender>(model.Gender, true, out var parsedGender) ? parsedGender : null,
                 DateOfBirth = model.BirthdayDate,
                 ProfileImagePath = profileImgPath,
-                HotelId = adminUser.HotelId, // ربطناه بنفس فندق الادمن
+                //HotelId = adminUser.HotelId, // ربطناه بنفس فندق الادمن
                 IsActive = model.IsActive,
                 ChangePasswordApprove = model.ChangePasswordApprove
             };
@@ -177,10 +177,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             // 3. (الجديد) التحقق من الفندق 🛑
             // لو اليوزر ليه فندق (مش سوبر أدمن)، والفندق اللي باعه غير فندقه المسجل -> اطرده
-            if (user.HotelId != null && user.HotelId != model.HotelId)
-            {
-                return new AuthModel { Message = "Access Denied: You do not belong to this Hotel." };
-            }
+            //if (user.HotelId != null && user.HotelId != model.HotelId)
+            //{
+            //    return new AuthModel { Message = "Access Denied: You do not belong to this Hotel." };
+            //}
 
             // 4. التحقق من الحالة
             if (!user.IsActive)
@@ -258,10 +258,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             // 3. تطبيق فلتر الفندق 🏨
             // لو المستخدم الحالي مربوط بفندق معين، هاتله الناس اللي معاه في نفس الفندق بس
-            if (currentUser.HotelId != null)
-            {
-                query = query.Where(u => u.HotelId == currentUser.HotelId);
-            }
+            //if (currentUser.HotelId != null)
+            //{
+            //    query = query.Where(u => u.HotelId == currentUser.HotelId);
+            //}
             // (لو HotelId بـ null يبقى ده SuperAdmin، هنسيب الكويري مفتوحة تجيب كله)
 
             // تنفيذ الكويري
@@ -309,10 +309,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             // 4. التحقق من صلاحية الفندق (Security Check 👮‍♂️)
             // لو الطالب مدير فندق، والمطلوب في فندق تاني -> ارفض
-            if (currentUser.HotelId != null && targetUser.HotelId != currentUser.HotelId)
-            {
-                return new ApiResponse<UserDetailDto>("Access Denied: You cannot view users from other hotels.");
-            }
+            //if (currentUser.HotelId != null && targetUser.HotelId != currentUser.HotelId)
+            //{
+            //    return new ApiResponse<UserDetailDto>("Access Denied: You cannot view users from other hotels.");
+            //}
 
             // 5. تحويل البيانات لـ DTO
             var roles = await _userManager.GetRolesAsync(targetUser);
@@ -356,10 +356,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             // 3. Security Check 👮‍♂️: ممنوع تعديل موظف خارج فندقك
             // (إلا لو أنت SuperAdmin والـ HotelId بتاعك null)
-            if (currentUser.HotelId != null && userToUpdate.HotelId != currentUser.HotelId)
-            {
-                return new ApiResponse<string>("Access Denied: You cannot update users from other hotels.");
-            }
+            //if (currentUser.HotelId != null && userToUpdate.HotelId != currentUser.HotelId)
+            //{
+            //    return new ApiResponse<string>("Access Denied: You cannot update users from other hotels.");
+            //}
 
             // 4. تحديث البيانات النصية (لو مبعوتة بقيمة)
             if (!string.IsNullOrEmpty(model.FullName)) userToUpdate.FullName = model.FullName;
@@ -412,6 +412,33 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
             }
 
+            if (model.EmployeeDocs != null && model.EmployeeDocs.Count > 0)
+            {
+                foreach (var file in model.EmployeeDocs)
+                {
+                    // 1. نرفع الملف وناخد المسار
+                    var docPath = await SaveFileAsync(file, "employee-docs");
+
+                    // 2. نجهز الأوبجكت
+                    var newDoc = new EmployeeDocument
+                    {
+                        FileName = file.FileName,
+                        FileType = Path.GetExtension(file.FileName),
+                        FilePath = docPath,
+                        // 👇 هنا التريكاية: بنربطه باليوزر اللي بنعدله
+                        AppUserId = userToUpdate.Id
+                    };
+
+                    // 3. نضيفه للـ UOW
+                    await _unitOfWork.EmployeeDocuments.AddAsync(newDoc);
+                }
+
+                // 4. حفظ التغييرات في جدول المستندات
+                await _unitOfWork.CompleteAsync();
+            }
+
+
+
             return new ApiResponse<string>(data: null, "User updated successfully");
         }
 
@@ -430,10 +457,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<string>("User not found.");
 
             // 3. Security Check 👮‍♂️: ممنوع تحذف حد من فندق تاني
-            if (currentUser.HotelId != null && userToDelete.HotelId != currentUser.HotelId)
-            {
-                return new ApiResponse<string>("Access Denied: You cannot delete users from other hotels.");
-            }
+            //if (currentUser.HotelId != null && userToDelete.HotelId != currentUser.HotelId)
+            //{
+            //    return new ApiResponse<string>("Access Denied: You cannot delete users from other hotels.");
+            //}
 
             userToDelete.IsDeleted = true;
             userToDelete.DeletedAt = DateTime.UtcNow;
@@ -467,10 +494,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<string>("User is not deleted.");
 
             // 3. Security Check 👮‍♂️
-            if (currentUser.HotelId != null && userToRestore.HotelId != currentUser.HotelId)
-            {
-                return new ApiResponse<string>("Access Denied: You cannot restore users from other hotels.");
-            }
+            //if (currentUser.HotelId != null && userToRestore.HotelId != currentUser.HotelId)
+            //{
+            //    return new ApiResponse<string>("Access Denied: You cannot restore users from other hotels.");
+            //}
 
             // 4. تصفير فلاجات الحذف (Restore)
             userToRestore.IsDeleted = false;
@@ -488,6 +515,104 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             return new ApiResponse<string>(data: null, "User restored successfully");
         }
+
+
+        public async Task<PagedResult<UserResponseDto>> GetAllUsersAsyncWithPagination(UserFilterDto filter)
+        {
+            // 1. تجهيز الكويري الأساسية
+            var query = _userManager.Users
+                .Include(u => u.Status) // ضروري عشان فلتر الحالة
+                .AsQueryable();
+
+            // 2. 🔍 فلتر البحث (Search)
+            if (!string.IsNullOrEmpty(filter.Search))
+            {
+                var s = filter.Search.ToLower();
+                query = query.Where(u =>
+                    u.FullName.ToLower().Contains(s) ||
+                    u.Email.ToLower().Contains(s) ||
+                    u.PhoneNumber.Contains(s) ||
+                    u.UserName.ToLower().Contains(s)
+                );
+            }
+
+            // 3. 🟢 فلتر الحالة (Status)
+            if (!string.IsNullOrEmpty(filter.Status))
+            {
+                // بنقارن اسم الحالة باللي جاي من الفلتر
+                query = query.Where(u => u.Status != null && u.Status.Name == filter.Status);
+            }
+
+            // 4. 🎭 فلتر الرول (Role) - التريكاية هنا
+            if (!string.IsNullOrEmpty(filter.Role))
+            {
+                // أ) نجيب الـ ID بتاع الرول اللي اسمه مبعوت (مثلاً "HR")
+                var roleId = await _context.Roles
+                    .Where(r => r.Name == filter.Role)
+                    .Select(r => r.Id)
+                    .FirstOrDefaultAsync();
+
+                if (roleId != null)
+                {
+                    // ب) نجيب أرقام الموظفين اللي معاهم الرول ده (Subquery)
+                    // ملاحظة: بنستخدم Set<IdentityUserRole> لأن الجدول ده مخفي غالباً في الـ Context
+                    var userIdsInRole = _context.UserRoles // أو _context.Set<IdentityUserRole>() لو دي ضربت معاك
+                        .Where(ur => ur.RoleId == roleId)
+                        .Select(ur => ur.UserId);
+
+                    // ج) نفلتر الكويري الأساسية عشان تجيب بس الموظفين دول
+                    query = query.Where(u => userIdsInRole.Contains(u.Id));
+                }
+                else
+                {
+                    // لو الرول مش موجود أصلاً، نرجع لستة فاضية بدل ما نضرب إيرور
+                    query = query.Where(u => false);
+                }
+            }
+
+            // 5. حساب العدد الكلي (بعد تطبيق الفلاتر) 🔢
+            var totalCount = await query.CountAsync();
+
+            // 6. Pagination (القص) ✂️
+            var pagedUsers = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .ToListAsync();
+
+            // 7. التحويل لـ DTO
+            var responseList = new List<UserResponseDto>();
+            foreach (var user in pagedUsers)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                responseList.Add(new UserResponseDto
+                {
+                    Id = user.Id,
+                    FullName = user.FullName,
+                    Username = user.UserName,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    Status = user.Status?.Name ?? "Unknown",
+                    Role = roles.FirstOrDefault() ?? "Employee",
+                    HotelId = user.HotelId
+                });
+            }
+
+            return new PagedResult<UserResponseDto>(responseList, totalCount, filter.PageNumber, filter.PageSize);
+        }
+
+        public async Task<List<StatusDto>> GetStatusesAsync()
+        {
+            var statuses = await _context.Statuses
+                .Select(s => new StatusDto
+                {
+                    Id = s.StatusID,
+                    Name = s.Name
+                })
+                .ToListAsync();
+
+            return statuses;
+        }
+
         private async Task<string> CreateJwtToken(AppUser user)
         {
             var userClaims = new List<Claim>
@@ -552,6 +677,8 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             return $"/uploads/{folderName}/{uniqueFileName}";
         }
+
+
     }
 }
 
