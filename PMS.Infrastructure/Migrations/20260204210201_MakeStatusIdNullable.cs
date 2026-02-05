@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,6 +10,11 @@ namespace PMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // أولاً: نفك الربط القديم لو موجود عشان مايحصلش تعارض في اسم الـ FK
+            migrationBuilder.DropForeignKey(
+                name: "FK_AspNetUsers_Statuses_StatusID",
+                table: "AspNetUsers");
+
             // 1. الخطوة الأولى: نفتح الباب (نعدل العمود عشان يقبل NULL)
             migrationBuilder.AlterColumn<Guid>(
                 name: "StatusID",
