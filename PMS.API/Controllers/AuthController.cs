@@ -20,8 +20,8 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("register-employee")]
-        [Authorize] // لازم يكون مسجل دخول عشان نعرف هو تبع انهي فندق
-                    // [Authorize(Roles = "SuperAdmin,Manager")] // ممكن نحدد رولات معينة لو حابب قدام
+        [Authorize]
+
         public async Task<IActionResult> RegisterEmployee([FromForm] RegisterEmployeeDto model)
         {
             if (!ModelState.IsValid)
@@ -142,6 +142,21 @@ namespace PMS.API.Controllers
             if (!result.Succeeded)
                 return BadRequest(result);
 
+            return Ok(result);
+        }
+
+        [HttpGet("pag-users")] // GET: /api/auth/users?PageNumber=1&PageSize=10&Search=Ahmed
+                               // [Authorize(Roles = "Manager, Admin, SuperAdmin")] // (فك الكومنت لما تظبط الرولات)
+        public async Task<IActionResult> GetAllUsers([FromQuery] UserFilterDto filter)
+        {
+            var result = await _authService.GetAllUsersAsyncWithPagination(filter);
+            return Ok(result);
+        }
+
+        [HttpGet("statuses")] // API: GET /api/auth/statuses
+        public async Task<IActionResult> GetStatuses()
+        {
+            var result = await _authService.GetStatusesAsync();
             return Ok(result);
         }
     }

@@ -24,5 +24,9 @@ namespace PMS.Application.Interfaces.Services
         Task<ApiResponse<string>> DeleteUserAsync(string userId);
 
         Task<ApiResponse<string>> RestoreUserAsync(string userId);
+
+        Task<PagedResult<UserResponseDto>> GetAllUsersAsyncWithPagination(UserFilterDto filter);
+
+        Task<List<StatusDto>> GetStatusesAsync();
     }
 }
