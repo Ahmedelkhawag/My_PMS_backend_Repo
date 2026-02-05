@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PMS.Application.DTOs;
@@ -31,7 +31,7 @@ namespace PMS.API.Controllers
 
             if (!result.IsAuthenticated)
                 return BadRequest(new ApiResponse<string>(result.Message));
-            return Ok(result);
+            return Ok(new ApiResponse<AuthModel>(result, result.Message));
         }
 
 

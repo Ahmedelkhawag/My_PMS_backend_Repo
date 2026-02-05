@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -160,7 +160,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Message = "Employee registered successfully",
                 Email = user.Email,
                 Username = user.UserName,
-                Roles = new List<string> { model.Role }
+                Roles = new List<string> { model.Role },
+                Status = user.IsActive ? "Active" : "Inactive"
             };
         }
 
@@ -199,9 +200,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 ExpiresOn = DateTime.Now.AddHours(_jwt.Value.DurationInHours),
                 Roles = (List<string>)await _userManager.GetRolesAsync(user),
                 Message = "Login Successful",
-
                 ChangePasswordApprove = user.ChangePasswordApprove,
-                HotelId = user.HotelId
+                HotelId = user.HotelId,
+                Status = user.Status?.Name ?? (user.IsActive ? "Active" : "Inactive")
             };
         }
 
@@ -241,7 +242,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Message = "Password changed successfully.",
                 Username = user.UserName,
                 Email = user.Email,
-                Roles = (List<string>)await _userManager.GetRolesAsync(user)
+                Roles = (List<string>)await _userManager.GetRolesAsync(user),
+                Status = user.Status?.Name ?? (user.IsActive ? "Active" : "Inactive")
             };
         }
 
@@ -251,10 +253,8 @@ namespace PMS.Infrastructure.Implmentations.Services
             var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var currentUser = await _userManager.FindByIdAsync(currentUserId);
 
-            // 2. نجهز الكويري (هات اليوزرز ومعاهم الـ Status عشان الاسم)
-            var query = _userManager.Users
-                .Include(u => u.Status)
-                .AsQueryable();
+            // 2. نجهز الكويري (هات اليوزرز)
+            var query = _userManager.Users.AsQueryable();
 
             // 3. تطبيق فلتر الفندق 🏨
             // لو المستخدم الحالي مربوط بفندق معين، هاتله الناس اللي معاه في نفس الفندق بس
@@ -282,7 +282,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Username = user.UserName,
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
-                    Status = user.Status?.Name ?? "Unknown", // لو مفيش حالة
+                    IsActive = user.IsActive,
+                    Status = user.IsActive ? "Active" : "Inactive",
                     Role = roles.FirstOrDefault() ?? "Employee", // أول رول تقابلنا
                     HotelId = user.HotelId
                 });
@@ -324,7 +325,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Username = targetUser.UserName,
                 Email = targetUser.Email,
                 PhoneNumber = targetUser.PhoneNumber,
-                Status = targetUser.Status?.Name ?? "Unknown",
+                IsActive = targetUser.IsActive,
+                Status = targetUser.IsActive ? "Active" : "Inactive",
                 Role = roles.FirstOrDefault() ?? "Employee",
                 HotelId = targetUser.HotelId,
 
@@ -520,9 +522,7 @@ namespace PMS.Infrastructure.Implmentations.Services
         public async Task<PagedResult<UserResponseDto>> GetAllUsersAsyncWithPagination(UserFilterDto filter)
         {
             // 1. تجهيز الكويري الأساسية
-            var query = _userManager.Users
-                .Include(u => u.Status) // ضروري عشان فلتر الحالة
-                .AsQueryable();
+            var query = _userManager.Users.AsQueryable();
 
             // 2. 🔍 فلتر البحث (Search)
             if (!string.IsNullOrEmpty(filter.Search))
@@ -536,11 +536,18 @@ namespace PMS.Infrastructure.Implmentations.Services
                 );
             }
 
-            // 3. 🟢 فلتر الحالة (Status)
+            // 3. 🟢 فلتر الحالة (Status) بناءً على IsActive فقط
             if (!string.IsNullOrEmpty(filter.Status))
             {
-                // بنقارن اسم الحالة باللي جاي من الفلتر
-                query = query.Where(u => u.Status != null && u.Status.Name == filter.Status);
+                var statusFilter = filter.Status.ToLower();
+                if (statusFilter == "active")
+                {
+                    query = query.Where(u => u.IsActive);
+                }
+                else if (statusFilter == "inactive" || statusFilter == "suspended")
+                {
+                    query = query.Where(u => !u.IsActive);
+                }
             }
 
             // 4. 🎭 فلتر الرول (Role) - التريكاية هنا
@@ -591,7 +598,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Username = user.UserName,
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
-                    Status = user.Status?.Name ?? "Unknown",
+                    IsActive = user.IsActive,
+                    Status = user.IsActive ? "Active" : "Inactive",
                     Role = roles.FirstOrDefault() ?? "Employee",
                     HotelId = user.HotelId
                 });

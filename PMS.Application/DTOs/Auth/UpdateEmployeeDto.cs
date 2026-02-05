@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -24,6 +24,7 @@ namespace PMS.Application.DTOs.Auth
         // لو عايز يغير الرول (للمديرين فقط)
         public string? Role { get; set; }
 
+        // التحكم في حالة المستخدم: true = Active, false = Inactive/Suspended
         public bool? IsActive { get; set; }
 
         public List<IFormFile>? EmployeeDocs { get; set; }
