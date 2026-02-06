@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
+using PMS.API.Swagger;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Application.Settings;
@@ -54,6 +55,9 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
+
+    // أمثلة تلقائية لكل الـ endpoints
+    options.OperationFilter<GlobalExamplesOperationFilter>();
 });
 builder.Services.AddHttpContextAccessor();
 

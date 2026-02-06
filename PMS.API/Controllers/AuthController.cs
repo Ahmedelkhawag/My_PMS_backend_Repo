@@ -21,7 +21,8 @@ namespace PMS.API.Controllers
 
         [HttpPost("register-employee")]
         [Authorize]
-
+        [ProducesResponseType(typeof(ApiResponse<AuthModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> RegisterEmployee([FromForm] RegisterEmployeeDto model)
         {
             if (!ModelState.IsValid)
@@ -36,6 +37,8 @@ namespace PMS.API.Controllers
 
 
         [HttpPost("login")]
+        [ProducesResponseType(typeof(ApiResponse<AuthModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> LoginAsync([FromBody] LoginDto model)
         {
             if (!ModelState.IsValid)
@@ -55,6 +58,7 @@ namespace PMS.API.Controllers
 
         [HttpGet("roles")]
         [Authorize] // أي حد مسجل دخول يقدر يشوف الرولات (ممكن تحددها لـ SuperAdmin,Manager بس)
+        [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRoles()
         {
             var roles = await _authService.GetRolesAsync();
@@ -63,6 +67,8 @@ namespace PMS.API.Controllers
 
         [HttpPost("change-password")]
         [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto model)
         {
             if (!ModelState.IsValid)
@@ -80,21 +86,20 @@ namespace PMS.API.Controllers
             return Ok(new ApiResponse<string>(data: null, message: result.Message));
         }
 
-        [HttpGet("users")] // الرابط: api/v1/auth/users
+        [HttpGet("users")] // GET: /api/auth/users?PageNumber=1&PageSize=10&Search=Ahmed
         [Authorize] // لازم يكون مسجل دخول طبعاً
-        public async Task<IActionResult> GetAllUsers()
+        [ProducesResponseType(typeof(PagedResult<UserResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetAllUsers([FromQuery] UserFilterDto filter)
         {
-            // ممكن هنا تضيف Role Check لو عايز تمنع موظفين معينين يشوفوا القائمة
-            // مثلاً: [Authorize(Roles = "Manager,Admin")]
-
-            var users = await _authService.GetAllUsersAsync();
-            var response = new ApiResponse<List<UserResponseDto>>(users, "Users retrieved successfully");
-            // بنرجعهم في شكل JSON نظيف
-            return Ok(response);
+            var result = await _authService.GetAllUsersAsyncWithPagination(filter);
+            return Ok(result);
         }
 
         [HttpGet("user/{id}")] // الرابط: api/v1/auth/user/{id}
         [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<UserDetailDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<UserDetailDto>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetUserById(string id)
         {
             var result = await _authService.GetUserByIdAsync(id);
@@ -108,6 +113,8 @@ namespace PMS.API.Controllers
         [HttpPut("update-employee")]
         [Authorize]
         // استخدمنا FromForm عشان متوقعين ملفات
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateEmployee([FromForm] UpdateEmployeeDto model)
         {
             if (!ModelState.IsValid)
@@ -123,6 +130,8 @@ namespace PMS.API.Controllers
 
         [HttpDelete("user/{id}")]
         [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DeleteUser(string id)
         {
             var result = await _authService.DeleteUserAsync(id);
@@ -135,6 +144,8 @@ namespace PMS.API.Controllers
 
         [HttpPut("user/{id}/restore")]
         [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> RestoreUser(string id)
         {
             var result = await _authService.RestoreUserAsync(id);
@@ -145,15 +156,8 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("pag-users")] // GET: /api/auth/users?PageNumber=1&PageSize=10&Search=Ahmed
-                               // [Authorize(Roles = "Manager, Admin, SuperAdmin")] // (فك الكومنت لما تظبط الرولات)
-        public async Task<IActionResult> GetAllUsers([FromQuery] UserFilterDto filter)
-        {
-            var result = await _authService.GetAllUsersAsyncWithPagination(filter);
-            return Ok(result);
-        }
-
         [HttpGet("statuses")] // API: GET /api/auth/statuses
+        [ProducesResponseType(typeof(List<StatusDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatuses()
         {
             var result = await _authService.GetStatusesAsync();
