@@ -160,8 +160,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Message = "Employee registered successfully",
                 Email = user.Email,
                 Username = user.UserName,
-                Roles = new List<string> { model.Role },
-                Status = user.IsActive ? "Active" : "Inactive"
+                Roles = new List<string> { model.Role }
             };
         }
 
@@ -201,8 +200,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Roles = (List<string>)await _userManager.GetRolesAsync(user),
                 Message = "Login Successful",
                 ChangePasswordApprove = user.ChangePasswordApprove,
-                HotelId = user.HotelId,
-                Status = user.Status?.Name ?? (user.IsActive ? "Active" : "Inactive")
+                HotelId = user.HotelId
             };
         }
 
@@ -242,8 +240,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Message = "Password changed successfully.",
                 Username = user.UserName,
                 Email = user.Email,
-                Roles = (List<string>)await _userManager.GetRolesAsync(user),
-                Status = user.Status?.Name ?? (user.IsActive ? "Active" : "Inactive")
+                Roles = (List<string>)await _userManager.GetRolesAsync(user)
             };
         }
 
@@ -283,7 +280,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
                     IsActive = user.IsActive,
-                    Status = user.IsActive ? "Active" : "Inactive",
                     Role = roles.FirstOrDefault() ?? "Employee", // أول رول تقابلنا
                     HotelId = user.HotelId
                 });
@@ -326,7 +322,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Email = targetUser.Email,
                 PhoneNumber = targetUser.PhoneNumber,
                 IsActive = targetUser.IsActive,
-                Status = targetUser.IsActive ? "Active" : "Inactive",
                 Role = roles.FirstOrDefault() ?? "Employee",
                 HotelId = targetUser.HotelId,
 
@@ -536,15 +531,14 @@ namespace PMS.Infrastructure.Implmentations.Services
                 );
             }
 
-            // 3. 🟢 فلتر الحالة (Status) بناءً على IsActive فقط
-            if (!string.IsNullOrEmpty(filter.Status))
+            // 3. 🟢 فلتر الحالة (IsActive) باستخدام قيمة منطقية
+            if (filter.IsActive.HasValue)
             {
-                var statusFilter = filter.Status.ToLower();
-                if (statusFilter == "active")
+                if (filter.IsActive.Value)
                 {
                     query = query.Where(u => u.IsActive);
                 }
-                else if (statusFilter == "inactive" || statusFilter == "suspended")
+                else
                 {
                     query = query.Where(u => !u.IsActive);
                 }
@@ -599,7 +593,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
                     IsActive = user.IsActive,
-                    Status = user.IsActive ? "Active" : "Inactive",
                     Role = roles.FirstOrDefault() ?? "Employee",
                     HotelId = user.HotelId
                 });

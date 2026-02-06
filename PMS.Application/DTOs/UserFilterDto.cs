@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,6 +11,6 @@ namespace PMS.Application.DTOs
         public string? Search { get; set; }
 
         public string? Role { get; set; }   // فلتر بالرول (مثلاً: "Manager")
-        public string? Status { get; set; }
+        public bool? IsActive { get; set; } // فلتر بالحالة المنطقية: true/false
     }
 }
