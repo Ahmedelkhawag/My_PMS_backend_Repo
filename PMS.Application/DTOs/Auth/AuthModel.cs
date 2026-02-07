@@ -15,5 +15,8 @@ namespace PMS.Application.DTOs.Auth
         public List<string>? Roles { get; set; }
         public string? Token { get; set; } // الـ JWT المهمة
         public DateTime ExpiresOn { get; set; }
+
+        public string? RefreshToken { get; set; }
+        public DateTime RefreshTokenExpiration { get; set; }
     }
 }

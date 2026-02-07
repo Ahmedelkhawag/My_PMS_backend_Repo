@@ -1,4 +1,4 @@
-using PMS.Application.DTOs;
+﻿using PMS.Application.DTOs;
 using PMS.Application.DTOs.Auth;
 using PMS.Application.DTOs.Common;
 using System;
@@ -34,5 +34,8 @@ namespace PMS.Application.Interfaces.Services
         Task<PagedResult<UserResponseDto>> GetAllUsersAsyncWithPagination(UserFilterDto filter);
 
         Task<List<StatusDto>> GetStatusesAsync();
+
+        Task<AuthModel> RefreshTokenAsync(string token); // بيستقبل الـ Refresh Token ويرجع Access جديد
+        Task<bool> RevokeTokenAsync(string token);
     }
 }

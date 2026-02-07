@@ -23,6 +23,8 @@ namespace PMS.Infrastructure.Context
         public DbSet<Country> Countries { get; set; }
         public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
 
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

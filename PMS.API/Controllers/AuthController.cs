@@ -209,5 +209,36 @@ namespace PMS.API.Controllers
             var result = await _authService.GetStatusesAsync();
             return Ok(result);
         }
+
+        [HttpPost("refresh-token")] // POST: /api/auth/refresh-token
+        public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _authService.RefreshTokenAsync(model.RefreshToken);
+
+            if (!result.IsAuthenticated)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPost("revoke-token")] // POST: /api/auth/revoke-token
+        public async Task<IActionResult> RevokeToken([FromBody] RevokeTokenDto model)
+        {
+
+            var token = model.Token;
+
+            if (string.IsNullOrEmpty(token))
+                return BadRequest("Token is required!");
+
+            var result = await _authService.RevokeTokenAsync(token);
+
+            if (!result)
+                return BadRequest("Token is invalid or already revoked!");
+
+            return Ok(new { message = "Token revoked successfully" });
+        }
     }
 }

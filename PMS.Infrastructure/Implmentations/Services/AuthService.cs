@@ -50,40 +50,149 @@ namespace PMS.Infrastructure.Implmentations.Services
             _unitOfWork = unitOfWork;
         }
 
+        #region Old imp
+        //public async Task<AuthModel> RegisterEmployeeAsync(RegisterEmployeeDto model)
+        //{
+        //    // 1. التأكد إن مفيش حد بنفس البيانات دي
+        //    if (await _userManager.FindByEmailAsync(model.Email) is not null)
+        //        return new AuthModel { Message = "Email is already registered!" };
+
+        //    if (await _userManager.FindByNameAsync(model.Username) is not null)
+        //        return new AuthModel { Message = "Username is already taken!" };
+
+        //    // 2. استخراج HotelId من الأدمن الحالي (Logged-in User)
+        //    // بنجيب الـ ID بتاع الادمن من التوكن
+        //    //var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    //if (string.IsNullOrEmpty(currentUserId))
+        //    //    return new AuthModel { Message = "Unauthorized: Cannot determine admin user." };
+
+        //    //// بنروح الداتابيز نجيب بيانات الادمن ده عشان نعرف هو تبع فندق ايه
+        //    //  var adminUser = await _userManager.FindByIdAsync(currentUserId);
+        //    //if (adminUser == null || adminUser.HotelId == null)
+        //    //{
+        //    //    // ملحوظة: لو السوبر ادمن هو اللي بيسجل، وهو مش مربوط بفندق، ممكن نعديها أو نطلب HotelId
+        //    //    // هنا هنفترض إن "اللي بيسجل" لازم يكون مدير فندق أو السوبر ادمن بيختار فندق
+        //    //    // حسب طلبك: Extract from Admin's token. 
+        //    //    // لو الادمن ملوش فندق، دي مشكلة بيزنس لازم تقررها، بس مبدئياً هنرجع ايرور
+        //    //    return new AuthModel { Message = "Current admin is not assigned to a Hotel." };
+        //    //}
+
+        //    // 3. رفع الصورة الشخصية (Profile Image)
+        //    string? profileImgPath = null;
+        //    if (model.ProfileImage != null)
+        //    {
+        //        profileImgPath = await SaveFileAsync(model.ProfileImage, "profile-images");
+        //    }
+
+        //    // 4. تجهيز بيانات الموظف
+        //    var user = new AppUser
+        //    {
+        //        UserName = model.Username,
+        //        Email = model.Email,
+        //        FullName = model.FullName,
+        //        PhoneNumber = model.PhoneNumber,
+        //        WorkNumber = model.WorkNumber,
+        //        NationalId = model.NationalId,
+        //        Nationality = model.Nationality,
+        //        Gender = Enum.TryParse<PMS.Domain.Enums.Gender>(model.Gender, true, out var parsedGender) ? parsedGender : null,
+        //        DateOfBirth = model.BirthdayDate,
+        //        ProfileImagePath = profileImgPath,
+        //        //HotelId = adminUser.HotelId, // ربطناه بنفس فندق الادمن
+        //        IsActive = model.IsActive,
+        //        ChangePasswordApprove = model.ChangePasswordApprove
+        //    };
+
+        //    // 5. حفظ الموظف في الداتابيز
+        //    var result = await _userManager.CreateAsync(user, model.Password);
+        //    if (!result.Succeeded)
+        //    {
+        //        var errors = string.Empty;
+        //        foreach (var error in result.Errors)
+        //            errors += $"{error.Description},";
+        //        return new AuthModel { Message = errors };
+        //    }
+
+        //    // 6. تعيين الرول (Role)
+        //    if (!await _roleManager.RoleExistsAsync(model.Role))
+        //    {
+        //        return new AuthModel { Message = "Invalid Role selected." };
+        //    }
+
+        //    // ب) حماية إضافية: ممنوع حد يسجل موظف ويديله رول SuperAdmin من هنا
+        //    // (الـ SuperAdmin بيتعمل بطريقة خاصة أو Seed بس)
+        //    if (model.Role == "SuperAdmin")
+        //    {
+        //        return new AuthModel { Message = "Cannot assign SuperAdmin role to an employee." };
+        //    }
+
+        //    // ج) لو كله تمام، ضيفه للرول
+        //    await _userManager.AddToRoleAsync(user, model.Role);
+
+
+        //    // 7. رفع وحفظ المستندات (Documents)
+        //    if (model.EmployeeDocs != null && model.EmployeeDocs.Count > 0)
+        //    {
+        //        foreach (var file in model.EmployeeDocs)
+        //        {
+        //            // 1. نرفع الملف وناخد المسار
+        //            var docPath = await SaveFileAsync(file, "employee-docs");
+
+        //            // 2. نجهز الأوبجكت
+        //            var newDoc = new EmployeeDocument
+        //            {
+        //                FileName = file.FileName,
+        //                FileType = Path.GetExtension(file.FileName),
+        //                FilePath = docPath,
+        //                AppUserId = user.Id
+        //            };
+
+        //            // 3. نضيفه للـ UOW (من غير ما نعمل Save لسه)
+        //            await _unitOfWork.EmployeeDocuments.AddAsync(newDoc);
+        //        }
+
+        //        // 4. Save مرة واحدة بس في الآخر لكل الملفات (Performance Top 🚀)
+        //        await _unitOfWork.CompleteAsync();
+        //    }
+
+        //    // 8. إرجاع النتيجة
+        //    // مش محتاجين نرجع توكن، لأننا مش بنعمل لوجين للموظف، إحنا بس بنسجله
+        //    return new AuthModel
+        //    {
+        //        IsAuthenticated = true,
+        //        Message = "Employee registered successfully",
+        //        Email = user.Email,
+        //        Username = user.UserName,
+        //        Roles = new List<string> { model.Role }
+        //    };
+        //}
+        #endregion
+
+
         public async Task<AuthModel> RegisterEmployeeAsync(RegisterEmployeeDto model)
         {
-            // 1. التأكد إن مفيش حد بنفس البيانات دي
             if (await _userManager.FindByEmailAsync(model.Email) is not null)
                 return new AuthModel { Message = "Email is already registered!" };
 
             if (await _userManager.FindByNameAsync(model.Username) is not null)
                 return new AuthModel { Message = "Username is already taken!" };
 
-            // 2. استخراج HotelId من الأدمن الحالي (Logged-in User)
-            // بنجيب الـ ID بتاع الادمن من التوكن
-            //var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            //if (string.IsNullOrEmpty(currentUserId))
-            //    return new AuthModel { Message = "Unauthorized: Cannot determine admin user." };
 
-            //// بنروح الداتابيز نجيب بيانات الادمن ده عشان نعرف هو تبع فندق ايه
-            //  var adminUser = await _userManager.FindByIdAsync(currentUserId);
-            //if (adminUser == null || adminUser.HotelId == null)
-            //{
-            //    // ملحوظة: لو السوبر ادمن هو اللي بيسجل، وهو مش مربوط بفندق، ممكن نعديها أو نطلب HotelId
-            //    // هنا هنفترض إن "اللي بيسجل" لازم يكون مدير فندق أو السوبر ادمن بيختار فندق
-            //    // حسب طلبك: Extract from Admin's token. 
-            //    // لو الادمن ملوش فندق، دي مشكلة بيزنس لازم تقررها، بس مبدئياً هنرجع ايرور
-            //    return new AuthModel { Message = "Current admin is not assigned to a Hotel." };
-            //}
+            if (!await _roleManager.RoleExistsAsync(model.Role))
+            {
+                return new AuthModel { Message = "Invalid Role selected." };
+            }
 
-            // 3. رفع الصورة الشخصية (Profile Image)
+            if (model.Role == "SuperAdmin")
+            {
+                return new AuthModel { Message = "Cannot assign SuperAdmin role to an employee." };
+            }
+
             string? profileImgPath = null;
             if (model.ProfileImage != null)
             {
                 profileImgPath = await SaveFileAsync(model.ProfileImage, "profile-images");
             }
 
-            // 4. تجهيز بيانات الموظف
             var user = new AppUser
             {
                 UserName = model.Username,
@@ -96,13 +205,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Gender = Enum.TryParse<PMS.Domain.Enums.Gender>(model.Gender, true, out var parsedGender) ? parsedGender : null,
                 DateOfBirth = model.BirthdayDate,
                 ProfileImagePath = profileImgPath,
-                //HotelId = adminUser.HotelId, // ربطناه بنفس فندق الادمن
                 IsActive = model.IsActive,
                 ChangePasswordApprove = model.ChangePasswordApprove
             };
 
-            // 5. حفظ الموظف في الداتابيز
             var result = await _userManager.CreateAsync(user, model.Password);
+
             if (!result.Succeeded)
             {
                 var errors = string.Empty;
@@ -111,32 +219,22 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new AuthModel { Message = errors };
             }
 
-            // 6. تعيين الرول (Role)
-            if (!await _roleManager.RoleExistsAsync(model.Role))
+
+            var roleResult = await _userManager.AddToRoleAsync(user, model.Role);
+
+            if (!roleResult.Succeeded)
             {
-                return new AuthModel { Message = "Invalid Role selected." };
+                await _userManager.DeleteAsync(user);
+                return new AuthModel { Message = "Failed to assign role to user." };
             }
-
-            // ب) حماية إضافية: ممنوع حد يسجل موظف ويديله رول SuperAdmin من هنا
-            // (الـ SuperAdmin بيتعمل بطريقة خاصة أو Seed بس)
-            if (model.Role == "SuperAdmin")
-            {
-                return new AuthModel { Message = "Cannot assign SuperAdmin role to an employee." };
-            }
-
-            // ج) لو كله تمام، ضيفه للرول
-            await _userManager.AddToRoleAsync(user, model.Role);
-
 
             // 7. رفع وحفظ المستندات (Documents)
             if (model.EmployeeDocs != null && model.EmployeeDocs.Count > 0)
             {
                 foreach (var file in model.EmployeeDocs)
                 {
-                    // 1. نرفع الملف وناخد المسار
                     var docPath = await SaveFileAsync(file, "employee-docs");
 
-                    // 2. نجهز الأوبجكت
                     var newDoc = new EmployeeDocument
                     {
                         FileName = file.FileName,
@@ -145,16 +243,13 @@ namespace PMS.Infrastructure.Implmentations.Services
                         AppUserId = user.Id
                     };
 
-                    // 3. نضيفه للـ UOW (من غير ما نعمل Save لسه)
                     await _unitOfWork.EmployeeDocuments.AddAsync(newDoc);
                 }
 
-                // 4. Save مرة واحدة بس في الآخر لكل الملفات (Performance Top 🚀)
                 await _unitOfWork.CompleteAsync();
             }
 
             // 8. إرجاع النتيجة
-            // مش محتاجين نرجع توكن، لأننا مش بنعمل لوجين للموظف، إحنا بس بنسجله
             return new AuthModel
             {
                 IsAuthenticated = true,
@@ -189,15 +284,21 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             // 5. إنشاء التوكن
             var token = await CreateJwtToken(user);
+            var refreshToken = GenerateRefreshToken();
+            refreshToken.AppUserId = user.Id;
+            await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
+            await _unitOfWork.CompleteAsync();
 
             // 6. إرجاع النتيجة
             return new AuthModel
             {
                 IsAuthenticated = true,
                 Token = token,
+                RefreshToken = refreshToken.Token,
+                RefreshTokenExpiration = refreshToken.ExpiresOn,
                 Email = user.Email,
                 Username = user.UserName,
-                ExpiresOn = DateTime.Now.AddHours(_jwt.Value.DurationInHours),
+                ExpiresOn = DateTime.Now.AddMinutes(_jwt.Value.DurationInMinutes),
                 Roles = (List<string>)await _userManager.GetRolesAsync(user),
                 Message = "Login Successful",
                 ChangePasswordApprove = user.ChangePasswordApprove,
@@ -548,7 +649,6 @@ namespace PMS.Infrastructure.Implmentations.Services
         }
 
 
-        // دالة Delete عادية جداً
         public async Task<ApiResponse<string>> DeleteUserAsync(string userId)
         {
             // 1. مين اللي بيعمل الحذف؟
@@ -722,6 +822,73 @@ namespace PMS.Infrastructure.Implmentations.Services
             return statuses;
         }
 
+        public async Task<AuthModel> RefreshTokenAsync(string token)
+        {
+            var authModel = new AuthModel();
+
+            var storedRefreshToken = await _context.RefreshTokens
+         .Include(r => r.AppUser)
+         .SingleOrDefaultAsync(t => t.Token == token);
+
+            if (storedRefreshToken == null)
+            {
+                authModel.Message = "Invalid Token";
+                return authModel;
+            }
+
+            if (!storedRefreshToken.IsActive)
+            {
+                authModel.Message = "Inactive Token";
+                return authModel;
+            }
+
+
+            storedRefreshToken.RevokedOn = DateTime.UtcNow;
+
+            var newRefreshToken = GenerateRefreshToken();
+            newRefreshToken.AppUserId = storedRefreshToken.AppUserId;
+
+            var user = storedRefreshToken.AppUser;
+            var newJwtToken = await CreateJwtToken(user);
+
+            await _unitOfWork.RefreshTokens.AddAsync(newRefreshToken);
+            _unitOfWork.RefreshTokens.Update(storedRefreshToken);
+            await _unitOfWork.CompleteAsync();
+
+            return new AuthModel
+            {
+                IsAuthenticated = true,
+                Token = newJwtToken,
+                RefreshToken = newRefreshToken.Token,
+                RefreshTokenExpiration = newRefreshToken.ExpiresOn,
+                Email = user.Email,
+                Username = user.UserName,
+                Roles = (List<string>)await _userManager.GetRolesAsync(user)
+            };
+        }
+
+
+        public async Task<bool> RevokeTokenAsync(string token)
+        {
+            var refreshToken = await _context.RefreshTokens
+         .Include(r => r.AppUser)
+         .SingleOrDefaultAsync(t => t.Token == token);
+
+            if (refreshToken == null)
+                return false;
+
+
+            if (!refreshToken.IsActive)
+                return true;
+
+            refreshToken.RevokedOn = DateTime.UtcNow;
+
+            _unitOfWork.RefreshTokens.Update(refreshToken);
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+
         private async Task<string> CreateJwtToken(AppUser user)
         {
             var userClaims = new List<Claim>
@@ -745,7 +912,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             var token = new JwtSecurityToken(
                 issuer: _jwt.Value.Issuer,
                 audience: _jwt.Value.Audience,
-                expires: DateTime.Now.AddDays(_jwt.Value.DurationInHours),
+                expires: DateTime.Now.AddDays(_jwt.Value.DurationInMinutes),
                 claims: userClaims,
                 signingCredentials: new SigningCredentials(authKey, SecurityAlgorithms.HmacSha256Signature)
             );
@@ -786,7 +953,19 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             return $"/uploads/{folderName}/{uniqueFileName}";
         }
+        private RefreshToken GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
 
+            return new RefreshToken
+            {
+                Token = Convert.ToBase64String(randomNumber),
+                ExpiresOn = DateTime.UtcNow.AddDays(_jwt.Value.RefreshTokenValidityInHours),
+                CreatedOn = DateTime.UtcNow
+            };
+        }
 
     }
 }

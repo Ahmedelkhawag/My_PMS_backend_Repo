@@ -39,5 +39,7 @@ namespace PMS.Domain.Entities
         public string? DeletedBy { get; set; }
         public virtual ICollection<EmployeeDocument> EmployeeDocs { get; set; }
 
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
     }
 }
