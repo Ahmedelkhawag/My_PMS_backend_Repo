@@ -10,6 +10,7 @@ using PMS.Application.DTOs.Common;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Application.Settings;
+using PMS.Domain.Constants;
 using PMS.Domain.Entities;
 using PMS.Infrastructure.Context;
 using System;
@@ -406,6 +407,44 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<string>(updateResult.Errors.Select(e => e.Description).ToList(), "Failed to update profile.");
 
             return new ApiResponse<string>(data: null, "Profile updated successfully");
+        }
+
+        public async Task<ApiResponse<string>> AdminForceResetPasswordAsync(string targetUserId, string newPassword)
+        {
+            var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(currentUserId))
+                return new ApiResponse<string>("User not found or not logged in.");
+
+            var currentUser = await _userManager.FindByIdAsync(currentUserId);
+            var targetUser = await _userManager.FindByIdAsync(targetUserId);
+
+            if (targetUser == null)
+                return new ApiResponse<string>("User not found.");
+
+            var currentUserRoles = await _userManager.GetRolesAsync(currentUser);
+            bool isSuperAdmin = currentUserRoles.Contains(Roles.SuperAdmin);
+            bool isHotelManager = currentUserRoles.Contains(Roles.HotelManager);
+
+            if (isHotelManager && !isSuperAdmin)
+            {
+                if (currentUser.HotelId == null || targetUser.HotelId != currentUser.HotelId)
+                    return new ApiResponse<string>("Access Denied: You can only reset passwords for users in your hotel.");
+            }
+
+            var removeResult = await _userManager.RemovePasswordAsync(targetUser);
+            if (!removeResult.Succeeded)
+                return new ApiResponse<string>(removeResult.Errors.Select(e => e.Description).ToList(), "Failed to remove existing password.");
+
+            var addResult = await _userManager.AddPasswordAsync(targetUser, newPassword);
+            if (!addResult.Succeeded)
+                return new ApiResponse<string>(addResult.Errors.Select(e => e.Description).ToList(), "Password does not meet requirements.");
+
+            targetUser.ChangePasswordApprove = true;
+            var updateResult = await _userManager.UpdateAsync(targetUser);
+            if (!updateResult.Succeeded)
+                return new ApiResponse<string>(updateResult.Errors.Select(e => e.Description).ToList(), "Failed to update user.");
+
+            return new ApiResponse<string>(data: null, "Password reset successfully. User must change password on next login.");
         }
 
         public async Task<ApiResponse<string>> UpdateEmployeeAsync(UpdateEmployeeDto model)

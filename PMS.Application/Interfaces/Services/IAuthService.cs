@@ -29,6 +29,8 @@ namespace PMS.Application.Interfaces.Services
 
         Task<ApiResponse<string>> RestoreUserAsync(string userId);
 
+        Task<ApiResponse<string>> AdminForceResetPasswordAsync(string targetUserId, string newPassword);
+
         Task<PagedResult<UserResponseDto>> GetAllUsersAsyncWithPagination(UserFilterDto filter);
 
         Task<List<StatusDto>> GetStatusesAsync();

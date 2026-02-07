@@ -134,6 +134,28 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
+        [HttpPost("user/{id}/reset-password")]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> ResetUserPassword(string id, [FromBody] AdminResetPasswordDto model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new ApiResponse<string>("Invalid Data"));
+
+            var result = await _authService.AdminForceResetPasswordAsync(id, model.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                if (result.Message?.Contains("Access Denied") == true)
+                    return StatusCode(403, result);
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
         [HttpPut("update-employee")]
         [Authorize]
         // استخدمنا FromForm عشان متوقعين ملفات
