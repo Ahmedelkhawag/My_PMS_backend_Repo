@@ -1,4 +1,4 @@
-﻿using PMS.Application.DTOs;
+using PMS.Application.DTOs;
 using PMS.Application.DTOs.Auth;
 using PMS.Application.DTOs.Common;
 using System;
@@ -18,6 +18,10 @@ namespace PMS.Application.Interfaces.Services
         Task<List<UserResponseDto>> GetAllUsersAsync();
 
         Task<ApiResponse<UserDetailDto>> GetUserByIdAsync(string userId);
+
+        Task<ApiResponse<UserDetailDto>> GetCurrentUserProfileAsync();
+
+        Task<ApiResponse<string>> UpdateCurrentUserProfileAsync(UpdateProfileDto model);
 
         Task<ApiResponse<string>> UpdateEmployeeAsync(UpdateEmployeeDto model);
 

@@ -338,6 +338,75 @@ namespace PMS.Infrastructure.Implmentations.Services
             return new ApiResponse<UserDetailDto>(userDetail, "User details retrieved successfully");
         }
 
+        public async Task<ApiResponse<UserDetailDto>> GetCurrentUserProfileAsync()
+        {
+            var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return new ApiResponse<UserDetailDto>("User not found or not logged in.");
+
+            var user = await _userManager.Users
+                .Include(u => u.Status)
+                .Include(u => u.EmployeeDocs)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return new ApiResponse<UserDetailDto>("User not found.");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var userDetail = new UserDetailDto
+            {
+                Id = user.Id,
+                FullName = user.FullName,
+                Username = user.UserName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                IsActive = user.IsActive,
+                Role = roles.FirstOrDefault() ?? "Employee",
+                HotelId = user.HotelId,
+                NationalId = user.NationalId,
+                WorkNumber = user.WorkNumber,
+                Nationality = user.Nationality,
+                Gender = user.Gender?.ToString(),
+                DateOfBirth = user.DateOfBirth,
+                ProfileImagePath = user.ProfileImagePath,
+                DocumentPaths = user.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>()
+            };
+
+            return new ApiResponse<UserDetailDto>(userDetail, "Profile retrieved successfully");
+        }
+
+        public async Task<ApiResponse<string>> UpdateCurrentUserProfileAsync(UpdateProfileDto model)
+        {
+            var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return new ApiResponse<string>("User not found or not logged in.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return new ApiResponse<string>("User not found.");
+
+            if (!string.IsNullOrEmpty(model.FullName))
+                user.FullName = model.FullName;
+            if (!string.IsNullOrEmpty(model.PhoneNumber))
+                user.PhoneNumber = model.PhoneNumber;
+
+            if (model.ProfileImage != null)
+            {
+                if (!string.IsNullOrEmpty(user.ProfileImagePath))
+                {
+                    var oldPath = Path.Combine(_webHostEnvironment.WebRootPath, user.ProfileImagePath.TrimStart('/'));
+                    if (File.Exists(oldPath))
+                        File.Delete(oldPath);
+                }
+                user.ProfileImagePath = await SaveFileAsync(model.ProfileImage, "profile-images");
+            }
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+                return new ApiResponse<string>(updateResult.Errors.Select(e => e.Description).ToList(), "Failed to update profile.");
+
+            return new ApiResponse<string>(data: null, "Profile updated successfully");
+        }
 
         public async Task<ApiResponse<string>> UpdateEmployeeAsync(UpdateEmployeeDto model)
         {

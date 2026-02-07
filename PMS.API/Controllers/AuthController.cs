@@ -86,6 +86,30 @@ namespace PMS.API.Controllers
             return Ok(new ApiResponse<string>(data: null, message: result.Message));
         }
 
+        [HttpGet("profile")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<UserDetailDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetProfile()
+        {
+            var result = await _authService.GetCurrentUserProfileAsync();
+            if (!result.Succeeded)
+                return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPut("profile")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileDto model)
+        {
+            var result = await _authService.UpdateCurrentUserProfileAsync(model);
+            if (!result.Succeeded)
+                return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpGet("users")] // GET: /api/auth/users?PageNumber=1&PageSize=10&Search=Ahmed
         [Authorize] // لازم يكون مسجل دخول طبعاً
         [ProducesResponseType(typeof(PagedResult<UserResponseDto>), StatusCodes.Status200OK)]
