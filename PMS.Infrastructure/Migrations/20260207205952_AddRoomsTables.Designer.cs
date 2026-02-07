@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
@@ -11,9 +12,11 @@ using PMS.Infrastructure.Context;
 namespace PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260207205952_AddRoomsTables")]
+    partial class AddRoomsTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -383,62 +386,6 @@ namespace PMS.Infrastructure.Migrations
                     b.HasIndex("RoomTypeId");
 
                     b.ToTable("Rooms");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            FloorNumber = 1,
-                            IsActive = true,
-                            RoomNumber = "101",
-                            RoomTypeId = 1,
-                            Status = 0
-                        },
-                        new
-                        {
-                            Id = 2,
-                            FloorNumber = 1,
-                            IsActive = true,
-                            RoomNumber = "102",
-                            RoomTypeId = 2,
-                            Status = 1
-                        },
-                        new
-                        {
-                            Id = 3,
-                            FloorNumber = 1,
-                            IsActive = true,
-                            RoomNumber = "103",
-                            RoomTypeId = 2,
-                            Status = 3
-                        },
-                        new
-                        {
-                            Id = 4,
-                            FloorNumber = 2,
-                            IsActive = true,
-                            RoomNumber = "201",
-                            RoomTypeId = 3,
-                            Status = 0
-                        },
-                        new
-                        {
-                            Id = 5,
-                            FloorNumber = 2,
-                            IsActive = true,
-                            RoomNumber = "202",
-                            RoomTypeId = 4,
-                            Status = 2
-                        },
-                        new
-                        {
-                            Id = 6,
-                            FloorNumber = 2,
-                            IsActive = true,
-                            RoomNumber = "203",
-                            RoomTypeId = 2,
-                            Status = 2
-                        });
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.RoomType", b =>
@@ -468,44 +415,6 @@ namespace PMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("RoomTypes");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            BasePrice = 250m,
-                            Description = "غرفة لشخص واحد",
-                            MaxAdults = 1,
-                            MaxChildren = 0,
-                            Name = "فردية"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            BasePrice = 350m,
-                            Description = "غرفة لشخصين",
-                            MaxAdults = 2,
-                            MaxChildren = 1,
-                            Name = "مزدوجة"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            BasePrice = 540m,
-                            Description = "جناح فاخر",
-                            MaxAdults = 2,
-                            MaxChildren = 2,
-                            Name = "جناح"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            BasePrice = 500m,
-                            Description = "غرفة مميزة بإطلالة",
-                            MaxAdults = 2,
-                            MaxChildren = 1,
-                            Name = "ديلوكس"
-                        });
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.Status", b =>

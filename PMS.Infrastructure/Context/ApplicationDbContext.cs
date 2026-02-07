@@ -24,10 +24,33 @@ namespace PMS.Infrastructure.Context
         public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
-
+        public DbSet<RoomType> RoomTypes { get; set; }
+        public DbSet<Room> Rooms { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<RoomType>().HasData(
+        new RoomType { Id = 1, Name = "فردية", BasePrice = 250, MaxAdults = 1, MaxChildren = 0, Description = "غرفة لشخص واحد" },
+        new RoomType { Id = 2, Name = "مزدوجة", BasePrice = 350, MaxAdults = 2, MaxChildren = 1, Description = "غرفة لشخصين" },
+        new RoomType { Id = 3, Name = "جناح", BasePrice = 540, MaxAdults = 2, MaxChildren = 2, Description = "جناح فاخر" },
+        new RoomType { Id = 4, Name = "ديلوكس", BasePrice = 500, MaxAdults = 2, MaxChildren = 1, Description = "غرفة مميزة بإطلالة" }
+    );
+
+            // ==========================================
+            // 2. زراعة الغرف (Rooms)
+            // ==========================================
+            builder.Entity<Room>().HasData(
+                // الدور الأول
+                new Room { Id = 1, RoomNumber = "101", FloorNumber = 1, RoomTypeId = 1, Status = PMS.Domain.Enums.RoomStatus.Available, IsActive = true },
+                new Room { Id = 2, RoomNumber = "102", FloorNumber = 1, RoomTypeId = 2, Status = PMS.Domain.Enums.RoomStatus.Occupied, IsActive = true },
+                new Room { Id = 3, RoomNumber = "103", FloorNumber = 1, RoomTypeId = 2, Status = PMS.Domain.Enums.RoomStatus.Cleaning, IsActive = true },
+
+                // الدور الثاني
+                new Room { Id = 4, RoomNumber = "201", FloorNumber = 2, RoomTypeId = 3, Status = PMS.Domain.Enums.RoomStatus.Available, IsActive = true },
+                new Room { Id = 5, RoomNumber = "202", FloorNumber = 2, RoomTypeId = 4, Status = PMS.Domain.Enums.RoomStatus.Maintenance, IsActive = true },
+                new Room { Id = 6, RoomNumber = "203", FloorNumber = 2, RoomTypeId = 2, Status = PMS.Domain.Enums.RoomStatus.Maintenance, IsActive = true });
+
 
             // 1. تطبيق الفلتر السحري (Global Query Filter) 🧹
             // اللفة دي عشان نطبق الفلتر على كل الـ Entities اللي واخدة ISoftDeletable مرة واحدة

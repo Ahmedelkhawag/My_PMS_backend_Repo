@@ -12,6 +12,9 @@ namespace PMS.Application.Interfaces.UOF
         IBaseRepository<Status> Statuses { get; }
         IBaseRepository<EmployeeDocument> EmployeeDocuments { get; }
         IBaseRepository<RefreshToken> RefreshTokens { get; }
+        IBaseRepository<Room> Rooms { get; }
+        IBaseRepository<RoomType> RoomTypes { get; }
+
 
         //  SaveChanges
         Task<int> CompleteAsync();
