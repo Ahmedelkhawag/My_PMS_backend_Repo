@@ -26,7 +26,8 @@ namespace PMS.Infrastructure.Context
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<RoomType> RoomTypes { get; set; }
         public DbSet<Room> Rooms { get; set; }
-        protected override void OnModelCreating(ModelBuilder builder)
+		public DbSet<Guest> Guests { get; set; }
+		protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 

@@ -267,18 +267,10 @@ namespace PMS.Infrastructure.Implmentations.Services
            .Include(u => u.Status)
            .SingleOrDefaultAsync(u => u.UserName == model.UserName);
 
-            // 2. التحقق من صحة اليوزر والباسورد
+         
             if (user is null || !await _userManager.CheckPasswordAsync(user, model.Password))
                 return new AuthModel { Message = "Invalid Username or Password!" };
 
-            // 3. (الجديد) التحقق من الفندق 🛑
-            // لو اليوزر ليه فندق (مش سوبر أدمن)، والفندق اللي باعه غير فندقه المسجل -> اطرده
-            //if (user.HotelId != null && user.HotelId != model.HotelId)
-            //{
-            //    return new AuthModel { Message = "Access Denied: You do not belong to this Hotel." };
-            //}
-
-            // 4. التحقق من الحالة
             if (!user.IsActive)
                 return new AuthModel { Message = "User is Disabled!" };
 

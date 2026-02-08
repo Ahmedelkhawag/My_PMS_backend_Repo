@@ -18,7 +18,8 @@ namespace PMS.Infrastructure.Implmentations
         public IBaseRepository<RefreshToken> RefreshTokens { get; private set; }
         public IBaseRepository<Room> Rooms { get; private set; }
         public IBaseRepository<RoomType> RoomTypes { get; private set; }
-        public UnitOfWork(ApplicationDbContext context)
+		public IBaseRepository<Guest> Guests { get; private set; }
+		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
 
@@ -29,7 +30,8 @@ namespace PMS.Infrastructure.Implmentations
 
             Rooms = new BaseRepository<Room>(_context);
             RoomTypes = new BaseRepository<RoomType>(_context);
-        }
+            Guests = new BaseRepository<Guest>(_context);
+		}
 
         public async Task<int> CompleteAsync()
         {
