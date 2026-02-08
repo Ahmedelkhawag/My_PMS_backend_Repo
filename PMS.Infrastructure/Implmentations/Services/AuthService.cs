@@ -904,7 +904,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             var token = new JwtSecurityToken(
                 issuer: _jwt.Value.Issuer,
                 audience: _jwt.Value.Audience,
-                expires: DateTime.Now.AddDays(_jwt.Value.DurationInMinutes),
+                expires: DateTime.Now.AddMinutes(_jwt.Value.DurationInMinutes),
                 claims: userClaims,
                 signingCredentials: new SigningCredentials(authKey, SecurityAlgorithms.HmacSha256Signature)
             );
