@@ -954,7 +954,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             return new RefreshToken
             {
                 Token = Convert.ToBase64String(randomNumber),
-                ExpiresOn = DateTime.UtcNow.AddDays(_jwt.Value.RefreshTokenValidityInHours),
+                ExpiresOn = DateTime.UtcNow.AddHours(_jwt.Value.RefreshTokenValidityInHours),
                 CreatedOn = DateTime.UtcNow
             };
         }

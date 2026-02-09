@@ -27,6 +27,8 @@ namespace PMS.Infrastructure.Context
         public DbSet<RoomType> RoomTypes { get; set; }
         public DbSet<Room> Rooms { get; set; }
 		public DbSet<Guest> Guests { get; set; }
+		public DbSet<Reservation> Reservations { get; set; }
+		public DbSet<ReservationService> ReservationServices { get; set; }
 		protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -74,25 +76,45 @@ namespace PMS.Infrastructure.Context
             }
         }
 
-        // 2. تحويل الحذف الحقيقي لحذف ناعم 🔄
-        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        {
-            // بنشوف أي حد حالته "Deleted"
-            foreach (var entry in ChangeTracker.Entries<ISoftDeletable>())
-            {
-                if (entry.State == EntityState.Deleted)
-                {
-                    // بدل ما نمسحه، نخليه Modified (تعديل)
-                    entry.State = EntityState.Modified;
+		// 2. تحويل الحذف الحقيقي لحذف ناعم 🔄
+		public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+		{
+			// بنجيب اليوزر الحالي (لو مفيش يوزر بنكتب System)
+			var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
+			var currentDateTime = DateTime.UtcNow;
 
-                    // نحدث البيانات
-                    entry.Entity.IsDeleted = true;
-                    entry.Entity.DeletedAt = DateTime.UtcNow;
-                    entry.Entity.DeletedBy = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-                }
-            }
+			foreach (var entry in ChangeTracker.Entries())
+			{
+				// 1. معالجة الـ Auditing (الإنشاء والتعديل) 🆕
+				if (entry.Entity is IAuditable auditableEntity)
+				{
+					if (entry.State == EntityState.Added)
+					{
+						auditableEntity.CreatedBy = currentUserId; // Open By
+						auditableEntity.CreatedAt = currentDateTime; // Date Open
+					}
+					else if (entry.State == EntityState.Modified)
+					{
+						// بنمنع تعديل بيانات الإنشاء بالغلط
+						entry.Property(nameof(IAuditable.CreatedBy)).IsModified = false;
+						entry.Property(nameof(IAuditable.CreatedAt)).IsModified = false;
 
-            return base.SaveChangesAsync(cancellationToken);
-        }
-    }
+						auditableEntity.LastModifiedBy = currentUserId; // Updated By
+						auditableEntity.LastModifiedAt = currentDateTime;
+					}
+				}
+
+				// 2. معالجة الـ Soft Delete (زي ما كانت)
+				if (entry.Entity is ISoftDeletable softDeletableEntity && entry.State == EntityState.Deleted)
+				{
+					entry.State = EntityState.Modified;
+					softDeletableEntity.IsDeleted = true;
+					softDeletableEntity.DeletedAt = currentDateTime;
+					softDeletableEntity.DeletedBy = currentUserId; // Closed By (Delete)
+				}
+			}
+
+			return base.SaveChangesAsync(cancellationToken);
+		}
+	}
 }

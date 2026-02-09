@@ -9,8 +9,8 @@ using System.Text;
 
 namespace PMS.Domain.Entities
 {
-    public class AppUser : IdentityUser, ISoftDeletable
-    {
+    public class AppUser : IdentityUser, ISoftDeletable, IAuditable
+	{
         [Required]
         public override string UserName { get; set; }
 
@@ -40,6 +40,11 @@ namespace PMS.Domain.Entities
         public virtual ICollection<EmployeeDocument> EmployeeDocs { get; set; }
 
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+		public string? CreatedBy { get; set; }
+		public DateTime CreatedAt { get; set; }
 
-    }
+		public string? LastModifiedBy { get; set; }
+		public DateTime? LastModifiedAt { get; set; }
+
+	}
 }

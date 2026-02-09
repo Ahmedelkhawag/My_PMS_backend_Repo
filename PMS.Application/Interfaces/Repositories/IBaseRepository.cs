@@ -18,5 +18,6 @@ namespace PMS.Application.Interfaces.Repositories
         void DeleteRange(IEnumerable<T> entities);
         Task<int> CountAsync();
         Task<int> CountAsync(Expression<Func<T, bool>> criteria);
-    }
+		IQueryable<T> GetQueryable();
+	}
 }

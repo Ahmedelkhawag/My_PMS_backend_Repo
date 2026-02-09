@@ -90,5 +90,10 @@ namespace PMS.Infrastructure.Implmentations
         {
             return await _context.Set<T>().CountAsync(criteria);
         }
-    }
+
+		public IQueryable<T> GetQueryable()
+		{
+			return _context.Set<T>().AsQueryable();
+		}
+	}
 }

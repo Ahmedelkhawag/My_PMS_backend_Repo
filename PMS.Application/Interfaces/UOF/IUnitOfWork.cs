@@ -15,6 +15,9 @@ namespace PMS.Application.Interfaces.UOF
         IBaseRepository<Room> Rooms { get; }
         IBaseRepository<RoomType> RoomTypes { get; }
 		IBaseRepository<Guest> Guests { get; }
+		IBaseRepository<Reservation> Reservations { get; }
+
+		IBaseRepository<ReservationService> ReservationServices { get; }
 
 
 		//  SaveChanges
