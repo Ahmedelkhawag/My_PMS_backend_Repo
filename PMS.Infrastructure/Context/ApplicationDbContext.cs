@@ -149,6 +149,15 @@ namespace PMS.Infrastructure.Context
 			);
 
 
+			builder.Entity<ExtraService>().HasData(
+	new ExtraService { Id = 1, Name = "Airport Transfer (نقل مطار)", Price = 150, IsPerDay = false },
+	new ExtraService { Id = 2, Name = "Parking (موقف سيارات)", Price = 30, IsPerDay = true },
+	new ExtraService { Id = 3, Name = "VIP Service (خدمة VIP)", Price = 200, IsPerDay = true },
+	new ExtraService { Id = 4, Name = "Spa (سبا)", Price = 300, IsPerDay = false },
+	new ExtraService { Id = 5, Name = "Laundry (غسيل)", Price = 75, IsPerDay = false }
+);
+
+
 			// 1. تطبيق الفلتر السحري (Global Query Filter) 🧹
 			// اللفة دي عشان نطبق الفلتر على كل الـ Entities اللي واخدة ISoftDeletable مرة واحدة
 			foreach (var entityType in builder.Model.GetEntityTypes())

@@ -23,7 +23,8 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<MarketSegment> MarketSegments { get; }
 		IBaseRepository<MealPlan> MealPlans { get; }
 		IBaseRepository<RoomStatusLookup> RoomStatuses { get; }
-	
+		IBaseRepository<ExtraService> ExtraServices { get; }
+
 
 
 		//  SaveChanges

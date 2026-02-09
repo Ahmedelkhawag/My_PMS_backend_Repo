@@ -82,6 +82,7 @@ namespace PMS.API.Controllers
 		}
 
 		[HttpPut("room-details/{id}")]
+        [Authorize]
 		public async Task<IActionResult> GetRoomDetails(int id)
 		{
 			var result = await _roomService.GetRoomByIdAsync(id);

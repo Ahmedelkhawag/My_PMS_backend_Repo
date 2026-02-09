@@ -66,5 +66,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 			   .Select(x => new LookupDto { Id = x.Id, Name = x.Name })
 			   .ToListAsync();
 		}
+
+
+		public async Task<IEnumerable<ExtraServiceLookupDto>> GetExtraServicesAsync()
+		{
+			return await _unitOfWork.ExtraServices.GetQueryable()
+				.Where(x => x.IsActive)
+				.Select(x => new ExtraServiceLookupDto
+				{
+					Id = x.Id,
+					Name = x.Name,
+					Price = x.Price,
+					IsPerDay = x.IsPerDay
+				})
+				.ToListAsync();
+		}
 	}
 }

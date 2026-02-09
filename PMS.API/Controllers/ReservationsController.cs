@@ -79,6 +79,7 @@ namespace PMS.API.Controllers
 
 
 		[HttpPut("update-reservation")]
+		[Authorize]
 		public async Task<IActionResult> Update([FromBody] UpdateReservationDto dto)
 		{
 			if (!ModelState.IsValid)

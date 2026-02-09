@@ -12,5 +12,6 @@ namespace PMS.Application.Interfaces.Services
 		Task<IEnumerable<MealPlanLookupDto>> GetMealPlansAsync();
 		Task<IEnumerable<RoomStatusLookupDto>> GetRoomStatusesAsync();
 		Task<IEnumerable<LookupDto>> GetRoomTypesLookupAsync();
+		Task<IEnumerable<ExtraServiceLookupDto>> GetExtraServicesAsync();
 	}
 }

@@ -26,6 +26,7 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<MarketSegment> MarketSegments { get; private set; }
 		public IBaseRepository<MealPlan> MealPlans { get; private set; }
 		public IBaseRepository<RoomStatusLookup> RoomStatuses { get; private set; }
+		public IBaseRepository<ExtraService> ExtraServices { get; private set; }
 		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -44,6 +45,7 @@ namespace PMS.Infrastructure.Implmentations
 			MarketSegments = new BaseRepository<MarketSegment>(_context);
 			MealPlans = new BaseRepository<MealPlan>(_context);
 			RoomStatuses = new BaseRepository<RoomStatusLookup>(_context);
+            ExtraServices = new BaseRepository<ExtraService>(_context);
 		}
 
         public async Task<int> CompleteAsync()

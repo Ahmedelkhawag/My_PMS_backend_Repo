@@ -44,5 +44,12 @@ namespace PMS.API.Controllers
 		{
 			return Ok(await _configService.GetRoomTypesLookupAsync());
 		}
+
+
+		[HttpGet("extra-services")]
+		public async Task<IActionResult> GetExtraServices()
+		{
+			return Ok(await _configService.GetExtraServicesAsync());
+		}
 	}
 }
