@@ -1,6 +1,7 @@
 ﻿using PMS.Application.Interfaces.Repositories;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
+using PMS.Domain.Entities.Configuration;
 using PMS.Infrastructure.Context;
 using System;
 using System.Collections.Generic;
@@ -21,6 +22,10 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<Guest> Guests { get; private set; }
 		public IBaseRepository<Reservation> Reservations { get; private set; }
         public IBaseRepository<ReservationService> ReservationServices { get; private set; }
+		public IBaseRepository<BookingSource> BookingSources { get; private set; }
+		public IBaseRepository<MarketSegment> MarketSegments { get; private set; }
+		public IBaseRepository<MealPlan> MealPlans { get; private set; }
+		public IBaseRepository<RoomStatusLookup> RoomStatuses { get; private set; }
 		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -35,6 +40,10 @@ namespace PMS.Infrastructure.Implmentations
             Guests = new BaseRepository<Guest>(_context);
             Reservations = new BaseRepository<Reservation>(_context);
             ReservationServices = new BaseRepository<ReservationService>(_context);
+			BookingSources = new BaseRepository<BookingSource>(_context);
+			MarketSegments = new BaseRepository<MarketSegment>(_context);
+			MealPlans = new BaseRepository<MealPlan>(_context);
+			RoomStatuses = new BaseRepository<RoomStatusLookup>(_context);
 		}
 
         public async Task<int> CompleteAsync()

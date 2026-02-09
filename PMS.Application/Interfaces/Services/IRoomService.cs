@@ -9,9 +9,13 @@ namespace PMS.Application.Interfaces.Services
     public interface IRoomService
     {
         Task<IEnumerable<RoomDto>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status);
-        Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto);
+         Task<ResponseObjectDto<RoomDto>> GetRoomByIdAsync(int id);
+
+		Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto);
 
         Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(UpdateRoomDto dto);
         Task<ResponseObjectDto<bool>> DeleteRoomAsync(int id);
-    }
+
+		Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes);
+	}
 }

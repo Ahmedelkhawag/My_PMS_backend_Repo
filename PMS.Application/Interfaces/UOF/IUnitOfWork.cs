@@ -1,5 +1,6 @@
 ﻿using PMS.Application.Interfaces.Repositories;
 using PMS.Domain.Entities;
+using PMS.Domain.Entities.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -18,6 +19,11 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<Reservation> Reservations { get; }
 
 		IBaseRepository<ReservationService> ReservationServices { get; }
+		IBaseRepository<BookingSource> BookingSources { get; }
+		IBaseRepository<MarketSegment> MarketSegments { get; }
+		IBaseRepository<MealPlan> MealPlans { get; }
+		IBaseRepository<RoomStatusLookup> RoomStatuses { get; }
+	
 
 
 		//  SaveChanges

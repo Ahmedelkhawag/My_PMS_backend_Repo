@@ -25,10 +25,10 @@ namespace PMS.Application.DTOs.Reservations
 
 		// تفاصيل البيزنس
 		public string? RateCode { get; set; }
-		public string? MealPlan { get; set; }
-		public int SourceId { get; set; }
+		public int MealPlanId { get; set; }      // بدل string MealPlan
+		public int BookingSourceId { get; set; } // بدل SourceId
+		public int MarketSegmentId { get; set; }
 		public string? PurposeOfVisit { get; set; }
-		public string? MarketSegment { get; set; }
 		public string? Notes { get; set; }
 
 		// الإضافات الأخيرة (عشان التحديث يشمل كل حاجة)

@@ -8,6 +8,6 @@ namespace PMS.Application.DTOs.Rooms
     {
         public int Id { get; set; }
 
-        public string Status { get; set; } = "Available";
+        public string Status { get; set; }
     }
 }

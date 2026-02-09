@@ -1,4 +1,5 @@
-﻿using PMS.Application.DTOs.Common;
+﻿using Microsoft.EntityFrameworkCore;
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Guests;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
@@ -240,6 +241,43 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 			return response;
 		}
+
+
+		//public async Task<ResponseObjectDto<IEnumerable<GuestSearchDto>>> SearchGuestsAsync(string searchTerm)
+		//{
+		//	// لو البحث فاضي نرجع قائمة فاضية أو أول 10 نزلاء (حسب الرغبة)
+		//	if (string.IsNullOrWhiteSpace(searchTerm))
+		//	{
+		//		return new ResponseObjectDto<IEnumerable<GuestSearchDto>>
+		//		{
+		//			IsSuccess = true,
+		//			Data = new List<GuestSearchDto>(),
+		//			Message = "يرجى إدخال كلمة للبحث"
+		//		};
+		//	}
+
+		//	var guests = await _unitOfWork.Guests.GetQueryable()
+		//		.Where(g => g.FullName.Contains(searchTerm) ||
+		//					g.PhoneNumber.Contains(searchTerm) ||
+		//					g.NationalId.Contains(searchTerm))
+		//		.Take(20) // بنحدد العدد عشان الأداء (Autocomplete)
+		//		.Select(g => new GuestSearchDto
+		//		{
+		//			Id = g.Id,
+		//			FullName = g.FullName,
+		//			PhoneNumber = g.PhoneNumber,
+		//			NationalId = g.NationalId
+		//		})
+		//		.ToListAsync();
+
+		//	return new ResponseObjectDto<IEnumerable<GuestSearchDto>>
+		//	{
+		//		IsSuccess = true,
+		//		Data = guests,
+		//		Message = $"تم العثور على {guests.Count} نتيجة",
+		//		StatusCode = 200
+		//	};
+		//}
 	}
 }
 

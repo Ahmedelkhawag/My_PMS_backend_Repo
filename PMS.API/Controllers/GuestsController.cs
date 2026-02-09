@@ -72,5 +72,12 @@ namespace PMS.API.Controllers
 
 			return Ok(result);
 		}
+
+		//[HttpGet("search")]
+		//public async Task<IActionResult> Search([FromQuery] string term)
+		//{
+		//	var result = await _guestService.SearchGuestsAsync(term);
+		//	return StatusCode(result.StatusCode, result);
+		//}
 	}
 }

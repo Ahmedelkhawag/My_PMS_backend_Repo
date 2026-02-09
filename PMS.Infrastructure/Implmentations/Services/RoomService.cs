@@ -1,188 +1,273 @@
-﻿using PMS.Application.DTOs.Common;
+﻿using Microsoft.EntityFrameworkCore;
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Rooms;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
-using PMS.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Text;
+// using PMS.Domain.Enums; // مش محتاجينه
 
 namespace PMS.Infrastructure.Implmentations.Services
 {
-    public class RoomService : IRoomService
-    {
-        private readonly IUnitOfWork _unitOfWork;
+	public class RoomService : IRoomService
+	{
+		private readonly IUnitOfWork _unitOfWork;
 
-        public RoomService(IUnitOfWork unitOfWork)
-        {
-            _unitOfWork = unitOfWork;
-        }
+		public RoomService(IUnitOfWork unitOfWork)
+		{
+			_unitOfWork = unitOfWork;
+		}
 
-        public async Task<IEnumerable<RoomDto>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status)
-        {
-            // 1. تجهيز فلتر الحالة (تحويل من string لـ Enum)
-            RoomStatus? statusEnum = null;
-            if (!string.IsNullOrEmpty(status) && Enum.TryParse<RoomStatus>(status, true, out var parsed))
-            {
-                statusEnum = parsed;
-            }
+		// 1. استرجاع كل الغرف (مع الألوان)
+		public async Task<IEnumerable<RoomDto>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status)
+		{
+			var query = _unitOfWork.Rooms.GetQueryable()
+				.Include(r => r.RoomType)
+				.Include(r => r.RoomStatus) // ضروري
+				.AsQueryable();
 
-            // 2. استخدام Repository لجلب البيانات مع الفلترة
-            // (الشرط: لو الفلتر null هات كله، لو بقيمة هات اللي بيساويه)
-            var rooms = await _unitOfWork.Rooms.FindAllAsync(
-                r => (floor == null || r.FloorNumber == floor) &&
-                     (roomTypeId == null || r.RoomTypeId == roomTypeId) &&
-                     (statusEnum == null || r.Status == statusEnum),
-                new[] { "RoomType" } // Include عشان نجيب السعر والاسم
-            );
+			if (floor.HasValue)
+				query = query.Where(r => r.FloorNumber == floor);
 
-            // 3. التحويل لـ DTO (Manual Mapping)
-            return rooms.Select(r => new RoomDto
-            {
-                Id = r.Id,
-                RoomNumber = r.RoomNumber,
-                FloorNumber = r.FloorNumber,
-                Status = r.Status.ToString(), // بنرجع اسم الحالة (Available, Occupied...)
-                RoomType = r.RoomType?.Name ?? "N/A",
-                Price = r.RoomType?.BasePrice ?? 0,
-                MaxAdults = r.RoomType?.MaxAdults ?? 0
-            });
-        }
+			if (roomTypeId.HasValue)
+				query = query.Where(r => r.RoomTypeId == roomTypeId);
 
-        public async Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto)
-        {
-            var response = new ResponseObjectDto<RoomDto>();
+			if (!string.IsNullOrEmpty(status))
+			{
+				query = query.Where(r => r.RoomStatus.Name == status);
+			}
 
-            var existingRoom = await _unitOfWork.Rooms.FindAsync(r => r.RoomNumber == dto.RoomNumber);
-            if (existingRoom != null)
-            {
-                response.IsSuccess = false;
-                response.Message = $"الغرفة رقم {dto.RoomNumber} موجودة بالفعل!";
-                response.StatusCode = 400;
-                return response;
-            }
+			var rooms = await query.ToListAsync();
 
-            var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
-            if (roomType == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "نوع الغرفة غير صحيح!";
-                response.StatusCode = 404;
-                return response;
-            }
+			return rooms.Select(r => new RoomDto
+			{
+				Id = r.Id,
+				RoomNumber = r.RoomNumber,
+				FloorNumber = r.FloorNumber,
 
-            var room = new Room
-            {
-                RoomNumber = dto.RoomNumber,
-                FloorNumber = dto.FloorNumber,
-                RoomTypeId = dto.RoomTypeId,
-                Notes = dto.Notes,
-                Status = RoomStatus.Available,
-                IsActive = true
-            };
+				// 👇 البيانات المحسنة
+				Status = r.RoomStatus?.Name ?? "Unknown",
+				StatusColor = r.RoomStatus?.Color ?? "#808080", // 👈 دي اللي كانت ناقصة
 
-            await _unitOfWork.Rooms.AddAsync(room);
-            await _unitOfWork.CompleteAsync();
+				RoomType = r.RoomType?.Name ?? "N/A",
+				Price = r.RoomType?.BasePrice ?? 0,
+				MaxAdults = r.RoomType?.MaxAdults ?? 0
+			});
+		}
 
-            var returnedDto = new RoomDto
-            {
-                Id = room.Id,
-                RoomNumber = room.RoomNumber,
-                FloorNumber = room.FloorNumber,
-                Status = room.Status.ToString(),
-                RoomType = roomType.Name,
-                Price = roomType.BasePrice,
-                MaxAdults = roomType.MaxAdults
-            };
+		// 2. استرجاع غرفة واحدة (كانت ناقصة)
+		public async Task<ResponseObjectDto<RoomDto>> GetRoomByIdAsync(int id)
+		{
+			var response = new ResponseObjectDto<RoomDto>();
 
-            response.IsSuccess = true;
-            response.Message = "تم إضافة الغرفة بنجاح";
-            response.Data = returnedDto;
-            response.StatusCode = 201;
+			var room = await _unitOfWork.Rooms.GetQueryable()
+				.Include(r => r.RoomType)
+				.Include(r => r.RoomStatus)
+				.FirstOrDefaultAsync(r => r.Id == id);
 
-            return response;
-        }
+			if (room == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة غير موجودة";
+				response.StatusCode = 404;
+				return response;
+			}
 
+			response.IsSuccess = true;
+			response.Data = new RoomDto
+			{
+				Id = room.Id,
+				RoomNumber = room.RoomNumber,
+				FloorNumber = room.FloorNumber,
+				Status = room.RoomStatus?.Name ?? "Unknown",
+				StatusColor = room.RoomStatus?.Color ?? "#808080", // 👈 اللون
+				RoomType = room.RoomType?.Name ?? "N/A",
+				Price = room.RoomType?.BasePrice ?? 0,
+				MaxAdults = room.RoomType?.MaxAdults ?? 0
+			};
+			response.StatusCode = 200;
 
-        public async Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(UpdateRoomDto dto)
-        {
-            var response = new ResponseObjectDto<RoomDto>();
+			return response;
+		}
 
-            var room = await _unitOfWork.Rooms.GetByIdAsync(dto.Id);
-            if (room == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "الغرفة غير موجودة!";
-                response.StatusCode = 404;
-                return response;
-            }
+		// 3. إنشاء غرفة
+		public async Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto)
+		{
+			var response = new ResponseObjectDto<RoomDto>();
 
-            // ب) التأكد إن رقم الغرفة الجديد مش متكرر (مع استثناء الغرفة الحالية)
-            var duplicateRoom = await _unitOfWork.Rooms.FindAsync(r => r.RoomNumber == dto.RoomNumber && r.Id != dto.Id);
-            if (duplicateRoom != null)
-            {
-                response.IsSuccess = false;
-                response.Message = $"رقم الغرفة {dto.RoomNumber} مستخدم بالفعل لغرفة أخرى!";
-                response.StatusCode = 400;
-                return response;
-            }
+			var existingRoom = await _unitOfWork.Rooms.FindAsync(r => r.RoomNumber == dto.RoomNumber);
+			if (existingRoom != null)
+			{
+				response.IsSuccess = false;
+				response.Message = $"الغرفة رقم {dto.RoomNumber} موجودة بالفعل!";
+				response.StatusCode = 400;
+				return response;
+			}
 
-            room.RoomNumber = dto.RoomNumber;
-            room.FloorNumber = dto.FloorNumber;
-            room.RoomTypeId = dto.RoomTypeId;
-            room.Notes = dto.Notes;
+			var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
+			if (roomType == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "نوع الغرفة غير صحيح!";
+				response.StatusCode = 404;
+				return response;
+			}
 
-            if (Enum.TryParse<RoomStatus>(dto.Status, true, out var statusEnum))
-            {
-                room.Status = statusEnum;
-            }
+			var room = new Room
+			{
+				RoomNumber = dto.RoomNumber,
+				FloorNumber = dto.FloorNumber,
+				RoomTypeId = dto.RoomTypeId,
+				Notes = dto.Notes,
+				RoomStatusId = 1, // Default Clean
+				IsActive = true
+			};
 
-            _unitOfWork.Rooms.Update(room);
-            await _unitOfWork.CompleteAsync();
+			await _unitOfWork.Rooms.AddAsync(room);
+			await _unitOfWork.CompleteAsync();
 
+			var status = await _unitOfWork.RoomStatuses.GetByIdAsync(room.RoomStatusId);
 
-            var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(room.RoomTypeId);
+			response.IsSuccess = true;
+			response.Message = "تم إضافة الغرفة بنجاح";
+			response.Data = new RoomDto
+			{
+				Id = room.Id,
+				RoomNumber = room.RoomNumber,
+				FloorNumber = room.FloorNumber,
+				Status = status?.Name ?? "Clean",
+				StatusColor = status?.Color ?? "#008000", // 👈
+				RoomType = roomType.Name,
+				Price = roomType.BasePrice,
+				MaxAdults = roomType.MaxAdults
+			};
+			response.StatusCode = 201;
 
-            response.IsSuccess = true;
-            response.Message = "تم تحديث بيانات الغرفة بنجاح";
-            response.Data = new RoomDto
-            {
-                Id = room.Id,
-                RoomNumber = room.RoomNumber,
-                FloorNumber = room.FloorNumber,
-                Status = room.Status.ToString(),
-                RoomType = roomType?.Name ?? "",
-                Price = roomType?.BasePrice ?? 0,
-                MaxAdults = roomType?.MaxAdults ?? 0
-            };
+			return response;
+		}
 
-            return response;
-        }
+		// 4. تحديث غرفة
+		public async Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(UpdateRoomDto dto)
+		{
+			var response = new ResponseObjectDto<RoomDto>();
 
-        public async Task<ResponseObjectDto<bool>> DeleteRoomAsync(int id)
-        {
-            var response = new ResponseObjectDto<bool>();
+			var room = await _unitOfWork.Rooms.GetQueryable()
+				.Include(r => r.RoomType)
+				.Include(r => r.RoomStatus)
+				.FirstOrDefaultAsync(r => r.Id == dto.Id);
 
-            var room = await _unitOfWork.Rooms.GetByIdAsync(id);
-            if (room == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "الغرفة غير موجودة";
-                response.StatusCode = 404;
-                return response;
-            }
+			if (room == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة غير موجودة!";
+				response.StatusCode = 404;
+				return response;
+			}
 
-            // هنعمل Soft Delete (إخفاء فقط)
-            room.IsActive = false;
-            _unitOfWork.Rooms.Update(room);
-            await _unitOfWork.CompleteAsync();
+			// التحقق من التكرار
+			var duplicateRoom = await _unitOfWork.Rooms.FindAsync(r => r.RoomNumber == dto.RoomNumber && r.Id != dto.Id);
+			if (duplicateRoom != null)
+			{
+				response.IsSuccess = false;
+				response.Message = $"رقم الغرفة {dto.RoomNumber} مستخدم بالفعل!";
+				response.StatusCode = 400;
+				return response;
+			}
 
-            response.IsSuccess = true;
-            response.Message = "تم حذف الغرفة (أرشفة) بنجاح";
-            response.Data = true;
+			room.RoomNumber = dto.RoomNumber;
+			room.FloorNumber = dto.FloorNumber;
+			room.RoomTypeId = dto.RoomTypeId;
+			room.Notes = dto.Notes;
 
-            return response;
-        }
-    }
+			if (!string.IsNullOrEmpty(dto.Status))
+			{
+				var statusObj = await _unitOfWork.RoomStatuses.FindAsync(s => s.Name == dto.Status);
+				if (statusObj != null)
+				{
+					room.RoomStatusId = statusObj.Id;
+				}
+			}
+
+			_unitOfWork.Rooms.Update(room);
+			await _unitOfWork.CompleteAsync();
+
+			response.IsSuccess = true;
+			response.Message = "تم تحديث بيانات الغرفة بنجاح";
+			response.Data = new RoomDto
+			{
+				Id = room.Id,
+				RoomNumber = room.RoomNumber,
+				FloorNumber = room.FloorNumber,
+				Status = room.RoomStatus?.Name ?? dto.Status,
+				StatusColor = room.RoomStatus?.Color ?? "#808080", // 👈
+				RoomType = room.RoomType?.Name ?? "",
+				Price = room.RoomType?.BasePrice ?? 0,
+				MaxAdults = room.RoomType?.MaxAdults ?? 0
+			};
+
+			return response;
+		}
+
+		// 5. حذف
+		public async Task<ResponseObjectDto<bool>> DeleteRoomAsync(int id)
+		{
+			var response = new ResponseObjectDto<bool>();
+			var room = await _unitOfWork.Rooms.GetByIdAsync(id);
+			if (room == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة غير موجودة";
+				response.StatusCode = 404;
+				return response;
+			}
+			room.IsActive = false;
+			_unitOfWork.Rooms.Update(room);
+			await _unitOfWork.CompleteAsync();
+
+			response.IsSuccess = true;
+			response.Message = "تم حذف الغرفة (أرشفة) بنجاح";
+			response.Data = true;
+			return response;
+		}
+
+		// 6. 👇👇 دالة تغيير الحالة (Housekeeping) - دي الجديدة 👇👇
+		public async Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes)
+		{
+			var response = new ResponseObjectDto<bool>();
+
+			var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
+			if (room == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة غير موجودة";
+				response.StatusCode = 404;
+				return response;
+			}
+
+			var statusObj = await _unitOfWork.RoomStatuses.GetByIdAsync(statusId);
+			if (statusObj == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "حالة الغرفة غير صحيحة";
+				response.StatusCode = 400;
+				return response;
+			}
+
+			room.RoomStatusId = statusId;
+
+			if (!string.IsNullOrEmpty(notes))
+			{
+				room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM}: {notes}";
+			}
+
+			_unitOfWork.Rooms.Update(room);
+			await _unitOfWork.CompleteAsync();
+
+			response.IsSuccess = true;
+			response.Message = "تم تغيير حالة الغرفة بنجاح";
+			response.Data = true;
+			response.StatusCode = 200;
+
+			return response;
+		}
+	}
 }

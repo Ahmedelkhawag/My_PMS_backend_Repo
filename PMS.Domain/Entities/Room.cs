@@ -1,4 +1,5 @@
-﻿using PMS.Domain.Enums;
+﻿using PMS.Domain.Entities.Configuration;
+using PMS.Domain.Enums;
 using PMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -18,8 +19,6 @@ namespace PMS.Domain.Entities
 
         public int FloorNumber { get; set; } // رقم الطابق (1, 2, 3...) زي ما ظاهر في الفلتر
 
-        public RoomStatus Status { get; set; } = RoomStatus.Available; // الحالة الافتراضية "متاحة"
-
         public string? Notes { get; set; } // ملاحظات (مثلاً: "التكييف محتاج صيانة")
 
         public bool IsActive { get; set; } = true; // لو حبيت توقف الغرفة مؤقتاً من غير ما تمسحها
@@ -31,6 +30,10 @@ namespace PMS.Domain.Entities
 
         [ForeignKey("RoomTypeId")]
         public RoomType? RoomType { get; set; }
+
+		public int RoomStatusId { get; set; } // بدل Enum
+		[ForeignKey("RoomStatusId")]
+		public RoomStatusLookup RoomStatus { get; set; }
 		public string? CreatedBy { get; set; }
 		public DateTime CreatedAt { get; set; }
 

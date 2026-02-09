@@ -11,7 +11,7 @@ using System.Text;
 
 namespace PMS.Infrastructure.Implmentations.Services
 {
-    public class ReservationsService : IReservationService
+	public class ReservationsService : IReservationService
 	{
 		private readonly IUnitOfWork _unitOfWork;
 
@@ -93,7 +93,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				ReservationNumber = reservationNumber,
 				GuestId = dto.GuestId,
 				RoomTypeId = dto.RoomTypeId,
-				RoomId = dto.RoomId, // ممكن يكون Null
+				RoomId = dto.RoomId,
 				CheckInDate = dto.CheckInDate,
 				CheckOutDate = dto.CheckOutDate,
 
@@ -106,21 +106,29 @@ namespace PMS.Infrastructure.Implmentations.Services
 				GrandTotal = grandTotal,
 
 				// تفاصيل البيزنس
-				RateCode = dto.RateCode,
-				MealPlan = dto.MealPlan,
-				PurposeOfVisit = dto.PurposeOfVisit,
-				MarketSegment = dto.MarketSegment,
+				RateCode = dto.RateCode, 
+
+				MealPlanId = dto.MealPlanId,           
+				MarketSegmentId = dto.MarketSegmentId, 
+				BookingSourceId = dto.BookingSourceId, 
+
+			
+
 				IsPostMaster = dto.IsPostMaster,
 				IsGuestPay = dto.IsGuestPay,
 				IsNoExtend = dto.IsNoExtend,
 
-				Status = ReservationStatus.Pending, // افتراضياً معلق
-				Source = (ReservationSource)dto.SourceId,
+				Status = ReservationStatus.Pending,
 
-				Services = reservationServices, // القائمة اللي جهزناها فوق
+				Services = reservationServices,
 				Adults = dto.Adults,
 				Children = dto.Children,
-				Notes = dto.Notes
+				Notes = dto.Notes,
+
+				// إضافات
+				PurposeOfVisit = dto.PurposeOfVisit,
+				ExternalReference = dto.ExternalReference,
+				CarPlate = dto.CarPlate
 			};
 
 			if (dto.RoomId.HasValue)
@@ -196,6 +204,9 @@ namespace PMS.Infrastructure.Implmentations.Services
 				.Include(r => r.Guest)
 				.Include(r => r.Room)
 				.Include(r => r.RoomType)
+				 .Include(r => r.BookingSource) 
+				 .Include(r => r.MealPlan)
+
 				.AsQueryable();
 
 			// 2. البحث (Search)
@@ -234,7 +245,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				})
 				.ToListAsync();
 
-		
+
 			return new ResponseObjectDto<IEnumerable<ReservationListDto>>
 			{
 				IsSuccess = true,
@@ -334,7 +345,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 				.Include(r => r.Guest)
 				.Include(r => r.Room)
 				.Include(r => r.RoomType)
-				.Include(r => r.Services) // عشان نجيب قائمة الخدمات
+				.Include(r => r.Services)
+				.Include(r => r.BookingSource)
+		        .Include(r => r.MealPlan)
+		        .Include(r => r.MarketSegment)
+				// عشان نجيب قائمة الخدمات
 				.FirstOrDefaultAsync(r => r.Id == id);
 
 			if (reservation == null)
@@ -371,8 +386,13 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 				// Business Details
 				RateCode = reservation.RateCode,
-				MealPlan = reservation.MealPlan,
-				Source = reservation.Source.ToString(),
+				MealPlan = reservation.MealPlan?.Name ?? "Unknown",
+
+				// المصدر
+				Source = reservation.BookingSource?.Name ?? "Unknown",
+
+				// قطاع السوق
+				MarketSegment = reservation.MarketSegment?.Name ?? "Unknown",
 				Notes = reservation.Notes,
 
 				// Financials
@@ -541,7 +561,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 				.Include(r => r.Services) // ضروري جداً
 				.Include(r => r.Guest)    // عشان الرد النهائي
 				.Include(r => r.Room)
-				.Include(r => r.RoomType)// عشان الرد النهائي
+				.Include(r => r.RoomType)
+				.Include(r => r.BookingSource)
+		        .Include(r => r.MealPlan)
+		        .Include(r => r.MarketSegment)// عشان الرد النهائي
 				.FirstOrDefaultAsync(r => r.Id == dto.Id);
 
 			if (reservation == null)
@@ -652,10 +675,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 			// تحديث البيانات الأخرى
 			reservation.RateCode = dto.RateCode;
-			reservation.MealPlan = dto.MealPlan;
-			reservation.Source = (Domain.Enums.ReservationSource)dto.SourceId;
+			reservation.MealPlanId = dto.MealPlanId;           // 👈 تحديث
+			reservation.BookingSourceId = dto.BookingSourceId; // 👈 تحديث
+			reservation.MarketSegmentId = dto.MarketSegmentId;
 			reservation.PurposeOfVisit = dto.PurposeOfVisit;
-			reservation.MarketSegment = dto.MarketSegment;
 			reservation.Notes = dto.Notes;
 			reservation.ExternalReference = dto.ExternalReference;
 			reservation.CarPlate = dto.CarPlate;
@@ -720,10 +743,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 				// تفاصيل الحالة والبيزنس
 				Status = reservation.Status.ToString(),
 				RateCode = reservation.RateCode,
-				MealPlan = reservation.MealPlan,
-				Source = reservation.Source.ToString(),
+				MealPlan = reservation.MealPlan?.Name ?? "Unknown",
+				Source = reservation.BookingSource?.Name ?? "Unknown",
+				MarketSegment = reservation.MarketSegment?.Name ?? "Unknown",
 				PurposeOfVisit = reservation.PurposeOfVisit,
-				MarketSegment = reservation.MarketSegment,
 				Notes = reservation.Notes,
 				ExternalReference = reservation.ExternalReference,
 				CarPlate = reservation.CarPlate,
@@ -746,4 +769,3 @@ namespace PMS.Infrastructure.Implmentations.Services
 		}
 	}
 }
-	

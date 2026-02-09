@@ -13,5 +13,6 @@ namespace PMS.Application.Interfaces.Services
 
 		Task<ResponseObjectDto<GuestDto>> UpdateGuestAsync(UpdateGuestDto dto);
 		Task<ResponseObjectDto<bool>> DeleteGuestAsync(int id);
+		//Task<ResponseObjectDto<IEnumerable<GuestSearchDto>>> SearchGuestsAsync(string searchTerm);
 	}
 }

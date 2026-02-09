@@ -73,5 +73,19 @@ namespace PMS.API.Controllers
 
             return Ok(result);
         }
-    }
+
+		[HttpPut("change-status/{id}")]
+		public async Task<IActionResult> ChangeStatus(int id, [FromQuery] int statusId, [FromQuery] string? notes)
+		{
+			var result = await _roomService.ChangeRoomStatusAsync(id, statusId, notes);
+			return StatusCode(result.StatusCode, result);
+		}
+
+		[HttpPut("room-details/{id}")]
+		public async Task<IActionResult> GetRoomDetails(int id)
+		{
+			var result = await _roomService.GetRoomByIdAsync(id);
+			return StatusCode(result.StatusCode, result);
+		}
+	}
 }

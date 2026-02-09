@@ -1,4 +1,5 @@
-﻿using PMS.Domain.Enums;
+﻿using PMS.Domain.Entities.Configuration;
+using PMS.Domain.Enums;
 using PMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -10,16 +11,16 @@ namespace PMS.Domain.Entities
 {
     public class Reservation:ISoftDeletable, IAuditable
 	{
-		
+
 
 		public int Id { get; set; }
 
 		// 1. الأساسيات
 		[Required]
 		public string ReservationNumber { get; set; } = string.Empty;
-		public string? ExternalReference { get; set; }	
+		public string? ExternalReference { get; set; }
 
-		// 2. العلاقات
+		// 2. العلاقات (النزيل والغرفة)
 		[Required]
 		public int GuestId { get; set; }
 		public Guest Guest { get; set; }
@@ -31,7 +32,6 @@ namespace PMS.Domain.Entities
 		public int RoomTypeId { get; set; }
 		public RoomType RoomType { get; set; }
 
-		// 👇👇 الجديد: قائمة الخدمات الإضافية 👇👇
 		public ICollection<ReservationService> Services { get; set; } = new List<ReservationService>();
 
 		// 3. التواريخ
@@ -41,34 +41,41 @@ namespace PMS.Domain.Entities
 		// 4. الماليات
 		[Column(TypeName = "decimal(18,2)")]
 		public decimal NightlyRate { get; set; }
-
 		[Column(TypeName = "decimal(18,2)")]
-		public decimal TotalAmount { get; set; } // سعر الغرفة * الليالي
-
+		public decimal TotalAmount { get; set; }
 		[Column(TypeName = "decimal(18,2)")]
-		public decimal ServicesAmount { get; set; } // 👇 إجمالي الخدمات الإضافية
-
+		public decimal ServicesAmount { get; set; }
 		[Column(TypeName = "decimal(18,2)")]
 		public decimal TaxAmount { get; set; }
-
 		[Column(TypeName = "decimal(18,2)")]
-		public decimal GrandTotal { get; set; } // TotalAmount + ServicesAmount + Tax
+		public decimal GrandTotal { get; set; }
 
-		// 5. الحالة
+		// 5. الحالة والمصدر
 		public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
-		public ReservationSource Source { get; set; } = ReservationSource.Direct;
 
-		// 6. تفاصيل البيزنس والفوترة (تمت إضافتها) ✅
+		// 👇 تعديل المصدر (بدل Enum بقى جدول)
+		public int BookingSourceId { get; set; }
+		public BookingSource BookingSource { get; set; }
+
+
+		// 6. تفاصيل البيزنس (Lookups)
 		// ==========================================
-		public string RateCode { get; set; } = "Standard"; // "Corporate", "Gov"
-		public string MealPlan { get; set; } = "RoomOnly";
 
-		// Billing Instructions (Checkboxes)
+		public string RateCode { get; set; } = "Standard"; // دي لسه معملنلهاش جدول فهنسيبها نص مؤقتاً
+
+		// 👇 تعديل خطة الوجبات (بدل string بقى جدول)
+		public int MealPlanId { get; set; }
+		public MealPlan MealPlan { get; set; }
+
+		// 👇 تعديل قطاع السوق (بدل string بقى جدول)
+		public int MarketSegmentId { get; set; }
+		public MarketSegment MarketSegment { get; set; }
+
+		// تفاصيل أخرى
 		public bool IsPostMaster { get; set; } = false;
 		public bool IsNoExtend { get; set; } = false;
-		public bool IsGuestPay { get; set; } = true; // Guest Pay Services
+		public bool IsGuestPay { get; set; } = true;
 
-		// 7. أخرى
 		public int Adults { get; set; } = 1;
 		public int Children { get; set; } = 0;
 		public string? Notes { get; set; }
@@ -76,24 +83,15 @@ namespace PMS.Domain.Entities
 		[Column(TypeName = "decimal(18,2)")]
 		public decimal DiscountAmount { get; set; } = 0;
 
-		// الغرض من الزيارة (عمل، سياحة، علاج..) - مهم للتقارير الأمنية
 		public string? PurposeOfVisit { get; set; }
-
-		// القطاع التسويقي (شركات، أفراد، مجموعات..) - مهم للإحصائيات
-		public string? MarketSegment { get; set; }
-
-		
-
-		// رقم السيارة (لأغراض الأمن) - يقابل CarPlat
 		public string? CarPlate { get; set; }
 
+		// Auditing Fields
 		public bool IsDeleted { get; set; } = false;
 		public DateTime? DeletedAt { get; set; }
 		public string? DeletedBy { get; set; }
-		public DateTime CreatedAt { get; set; } 
+		public DateTime CreatedAt { get; set; }
 		public string? CreatedBy { get; set; }
-		
-
 		public string? LastModifiedBy { get; set; }
 		public DateTime? LastModifiedAt { get; set; }
 	}

@@ -32,7 +32,8 @@ namespace PMS.Application.DTOs.Reservations
 		public decimal NightlyRate { get; set; } // السعر المتفق عليه
 
 		public string RateCode { get; set; } = "Standard"; // كود السعر
-		public string MealPlan { get; set; } = "RoomOnly"; // خطة الوجبات
+		[Required(ErrorMessage = "خطة الوجبات مطلوبة")]
+		public int MealPlanId { get; set; }
 
 		// خيارات الفوترة (Checkboxes)
 		public bool IsPostMaster { get; set; }
@@ -57,7 +58,10 @@ namespace PMS.Application.DTOs.Reservations
 
 		public decimal DiscountAmount { get; set; } = 0;
 		public string? PurposeOfVisit { get; set; }
-		public string? MarketSegment { get; set; }
+		public int BookingSourceId { get; set; } // بدل SourceId القديم عشان الاسم يبقى واضح
+
+		// 👇 التعديل هنا: MarketSegment بقت ID
+		public int MarketSegmentId { get; set; }
 
 		public string? ExternalReference { get; set; }
 		public string? CarPlate { get; set; }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
@@ -11,9 +12,11 @@ using PMS.Infrastructure.Context;
 namespace PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260209134009_AddLookupTablesWithSeeding")]
+    partial class AddLookupTablesWithSeeding
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -680,9 +683,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<int>("Adults")
                         .HasColumnType("int");
 
-                    b.Property<int>("BookingSourceId")
-                        .HasColumnType("int");
-
                     b.Property<string>("CarPlate")
                         .HasColumnType("nvarchar(max)");
 
@@ -737,11 +737,12 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("MarketSegmentId")
-                        .HasColumnType("int");
+                    b.Property<string>("MarketSegment")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("MealPlanId")
-                        .HasColumnType("int");
+                    b.Property<string>("MealPlan")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("NightlyRate")
                         .HasColumnType("decimal(18,2)");
@@ -769,6 +770,9 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<decimal>("ServicesAmount")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -780,13 +784,7 @@ namespace PMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BookingSourceId");
-
                     b.HasIndex("GuestId");
-
-                    b.HasIndex("MarketSegmentId");
-
-                    b.HasIndex("MealPlanId");
 
                     b.HasIndex("RoomId");
 
@@ -892,15 +890,13 @@ namespace PMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("RoomStatusId")
-                        .HasColumnType("int");
-
                     b.Property<int>("RoomTypeId")
                         .HasColumnType("int");
 
-                    b.HasKey("Id");
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
-                    b.HasIndex("RoomStatusId");
+                    b.HasKey("Id");
 
                     b.HasIndex("RoomTypeId");
 
@@ -910,68 +906,68 @@ namespace PMS.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FloorNumber = 1,
                             IsActive = true,
                             IsDeleted = false,
                             RoomNumber = "101",
-                            RoomStatusId = 1,
-                            RoomTypeId = 1
+                            RoomTypeId = 1,
+                            Status = 0
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FloorNumber = 1,
                             IsActive = true,
                             IsDeleted = false,
                             RoomNumber = "102",
-                            RoomStatusId = 2,
-                            RoomTypeId = 2
+                            RoomTypeId = 2,
+                            Status = 1
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FloorNumber = 1,
                             IsActive = true,
                             IsDeleted = false,
                             RoomNumber = "103",
-                            RoomStatusId = 1,
-                            RoomTypeId = 2
+                            RoomTypeId = 2,
+                            Status = 3
                         },
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FloorNumber = 2,
                             IsActive = true,
                             IsDeleted = false,
                             RoomNumber = "201",
-                            RoomStatusId = 1,
-                            RoomTypeId = 3
+                            RoomTypeId = 3,
+                            Status = 0
                         },
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FloorNumber = 2,
                             IsActive = true,
                             IsDeleted = false,
                             RoomNumber = "202",
-                            RoomStatusId = 3,
-                            RoomTypeId = 4
+                            RoomTypeId = 4,
+                            Status = 2
                         },
                         new
                         {
                             Id = 6,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FloorNumber = 2,
                             IsActive = true,
                             IsDeleted = false,
                             RoomNumber = "203",
-                            RoomStatusId = 4,
-                            RoomTypeId = 2
+                            RoomTypeId = 2,
+                            Status = 2
                         });
                 });
 
@@ -1147,27 +1143,9 @@ namespace PMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PMS.Domain.Entities.Reservation", b =>
                 {
-                    b.HasOne("PMS.Domain.Entities.Configuration.BookingSource", "BookingSource")
-                        .WithMany()
-                        .HasForeignKey("BookingSourceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("PMS.Domain.Entities.Guest", "Guest")
                         .WithMany()
                         .HasForeignKey("GuestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PMS.Domain.Entities.Configuration.MarketSegment", "MarketSegment")
-                        .WithMany()
-                        .HasForeignKey("MarketSegmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PMS.Domain.Entities.Configuration.MealPlan", "MealPlan")
-                        .WithMany()
-                        .HasForeignKey("MealPlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1181,13 +1159,7 @@ namespace PMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("BookingSource");
-
                     b.Navigation("Guest");
-
-                    b.Navigation("MarketSegment");
-
-                    b.Navigation("MealPlan");
 
                     b.Navigation("Room");
 
@@ -1207,19 +1179,11 @@ namespace PMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PMS.Domain.Entities.Room", b =>
                 {
-                    b.HasOne("PMS.Domain.Entities.Configuration.RoomStatusLookup", "RoomStatus")
-                        .WithMany()
-                        .HasForeignKey("RoomStatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("PMS.Domain.Entities.RoomType", "RoomType")
                         .WithMany("Rooms")
                         .HasForeignKey("RoomTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("RoomStatus");
 
                     b.Navigation("RoomType");
                 });
