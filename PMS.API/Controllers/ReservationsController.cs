@@ -23,6 +23,7 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Create([FromBody] CreateReservationDto dto)
         {
             if (!ModelState.IsValid)
@@ -31,7 +32,7 @@ namespace PMS.API.Controllers
             var result = await _reservationService.CreateReservationAsync(dto);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
             return StatusCode(201, result);
         }
@@ -44,7 +45,9 @@ namespace PMS.API.Controllers
         public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] string? status)
         {
             var result = await _reservationService.GetAllReservationsAsync(search, status);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
 
         [HttpPut("{id}/status")]
@@ -66,7 +69,9 @@ namespace PMS.API.Controllers
                 Note = dto.Note
             };
             var result = await _reservationService.ChangeStatusAsync(changeDto);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
@@ -78,7 +83,9 @@ namespace PMS.API.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _reservationService.GetReservationByIdAsync(id);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
@@ -90,7 +97,9 @@ namespace PMS.API.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _reservationService.DeleteReservationAsync(id);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
 
         [HttpPut("{id}/restore")]
@@ -99,10 +108,13 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Restore(int id)
         {
             var result = await _reservationService.RestoreReservationAsync(id);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
 
         [HttpPut("{id}")]
@@ -111,6 +123,7 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateReservationDto dto)
         {
             if (id != dto.Id)
@@ -120,7 +133,9 @@ namespace PMS.API.Controllers
                 return BadRequest(ModelState);
 
             var result = await _reservationService.UpdateReservationAsync(dto);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
     }
 }

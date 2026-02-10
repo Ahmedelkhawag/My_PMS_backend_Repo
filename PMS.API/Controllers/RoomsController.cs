@@ -41,9 +41,7 @@ namespace PMS.API.Controllers
             var result = await _roomService.CreateRoomAsync(dto);
 
             if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
             return Ok(result);
         }
@@ -65,7 +63,7 @@ namespace PMS.API.Controllers
             var result = await _roomService.UpdateRoomAsync(dto);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
             return Ok(result);
         }
@@ -81,7 +79,7 @@ namespace PMS.API.Controllers
             var result = await _roomService.DeleteRoomAsync(id);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
             return Ok(result);
         }
@@ -95,7 +93,9 @@ namespace PMS.API.Controllers
         public async Task<IActionResult> ChangeStatus(int id, [FromQuery] int statusId, [FromQuery] string? notes)
         {
             var result = await _roomService.ChangeRoomStatusAsync(id, statusId, notes);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
@@ -107,7 +107,9 @@ namespace PMS.API.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _roomService.GetRoomByIdAsync(id);
-            return StatusCode(result.StatusCode, result);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
         }
     }
 }
