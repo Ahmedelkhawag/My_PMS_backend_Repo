@@ -1,12 +1,13 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Rooms;
 using PMS.Application.Interfaces.Services;
 
 namespace PMS.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/rooms")]
     [ApiController]
     public class RoomsController : ControllerBase
     {
@@ -17,9 +18,10 @@ namespace PMS.API.Controllers
             _roomService = roomService;
         }
 
-        // GET: api/rooms?floor=1&status=Available&type=2
         [HttpGet]
         [Authorize]
+        [ProducesResponseType(typeof(IEnumerable<RoomDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll([FromQuery] int? floor, [FromQuery] int? type, [FromQuery] string? status)
         {
             var result = await _roomService.GetAllRoomsAsync(floor, type, status);
@@ -28,6 +30,9 @@ namespace PMS.API.Controllers
 
         [HttpPost]
         [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create([FromBody] CreateRoomDto dto)
         {
             if (!ModelState.IsValid)
@@ -43,9 +48,12 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        [HttpPut("Update-Room/{id}")]
+        [HttpPut("{id}")]
         [Authorize]
-
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomDto dto)
         {
             if (id != dto.Id)
@@ -62,8 +70,12 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        [HttpDelete("delete-room/{id}")]
+        [HttpDelete("{id}")]
         [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _roomService.DeleteRoomAsync(id);
@@ -74,19 +86,28 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-		[HttpPut("change-status/{id}")]
-		public async Task<IActionResult> ChangeStatus(int id, [FromQuery] int statusId, [FromQuery] string? notes)
-		{
-			var result = await _roomService.ChangeRoomStatusAsync(id, statusId, notes);
-			return StatusCode(result.StatusCode, result);
-		}
-
-		[HttpPut("room-details/{id}")]
+        [HttpPut("{id}/status")]
         [Authorize]
-		public async Task<IActionResult> GetRoomDetails(int id)
-		{
-			var result = await _roomService.GetRoomByIdAsync(id);
-			return StatusCode(result.StatusCode, result);
-		}
-	}
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ChangeStatus(int id, [FromQuery] int statusId, [FromQuery] string? notes)
+        {
+            var result = await _roomService.ChangeRoomStatusAsync(id, statusId, notes);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpGet("{id}")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var result = await _roomService.GetRoomByIdAsync(id);
+            return StatusCode(result.StatusCode, result);
+        }
+    }
 }
