@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Guests;
 using PMS.Application.Interfaces.Services;
@@ -7,7 +7,9 @@ using PMS.Domain.Entities;
 using PMS.Domain.Enums;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace PMS.Infrastructure.Implmentations.Services
 {
@@ -132,12 +134,19 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 
 
-		public async Task<ResponseObjectDto<GuestDto>> UpdateGuestAsync(UpdateGuestDto dto)
+		public async Task<ResponseObjectDto<GuestDto>> UpdateGuestAsync(int id, UpdateGuestDto dto)
 		{
 			var response = new ResponseObjectDto<GuestDto>();
 
-			// أ) التأكد من وجود النزيل
-			var guest = await _unitOfWork.Guests.GetByIdAsync(dto.Id);
+			if (dto == null || !HasAnyUpdateField(dto))
+			{
+				response.IsSuccess = false;
+				response.Message = "يجب إرسال حقل واحد على الأقل للتحديث";
+				response.StatusCode = 400;
+				return response;
+			}
+
+			var guest = await _unitOfWork.Guests.GetByIdAsync(id);
 			if (guest == null)
 			{
 				response.IsSuccess = false;
@@ -146,51 +155,79 @@ namespace PMS.Infrastructure.Implmentations.Services
 				return response;
 			}
 
-			// ب) التحقق من عدم تكرار رقم الهاتف (مع استثناء النزيل الحالي)
-			// الشرط: الرقم موجود && الـ Id لا يساوي الـ Id الحالي
-			var duplicatePhone = await _unitOfWork.Guests.FindAsync(g => g.PhoneNumber == dto.PhoneNumber && g.Id != dto.Id);
-			if (duplicatePhone != null)
+			// Validate format only when a value is actually provided (non-empty)
+			if (dto.PhoneNumber != null && dto.PhoneNumber.Length > 0 && !new PhoneAttribute().IsValid(dto.PhoneNumber))
 			{
 				response.IsSuccess = false;
-				response.Message = "رقم الهاتف مستخدم بالفعل لنزيل آخر!";
+				response.Message = "رقم الهاتف غير صحيح";
+				response.StatusCode = 400;
+				return response;
+			}
+			if (dto.Email != null && dto.Email.Length > 0 && !new EmailAddressAttribute().IsValid(dto.Email))
+			{
+				response.IsSuccess = false;
+				response.Message = "البريد الإلكتروني غير صحيح";
+				response.StatusCode = 400;
+				return response;
+			}
+			if (dto.VatNumber != null && dto.VatNumber.Length > 0 && !Regex.IsMatch(dto.VatNumber, @"^[a-zA-Z0-9]*$"))
+			{
+				response.IsSuccess = false;
+				response.Message = "الرقم الضريبي يجب أن يحتوي على أرقام وحروف إنجليزية فقط";
 				response.StatusCode = 400;
 				return response;
 			}
 
-			// ج) التحقق من عدم تكرار الهوية (مع استثناء الحالي)
-			var duplicateId = await _unitOfWork.Guests.FindAsync(g => g.NationalId == dto.NationalId && g.Id != dto.Id);
-			if (duplicateId != null)
+			// Update only provided fields (partial update)
+			if (dto.PhoneNumber != null)
 			{
-				response.IsSuccess = false;
-				response.Message = "رقم الهوية مستخدم بالفعل لنزيل آخر!";
-				response.StatusCode = 400;
-				return response;
+				var duplicatePhone = await _unitOfWork.Guests.FindAsync(g => g.PhoneNumber == dto.PhoneNumber && g.Id != id);
+				if (duplicatePhone != null)
+				{
+					response.IsSuccess = false;
+					response.Message = "رقم الهاتف مستخدم بالفعل لنزيل آخر!";
+					response.StatusCode = 400;
+					return response;
+				}
+				guest.PhoneNumber = dto.PhoneNumber;
 			}
 
-
-			var duplicateEmail = await _unitOfWork.Guests.FindAsync(g => g.Email == dto.Email && g.Id != dto.Id);
-			if (duplicateId != null)
+			if (dto.NationalId != null)
 			{
-				response.IsSuccess = false;
-				response.Message = "هذا الايميل مستخدم بالفعل لنزيل آخر!";
-				response.StatusCode = 400;
-				return response;
+				var duplicateId = await _unitOfWork.Guests.FindAsync(g => g.NationalId == dto.NationalId && g.Id != id);
+				if (duplicateId != null)
+				{
+					response.IsSuccess = false;
+					response.Message = "رقم الهوية مستخدم بالفعل لنزيل آخر!";
+					response.StatusCode = 400;
+					return response;
+				}
+				guest.NationalId = dto.NationalId;
 			}
-			// د) تحديث البيانات
-			guest.FullName = dto.FullName;
-			guest.PhoneNumber = dto.PhoneNumber;
-			guest.NationalId = dto.NationalId;
-			guest.Nationality = dto.Nationality ?? "Unknown";
-			guest.DateOfBirth = dto.DateOfBirth;
-			guest.Email = dto.Email;
-			guest.Address = dto.Address;
-			guest.City = dto.City;
-			guest.CarNumber = dto.CarNumber;
-			guest.VatNumber = dto.VatNumber;
-			guest.Notes = dto.Notes;
-			guest.LoyaltyLevel = dto.LoyaltyLevel; // تحديث المستوى
 
-			// هـ) الحفظ
+			if (dto.Email != null)
+			{
+				var duplicateEmail = await _unitOfWork.Guests.FindAsync(g => g.Email == dto.Email && g.Id != id);
+				if (duplicateEmail != null)
+				{
+					response.IsSuccess = false;
+					response.Message = "هذا الايميل مستخدم بالفعل لنزيل آخر!";
+					response.StatusCode = 400;
+					return response;
+				}
+				guest.Email = dto.Email;
+			}
+
+			if (dto.FullName != null) guest.FullName = dto.FullName;
+			if (dto.Nationality != null) guest.Nationality = dto.Nationality;
+			if (dto.DateOfBirth.HasValue) guest.DateOfBirth = dto.DateOfBirth;
+			if (dto.Address != null) guest.Address = dto.Address;
+			if (dto.City != null) guest.City = dto.City;
+			if (dto.CarNumber != null) guest.CarNumber = dto.CarNumber;
+			if (dto.VatNumber != null) guest.VatNumber = dto.VatNumber;
+			if (dto.Notes != null) guest.Notes = dto.Notes;
+			if (dto.LoyaltyLevel.HasValue) guest.LoyaltyLevel = dto.LoyaltyLevel.Value;
+
 			_unitOfWork.Guests.Update(guest);
 			await _unitOfWork.CompleteAsync();
 
@@ -278,6 +315,14 @@ namespace PMS.Infrastructure.Implmentations.Services
 		//		StatusCode = 200
 		//	};
 		//}
+
+		private static bool HasAnyUpdateField(UpdateGuestDto dto)
+		{
+			return dto.FullName != null || dto.PhoneNumber != null || dto.NationalId != null
+				|| dto.Nationality != null || dto.DateOfBirth.HasValue || dto.Email != null
+				|| dto.Address != null || dto.City != null || dto.CarNumber != null
+				|| dto.VatNumber != null || dto.Notes != null || dto.LoyaltyLevel.HasValue;
+		}
 	}
 }
 

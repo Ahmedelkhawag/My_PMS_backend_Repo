@@ -1,4 +1,4 @@
-﻿using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Guests;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ namespace PMS.Application.Interfaces.Services
 		Task<ResponseObjectDto<GuestDto>> AddGuestAsync(CreateGuestDto dto);
 		Task<IEnumerable<GuestDto>> GetAllGuestsAsync(string? search);
 
-		Task<ResponseObjectDto<GuestDto>> UpdateGuestAsync(UpdateGuestDto dto);
+		Task<ResponseObjectDto<GuestDto>> UpdateGuestAsync(int id, UpdateGuestDto dto);
 		Task<ResponseObjectDto<bool>> DeleteGuestAsync(int id);
 		//Task<ResponseObjectDto<IEnumerable<GuestSearchDto>>> SearchGuestsAsync(string searchTerm);
 	}

@@ -31,7 +31,7 @@ namespace PMS.API.Controllers
             var result = await _guestService.AddGuestAsync(dto);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
             return StatusCode(201, result);
         }
@@ -54,16 +54,16 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateGuestDto dto)
         {
-            if (id != dto.Id)
-                return BadRequest("رقم المعرف غير متطابق");
+            if (dto == null)
+                return BadRequest("يجب إرسال حقل واحد على الأقل للتحديث");
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _guestService.UpdateGuestAsync(dto);
+            var result = await _guestService.UpdateGuestAsync(id, dto);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
             return Ok(result);
         }
@@ -79,7 +79,7 @@ namespace PMS.API.Controllers
             var result = await _guestService.DeleteGuestAsync(id);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
             return Ok(result);
         }

@@ -1,17 +1,45 @@
-﻿using PMS.Domain.Enums;
+using PMS.Domain.Enums;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace PMS.Application.DTOs.Guests
 {
-    public class UpdateGuestDto:CreateGuestDto
+    /// <summary>
+    /// Partial update: send only the fields you want to change. Omitted fields are left unchanged.
+    /// </summary>
+    public class UpdateGuestDto
     {
-		[Required]
-		public int Id { get; set; }
+        [MaxLength(200)]
+        public string? FullName { get; set; }
 
-		
-		public LoyaltyLevel LoyaltyLevel { get; set; }
-	}
+        [MaxLength(20)]
+        public string? PhoneNumber { get; set; }
+
+        [MaxLength(50)]
+        public string? NationalId { get; set; }
+
+        [MaxLength(100)]
+        public string? Nationality { get; set; }
+
+        public DateTime? DateOfBirth { get; set; }
+
+        [MaxLength(100)]
+        public string? Email { get; set; }
+
+        [MaxLength(500)]
+        public string? Address { get; set; }
+
+        [MaxLength(100)]
+        public string? City { get; set; }
+
+        [MaxLength(20, ErrorMessage = "رقم السيارة لا يجب أن يتجاوز 20 حرفاً")]
+        public string? CarNumber { get; set; }
+
+        [MaxLength(50, ErrorMessage = "الرقم الضريبي لا يجب أن يتجاوز 50 حرفاً")]
+        public string? VatNumber { get; set; }
+
+        public string? Notes { get; set; }
+
+        public LoyaltyLevel? LoyaltyLevel { get; set; }
+    }
 }
