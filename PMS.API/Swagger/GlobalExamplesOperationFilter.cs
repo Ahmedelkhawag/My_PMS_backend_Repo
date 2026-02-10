@@ -7,6 +7,11 @@ namespace PMS.API.Swagger
 {
     public class GlobalExamplesOperationFilter : IOperationFilter
     {
+        /// <summary>
+        /// Only 2xx is success. 0, 1xx, 3xx, 4xx, 5xx must never show isSuccess/succeeded: true in examples.
+        /// </summary>
+        private static bool IsSuccessStatusCode(int statusCode) => statusCode >= 200 && statusCode < 300;
+
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             if (operation == null)
@@ -18,6 +23,7 @@ namespace PMS.API.Swagger
             foreach (var supported in context.ApiDescription.SupportedResponseTypes)
             {
                 var statusCode = supported.StatusCode.ToString();
+                var statusCodeInt = supported.StatusCode;
 
                 if (!operation.Responses.TryGetValue(statusCode, out var response))
                 {
@@ -41,12 +47,15 @@ namespace PMS.API.Swagger
                     continue;
                 }
 
+                // Critical: only 2xx gets success example. Default response and any non-2xx get error example.
+                var useErrorExample = supported.IsDefaultResponse || !IsSuccessStatusCode(statusCodeInt);
+
                 // If response is ApiResponse<T>, generate consistent success/error example.
                 if (IsGenericTypeDefinition(clrType, typeof(ApiResponse<>), out var apiArg))
                 {
-                    if (supported.IsDefaultResponse || supported.StatusCode >= 400)
+                    if (useErrorExample)
                     {
-                        var message = GetDefaultMessageForStatusCode(supported.StatusCode);
+                        var message = GetDefaultMessageForStatusCode(statusCodeInt);
                         mediaType.Example = SwaggerExampleFactory.CreateApiResponseErrorExample(message);
                     }
                     else
@@ -61,31 +70,50 @@ namespace PMS.API.Swagger
                 // If response is ResponseObjectDto<T>, generate success or error example.
                 if (IsGenericTypeDefinition(clrType, typeof(ResponseObjectDto<>), out var responseDtoArg))
                 {
-                    if (supported.IsDefaultResponse || supported.StatusCode >= 400)
+                    if (useErrorExample)
                     {
-                        var message = GetDefaultMessageForStatusCode(supported.StatusCode);
-                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(supported.StatusCode, message);
+                        var message = GetDefaultMessageForStatusCode(statusCodeInt);
+                        var code = statusCodeInt > 0 ? statusCodeInt : 400;
+                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(code, message);
                     }
                     else
                     {
                         var dataExample = SwaggerExampleFactory.CreateExample(responseDtoArg);
-                        var code = supported.StatusCode;
+                        var code = statusCodeInt;
                         mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoSuccessExample(dataExample, code, "Operation successful");
                     }
 
                     continue;
                 }
 
-                // If response is PagedResult<T>, generate paged example.
+                // If response is PagedResult<T>: only 2xx gets paged example; 4xx/5xx must show error.
                 if (IsGenericTypeDefinition(clrType, typeof(PagedResult<>), out var pageArg))
                 {
-                    var elementExample = SwaggerExampleFactory.CreateExample(pageArg);
-                    mediaType.Example = SwaggerExampleFactory.CreatePagedResultExample(elementExample);
+                    if (useErrorExample)
+                    {
+                        var message = GetDefaultMessageForStatusCode(statusCodeInt);
+                        var code = statusCodeInt > 0 ? statusCodeInt : 400;
+                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(code, message);
+                    }
+                    else
+                    {
+                        var elementExample = SwaggerExampleFactory.CreateExample(pageArg);
+                        mediaType.Example = SwaggerExampleFactory.CreatePagedResultExample(elementExample);
+                    }
                     continue;
                 }
 
-                // Other types (DTOs, lists, primitives)
-                mediaType.Example = SwaggerExampleFactory.CreateExample(clrType);
+                // Other types: for 4xx/5xx (or 0) never show a success-looking body — use error example.
+                if (useErrorExample)
+                {
+                    var message = GetDefaultMessageForStatusCode(statusCodeInt);
+                    var code = statusCodeInt > 0 ? statusCodeInt : 400;
+                    mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(code, message);
+                }
+                else
+                {
+                    mediaType.Example = SwaggerExampleFactory.CreateExample(clrType);
+                }
             }
 
             // Ensure common error responses exist and have examples.
@@ -93,6 +121,7 @@ namespace PMS.API.Swagger
             EnsureErrorResponseWithExample(operation, 401, "Unauthorized");
             EnsureErrorResponseWithExample(operation, 403, "Forbidden");
             EnsureErrorResponseWithExample(operation, 404, "Not Found");
+            EnsureErrorResponseWithExample(operation, 409, "Conflict");
             EnsureErrorResponseWithExample(operation, 500, "Internal Server Error");
         }
 
@@ -104,6 +133,7 @@ namespace PMS.API.Swagger
                 401 => "Unauthorized",
                 403 => "Forbidden",
                 404 => "Not Found",
+                409 => "Conflict",
                 500 => "Internal Server Error",
                 _ => "Request failed"
             };
@@ -127,9 +157,10 @@ namespace PMS.API.Swagger
             }
 
             var mediaType = response.Content["application/json"];
+            // Always set error example for 4xx/5xx so no error status ever shows a success body.
             if (mediaType.Example == null)
             {
-                mediaType.Example = SwaggerExampleFactory.CreateApiResponseErrorExample(message);
+                mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(statusCode, message);
             }
         }
 

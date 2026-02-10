@@ -195,14 +195,15 @@ namespace PMS.API.Swagger
         }
 
         /// <summary>
-        /// Error example for ResponseObjectDto (isSuccess, message, data, statusCode).
+        /// Error example for ResponseObjectDto. Always isSuccess: false so 4xx/5xx never show success in Swagger.
         /// </summary>
         internal static OpenApiObject CreateResponseObjectDtoErrorExample(int statusCode, string message)
         {
+            if (statusCode <= 0 || statusCode >= 600) statusCode = 400;
             return new OpenApiObject
             {
                 ["isSuccess"] = new OpenApiBoolean(false),
-                ["message"] = new OpenApiString(message),
+                ["message"] = new OpenApiString(message ?? "Request failed"),
                 ["data"] = new OpenApiNull(),
                 ["statusCode"] = new OpenApiInteger(statusCode)
             };
