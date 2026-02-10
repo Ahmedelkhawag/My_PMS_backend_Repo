@@ -46,12 +46,31 @@ namespace PMS.API.Swagger
                 {
                     if (supported.IsDefaultResponse || supported.StatusCode >= 400)
                     {
-                        mediaType.Example = SwaggerExampleFactory.CreateApiResponseErrorExample("Request failed");
+                        var message = GetDefaultMessageForStatusCode(supported.StatusCode);
+                        mediaType.Example = SwaggerExampleFactory.CreateApiResponseErrorExample(message);
                     }
                     else
                     {
                         var dataExample = SwaggerExampleFactory.CreateExample(apiArg);
                         mediaType.Example = SwaggerExampleFactory.CreateApiResponseSuccessExample(dataExample);
+                    }
+
+                    continue;
+                }
+
+                // If response is ResponseObjectDto<T>, generate success or error example.
+                if (IsGenericTypeDefinition(clrType, typeof(ResponseObjectDto<>), out var responseDtoArg))
+                {
+                    if (supported.IsDefaultResponse || supported.StatusCode >= 400)
+                    {
+                        var message = GetDefaultMessageForStatusCode(supported.StatusCode);
+                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(supported.StatusCode, message);
+                    }
+                    else
+                    {
+                        var dataExample = SwaggerExampleFactory.CreateExample(responseDtoArg);
+                        var code = supported.StatusCode;
+                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoSuccessExample(dataExample, code, "Operation successful");
                     }
 
                     continue;
@@ -69,32 +88,49 @@ namespace PMS.API.Swagger
                 mediaType.Example = SwaggerExampleFactory.CreateExample(clrType);
             }
 
-            // Ensure common error responses have examples even if ApiExplorer didn't specify types.
-            AddFallbackErrorExample(operation, "400", "Bad Request");
-            AddFallbackErrorExample(operation, "401", "Unauthorized");
-            AddFallbackErrorExample(operation, "403", "Forbidden");
-            AddFallbackErrorExample(operation, "404", "Not Found");
-            AddFallbackErrorExample(operation, "500", "Server Error");
+            // Ensure common error responses exist and have examples.
+            EnsureErrorResponseWithExample(operation, 400, "Bad Request");
+            EnsureErrorResponseWithExample(operation, 401, "Unauthorized");
+            EnsureErrorResponseWithExample(operation, 403, "Forbidden");
+            EnsureErrorResponseWithExample(operation, 404, "Not Found");
+            EnsureErrorResponseWithExample(operation, 500, "Internal Server Error");
         }
 
-        private static void AddFallbackErrorExample(OpenApiOperation operation, string statusCode, string message)
+        private static string GetDefaultMessageForStatusCode(int statusCode)
         {
-            if (!operation.Responses.TryGetValue(statusCode, out var response))
+            return statusCode switch
             {
-                return;
+                400 => "Bad Request",
+                401 => "Unauthorized",
+                403 => "Forbidden",
+                404 => "Not Found",
+                500 => "Internal Server Error",
+                _ => "Request failed"
+            };
+        }
+
+        private static void EnsureErrorResponseWithExample(OpenApiOperation operation, int statusCode, string message)
+        {
+            var statusKey = statusCode.ToString();
+            if (!operation.Responses.TryGetValue(statusKey, out var response))
+            {
+                operation.Responses[statusKey] = response = new OpenApiResponse
+                {
+                    Description = message
+                };
             }
 
-            if (!response.Content.TryGetValue("application/json", out var mediaType))
+            if (response.Content == null || !response.Content.ContainsKey("application/json"))
             {
-                return;
+                response.Content ??= new Dictionary<string, OpenApiMediaType>();
+                response.Content["application/json"] = new OpenApiMediaType();
             }
 
-            if (mediaType.Example != null)
+            var mediaType = response.Content["application/json"];
+            if (mediaType.Example == null)
             {
-                return;
+                mediaType.Example = SwaggerExampleFactory.CreateApiResponseErrorExample(message);
             }
-
-            mediaType.Example = SwaggerExampleFactory.CreateApiResponseErrorExample(message);
         }
 
         private static bool IsGenericTypeDefinition(Type type, Type openGeneric, out Type arg)

@@ -194,6 +194,34 @@ namespace PMS.API.Swagger
             };
         }
 
+        /// <summary>
+        /// Error example for ResponseObjectDto (isSuccess, message, data, statusCode).
+        /// </summary>
+        internal static OpenApiObject CreateResponseObjectDtoErrorExample(int statusCode, string message)
+        {
+            return new OpenApiObject
+            {
+                ["isSuccess"] = new OpenApiBoolean(false),
+                ["message"] = new OpenApiString(message),
+                ["data"] = new OpenApiNull(),
+                ["statusCode"] = new OpenApiInteger(statusCode)
+            };
+        }
+
+        /// <summary>
+        /// Success example for ResponseObjectDto.
+        /// </summary>
+        internal static OpenApiObject CreateResponseObjectDtoSuccessExample(IOpenApiAny dataExample, int statusCode = 200, string? message = null)
+        {
+            return new OpenApiObject
+            {
+                ["isSuccess"] = new OpenApiBoolean(true),
+                ["message"] = new OpenApiString(message ?? "Operation successful"),
+                ["data"] = dataExample,
+                ["statusCode"] = new OpenApiInteger(statusCode)
+            };
+        }
+
         private static bool TryGetEnumerableElementType(Type type, out Type elementType)
         {
             elementType = typeof(object);
