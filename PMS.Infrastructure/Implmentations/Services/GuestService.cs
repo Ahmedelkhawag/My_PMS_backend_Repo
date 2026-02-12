@@ -304,6 +304,49 @@ namespace PMS.Infrastructure.Implmentations.Services
 		}
 
 
+		// استرجاع نزيل تم أرشفته (Soft-Delete)
+		public async Task<ResponseObjectDto<bool>> RestoreGuestAsync(int id)
+		{
+			var response = new ResponseObjectDto<bool>();
+
+			// نستخدم IgnoreQueryFilters عشان نلاقي النزيل حتى لو IsDeleted = true
+			var guest = await _unitOfWork.Guests.GetQueryable()
+				.IgnoreQueryFilters()
+				.FirstOrDefaultAsync(g => g.Id == id);
+
+			if (guest == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "النزيل غير موجود";
+				response.StatusCode = 404;
+				return response;
+			}
+
+			if (guest.IsActive && !guest.IsDeleted)
+			{
+				response.IsSuccess = false;
+				response.Message = "النزيل نشط بالفعل";
+				response.StatusCode = 400;
+				return response;
+			}
+
+			guest.IsActive = true;
+			guest.IsDeleted = false;
+			guest.DeletedAt = null;
+			guest.DeletedBy = null;
+
+			_unitOfWork.Guests.Update(guest);
+			await _unitOfWork.CompleteAsync();
+
+			response.IsSuccess = true;
+			response.Message = "تم استرجاع النزيل بنجاح";
+			response.StatusCode = 200;
+			response.Data = true;
+
+			return response;
+		}
+
+
 		//public async Task<ResponseObjectDto<IEnumerable<GuestSearchDto>>> SearchGuestsAsync(string searchTerm)
 		//{
 		//	// لو البحث فاضي نرجع قائمة فاضية أو أول 10 نزلاء (حسب الرغبة)
