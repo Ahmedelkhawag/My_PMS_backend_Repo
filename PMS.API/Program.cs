@@ -58,6 +58,26 @@ builder.Services.AddSwaggerGen(options =>
 
     // أمثلة تلقائية لكل الـ endpoints
     options.OperationFilter<GlobalExamplesOperationFilter>();
+
+    // XML comments so enums and DTOs descriptions appear in Swagger
+    var basePath = AppContext.BaseDirectory;
+    var apiXml = Path.Combine(basePath, "PMS.API.xml");
+    if (File.Exists(apiXml))
+    {
+        options.IncludeXmlComments(apiXml, includeControllerXmlComments: true);
+    }
+
+    var domainXml = Path.Combine(basePath, "PMS.Domain.xml");
+    if (File.Exists(domainXml))
+    {
+        options.IncludeXmlComments(domainXml);
+    }
+
+    var appXml = Path.Combine(basePath, "PMS.Application.xml");
+    if (File.Exists(appXml))
+    {
+        options.IncludeXmlComments(appXml);
+    }
 });
 builder.Services.AddHttpContextAccessor();
 

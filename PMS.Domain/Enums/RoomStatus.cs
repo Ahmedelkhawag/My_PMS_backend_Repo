@@ -1,15 +1,23 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace PMS.Domain.Enums
 {
+    /// <summary>
+    /// حالة الغرفة:
+    /// 0 = Available
+    /// 1 = Occupied
+    /// 2 = Maintenance
+    /// 3 = Cleaning
+    /// 4 = Reserved
+    /// </summary>
     public enum RoomStatus
     {
-        Available = 0,   // متاح (أخضر)
-        Occupied = 1,    // مشغول (أحمر)
-        Maintenance = 2, // صيانة (أصفر)
-        Cleaning = 3,    // تنظيف (بنفسجي)
-        Reserved = 4     // محجوزة (لسه النزيل موصلش - لون أزرق مثلاً) - اختياري
+        Available = 0,
+        Occupied = 1,
+        Maintenance = 2,
+        Cleaning = 3,
+        Reserved = 4
     }
 }
