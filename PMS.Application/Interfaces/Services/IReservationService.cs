@@ -1,4 +1,4 @@
-﻿using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Reservations;
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ namespace PMS.Application.Interfaces.Services
     public interface IReservationService
     {
 		Task<ResponseObjectDto<ReservationDto>> CreateReservationAsync(CreateReservationDto dto);
-		Task<ResponseObjectDto<IEnumerable<ReservationListDto>>> GetAllReservationsAsync(string? search, string? status);
+		Task<ResponseObjectDto<PagedResult<ReservationListDto>>> GetAllReservationsAsync(string? search, string? status, int pageNumber, int pageSize);
 		Task<ResponseObjectDto<bool>> ChangeStatusAsync(ChangeReservationStatusDto dto);
 		Task<ResponseObjectDto<ReservationDto>> GetReservationByIdAsync(int id);
 

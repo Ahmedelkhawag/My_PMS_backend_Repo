@@ -39,12 +39,16 @@ namespace PMS.API.Controllers
 
         [HttpGet]
         [Authorize]
-        [ProducesResponseType(typeof(ResponseObjectDto<IEnumerable<ReservationListDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<ReservationListDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] string? status)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] string? search,
+            [FromQuery] string? status,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var result = await _reservationService.GetAllReservationsAsync(search, status);
+            var result = await _reservationService.GetAllReservationsAsync(search, status, pageNumber, pageSize);
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);

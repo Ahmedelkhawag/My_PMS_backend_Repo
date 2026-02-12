@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Reservations;
 using PMS.Application.Interfaces.Services;
@@ -14,10 +15,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 	public class ReservationsService : IReservationService
 	{
 		private readonly IUnitOfWork _unitOfWork;
+		private readonly IConfiguration _configuration;
 
-		public ReservationsService(IUnitOfWork unitOfWork)
+		public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration)
 		{
 			_unitOfWork = unitOfWork;
+			_configuration = configuration;
 		}
 
 
@@ -79,13 +82,30 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var amountAfterDiscount = (roomTotal + servicesTotal) - dto.DiscountAmount;
 			if (amountAfterDiscount < 0) amountAfterDiscount = 0; // عشان ميبقاش بالسالب
 
-			var taxAmount = amountAfterDiscount * 0.15m; // ضريبة 15% (السعودية)
+			var taxPercentage = _configuration.GetValue<decimal?>("FinancialSettings:TaxPercentage") ?? 0.15m;
+			var taxAmount = amountAfterDiscount * taxPercentage;
 			var grandTotal = amountAfterDiscount + taxAmount;
 
-			// 6. إنشاء رقم الحجز (Format: BK-yyyyMMdd-XXX)
-			// دي طريقة بسيطة، ممكن نطورها لـ Sequence في الداتابيز
-			var count = await _unitOfWork.Reservations.CountAsync();
-			var reservationNumber = $"BK-{DateTime.Now:yyyyMMdd}-{count + 1:000}";
+			// 6. إنشاء رقم الحجز (Format: BK-yyyyMMdd-XXX) بطريقة آمنة لكل يوم
+			var today = DateTime.UtcNow.Date;
+			var lastReservationNumberForToday = await _unitOfWork.Reservations.GetQueryable()
+				.Where(r => r.CreatedAt >= today && r.CreatedAt < today.AddDays(1))
+				.OrderByDescending(r => r.CreatedAt)
+				.Select(r => r.ReservationNumber)
+				.FirstOrDefaultAsync();
+
+			var lastSequence = 0;
+			if (!string.IsNullOrWhiteSpace(lastReservationNumberForToday))
+			{
+				var parts = lastReservationNumberForToday.Split('-');
+				if (parts.Length == 3 && int.TryParse(parts[2], out var parsedSeq))
+				{
+					lastSequence = parsedSeq;
+				}
+			}
+
+			var nextSequence = lastSequence + 1;
+			var reservationNumber = $"BK-{DateTime.UtcNow:yyyyMMdd}-{nextSequence:000}";
 
 			// 7. التحويل للـ Entity
 			var reservation = new Reservation
@@ -197,7 +217,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 		}
 
 
-		public async Task<ResponseObjectDto<IEnumerable<ReservationListDto>>> GetAllReservationsAsync(string? search, string? status)
+		public async Task<ResponseObjectDto<PagedResult<ReservationListDto>>> GetAllReservationsAsync(string? search, string? status, int pageNumber, int pageSize)
 		{
 			// 1. الكويري (زي ما هو)
 			var query = _unitOfWork.Reservations.GetQueryable() // تأكد إنك ضفت GetQueryable في الريبو
@@ -224,9 +244,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 				query = query.Where(r => r.Status == statusEnum);
 			}
 
-			// 4. الترتيب والتحويل (Projection)
-			var data = await query
+			// إجمالي العدد قبل الـ Pagination
+			var totalCount = await query.CountAsync();
+
+			// حراسة بسيطة للقيم
+			if (pageNumber < 1) pageNumber = 1;
+			if (pageSize <= 0) pageSize = 10;
+
+			var skip = (pageNumber - 1) * pageSize;
+
+			// 4. الترتيب + الـ Pagination + التحويل (Projection)
+			var items = await query
 				.OrderByDescending(r => r.CreatedAt)
+				.Skip(skip)
+				.Take(pageSize)
 				.Select(r => new ReservationListDto
 				{
 					Id = r.Id,
@@ -245,13 +276,14 @@ namespace PMS.Infrastructure.Implmentations.Services
 				})
 				.ToListAsync();
 
+			var pagedResult = new PagedResult<ReservationListDto>(items, totalCount, pageNumber, pageSize);
 
-			return new ResponseObjectDto<IEnumerable<ReservationListDto>>
+			return new ResponseObjectDto<PagedResult<ReservationListDto>>
 			{
 				IsSuccess = true,
 				Message = "تم استرجاع قائمة الحجوزات بنجاح",
 				StatusCode = 200,
-				Data = data
+				Data = pagedResult
 			};
 		}
 
@@ -655,7 +687,8 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var subTotal = (roomTotal + servicesTotal) - dto.DiscountAmount;
 			if (subTotal < 0) subTotal = 0;
 
-			var taxAmount = subTotal * 0.15m;
+			var taxPercentage = _configuration.GetValue<decimal?>("FinancialSettings:TaxPercentage") ?? 0.15m;
+			var taxAmount = subTotal * taxPercentage;
 			var grandTotal = subTotal + taxAmount;
 
 			// 5. تحديث بيانات الكيان (Mapping) 🔄
