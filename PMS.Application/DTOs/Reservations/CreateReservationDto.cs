@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
@@ -53,12 +53,11 @@ namespace PMS.Application.DTOs.Reservations
 		public int Children { get; set; } = 0;
 		public string? Notes { get; set; }
 
-		// مصدر الحجز (موبايل، بوكينج، الخ)
-		public int SourceId { get; set; } = 1; // Direct by default
-
 		public decimal DiscountAmount { get; set; } = 0;
 		public string? PurposeOfVisit { get; set; }
-		public int BookingSourceId { get; set; } // بدل SourceId القديم عشان الاسم يبقى واضح
+
+		// مصدر الحجز (Lookup على جدول BookingSources)
+		public int BookingSourceId { get; set; }
 
 		// 👇 التعديل هنا: MarketSegment بقت ID
 		public int MarketSegmentId { get; set; }
