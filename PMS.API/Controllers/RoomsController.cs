@@ -20,11 +20,18 @@ namespace PMS.API.Controllers
 
         [HttpGet]
         [Authorize]
-        [ProducesResponseType(typeof(IEnumerable<RoomDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<RoomDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAll([FromQuery] int? floor, [FromQuery] int? type, [FromQuery] string? status)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int? floor,
+            [FromQuery] int? type,
+            [FromQuery] string? status,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var result = await _roomService.GetAllRoomsAsync(floor, type, status);
+            var result = await _roomService.GetAllRoomsAsync(floor, type, status, pageNumber, pageSize);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);
         }
 
@@ -77,6 +84,22 @@ namespace PMS.API.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _roomService.DeleteRoomAsync(id);
+
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+
+            return Ok(result);
+        }
+
+        [HttpPut("{id}/restore")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var result = await _roomService.RestoreRoomAsync(id);
 
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);

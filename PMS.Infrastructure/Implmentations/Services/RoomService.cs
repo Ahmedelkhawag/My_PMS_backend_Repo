@@ -17,12 +17,15 @@ namespace PMS.Infrastructure.Implmentations.Services
 			_unitOfWork = unitOfWork;
 		}
 
-		// 1. استرجاع كل الغرف (مع الألوان)
-		public async Task<IEnumerable<RoomDto>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status)
+		// 1. استرجاع كل الغرف (مع الألوان) + Pagination
+		public async Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status, int pageNumber, int pageSize)
 		{
+			var response = new ResponseObjectDto<PagedResult<RoomDto>>();
+
 			var query = _unitOfWork.Rooms.GetQueryable()
 				.Include(r => r.RoomType)
 				.Include(r => r.RoomStatus) // ضروري
+				.Where(r => r.IsActive)     // لا نعرض الغرف المؤرشفة
 				.AsQueryable();
 
 			if (floor.HasValue)
@@ -36,22 +39,39 @@ namespace PMS.Infrastructure.Implmentations.Services
 				query = query.Where(r => r.RoomStatus.Name == status);
 			}
 
-			var rooms = await query.ToListAsync();
+			var totalCount = await query.CountAsync();
 
-			return rooms.Select(r => new RoomDto
-			{
-				Id = r.Id,
-				RoomNumber = r.RoomNumber,
-				FloorNumber = r.FloorNumber,
+			if (pageNumber < 1) pageNumber = 1;
+			if (pageSize <= 0) pageSize = 10;
 
-				// 👇 البيانات المحسنة
-				Status = r.RoomStatus?.Name ?? "Unknown",
-				StatusColor = r.RoomStatus?.Color ?? "#808080", // 👈 دي اللي كانت ناقصة
+			var skip = (pageNumber - 1) * pageSize;
 
-				RoomType = r.RoomType?.Name ?? "N/A",
-				Price = r.RoomType?.BasePrice ?? 0,
-				MaxAdults = r.RoomType?.MaxAdults ?? 0
-			});
+			var items = await query
+				.OrderBy(r => r.FloorNumber)
+				.ThenBy(r => r.RoomNumber)
+				.Skip(skip)
+				.Take(pageSize)
+				.Select(r => new RoomDto
+				{
+					Id = r.Id,
+					RoomNumber = r.RoomNumber,
+					FloorNumber = r.FloorNumber,
+					Status = r.RoomStatus!.Name,
+					StatusColor = r.RoomStatus!.Color,
+					RoomType = r.RoomType!.Name,
+					Price = r.RoomType!.BasePrice,
+					MaxAdults = r.RoomType!.MaxAdults
+				})
+				.ToListAsync();
+
+			var paged = new PagedResult<RoomDto>(items, totalCount, pageNumber, pageSize);
+
+			response.IsSuccess = true;
+			response.StatusCode = 200;
+			response.Message = "تم استرجاع قائمة الغرف بنجاح";
+			response.Data = paged;
+
+			return response;
 		}
 
 		// 2. استرجاع غرفة واحدة (كانت ناقصة)
@@ -62,7 +82,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var room = await _unitOfWork.Rooms.GetQueryable()
 				.Include(r => r.RoomType)
 				.Include(r => r.RoomStatus)
-				.FirstOrDefaultAsync(r => r.Id == id);
+				.FirstOrDefaultAsync(r => r.Id == id && r.IsActive);
 
 			if (room == null)
 			{
@@ -282,6 +302,48 @@ namespace PMS.Infrastructure.Implmentations.Services
 			response.IsSuccess = true;
 			response.Message = "تم حذف الغرفة (أرشفة) بنجاح";
 			response.Data = true;
+			return response;
+		}
+
+		// استرجاع غرفة تم أرشفتها (Soft-Delete)
+		public async Task<ResponseObjectDto<bool>> RestoreRoomAsync(int id)
+		{
+			var response = new ResponseObjectDto<bool>();
+
+			// نستخدم IgnoreQueryFilters عشان نلاقي الغرفة حتى لو IsDeleted = true
+			var room = await _unitOfWork.Rooms.GetQueryable()
+				.IgnoreQueryFilters()
+				.FirstOrDefaultAsync(r => r.Id == id);
+
+			if (room == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة غير موجودة";
+				response.StatusCode = 404;
+				return response;
+			}
+
+			if (room.IsActive && !room.IsDeleted)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة نشطة بالفعل";
+				response.StatusCode = 400;
+				return response;
+			}
+
+			room.IsActive = true;
+			room.IsDeleted = false;
+			room.DeletedAt = null;
+			room.DeletedBy = null;
+
+			_unitOfWork.Rooms.Update(room);
+			await _unitOfWork.CompleteAsync();
+
+			response.IsSuccess = true;
+			response.Message = "تم استرجاع الغرفة بنجاح";
+			response.StatusCode = 200;
+			response.Data = true;
+
 			return response;
 		}
 

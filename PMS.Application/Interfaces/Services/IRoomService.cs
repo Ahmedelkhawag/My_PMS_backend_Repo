@@ -8,14 +8,15 @@ namespace PMS.Application.Interfaces.Services
 {
     public interface IRoomService
     {
-        Task<IEnumerable<RoomDto>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status);
-         Task<ResponseObjectDto<RoomDto>> GetRoomByIdAsync(int id);
+        Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status, int pageNumber, int pageSize);
+        Task<ResponseObjectDto<RoomDto>> GetRoomByIdAsync(int id);
 
-		Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto);
+        Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto);
 
         Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(int id, UpdateRoomDto dto);
         Task<ResponseObjectDto<bool>> DeleteRoomAsync(int id);
 
-		Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes);
-	}
+        Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes);
+        Task<ResponseObjectDto<bool>> RestoreRoomAsync(int id);
+    }
 }
