@@ -38,11 +38,16 @@ namespace PMS.API.Controllers
 
         [HttpGet]
         [Authorize]
-        [ProducesResponseType(typeof(IEnumerable<GuestDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<GuestDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAll([FromQuery] string? search)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] string? search,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var result = await _guestService.GetAllGuestsAsync(search);
+            var result = await _guestService.GetAllGuestsAsync(search, pageNumber, pageSize);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);
         }
 

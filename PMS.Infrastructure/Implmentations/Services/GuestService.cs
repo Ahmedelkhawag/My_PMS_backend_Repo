@@ -103,33 +103,57 @@ namespace PMS.Infrastructure.Implmentations.Services
 		}
 
 
-		public async Task<IEnumerable<GuestDto>> GetAllGuestsAsync(string? search)
+		public async Task<ResponseObjectDto<PagedResult<GuestDto>>> GetAllGuestsAsync(string? search, int pageNumber, int pageSize)
 		{
-			
-			var guests = await _unitOfWork.Guests.FindAllAsync(g =>
-				g.IsActive && 
-				(string.IsNullOrEmpty(search) ||
-				 g.FullName.Contains(search) ||
-				 g.PhoneNumber.Contains(search) ||
-				 g.NationalId.Contains(search))
-			);
+			var response = new ResponseObjectDto<PagedResult<GuestDto>>();
 
-	
-			return guests.Select(g => new GuestDto
+			var query = _unitOfWork.Guests.GetQueryable()
+				.Where(g => g.IsActive)
+				.AsQueryable();
+
+			if (!string.IsNullOrEmpty(search))
 			{
-				Id = g.Id,
-				FullName = g.FullName,
-				PhoneNumber = g.PhoneNumber,
-				NationalId = g.NationalId,
-				Nationality = g.Nationality,
-				LoyaltyLevel = g.LoyaltyLevel.ToString(), 
-				DateOfBirth = g.DateOfBirth,
-				Email = g.Email,
-				CarNumber = g.CarNumber,
-				Notes = g.Notes,
-				IsActive = g.IsActive
-			}).OrderByDescending(g => g.Id); 
+				query = query.Where(g =>
+					g.FullName.Contains(search) ||
+					g.PhoneNumber.Contains(search) ||
+					g.NationalId.Contains(search));
+			}
 
+			var totalCount = await query.CountAsync();
+
+			if (pageNumber < 1) pageNumber = 1;
+			if (pageSize <= 0) pageSize = 10;
+
+			var skip = (pageNumber - 1) * pageSize;
+
+			var items = await query
+				.OrderByDescending(g => g.Id)
+				.Skip(skip)
+				.Take(pageSize)
+				.Select(g => new GuestDto
+				{
+					Id = g.Id,
+					FullName = g.FullName,
+					PhoneNumber = g.PhoneNumber,
+					NationalId = g.NationalId,
+					Nationality = g.Nationality,
+					LoyaltyLevel = g.LoyaltyLevel.ToString(),
+					DateOfBirth = g.DateOfBirth,
+					Email = g.Email,
+					CarNumber = g.CarNumber,
+					Notes = g.Notes,
+					IsActive = g.IsActive
+				})
+				.ToListAsync();
+
+			var paged = new PagedResult<GuestDto>(items, totalCount, pageNumber, pageSize);
+
+			response.IsSuccess = true;
+			response.StatusCode = 200;
+			response.Message = "تم استرجاع قائمة النزلاء بنجاح";
+			response.Data = paged;
+
+			return response;
 		}
 
 
