@@ -1,0 +1,40 @@
+name: Deploy PMS.API to MonsterASP
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution (Release)
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Publish PMS.API (Release)
+        run: dotnet publish PMS.API/PMS.API.csproj -c Release -o ./publish
+
+      - name: Deploy to MonsterASP via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.MONSTER_FTP_SERVER }}
+          username: ${{ secrets.MONSTER_FTP_USERNAME }}
+          password: ${{ secrets.MONSTER_FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./publish
+          server-dir: ${{ secrets.MONSTER_FTP_PATH }}
+          dangerous-clean-slate: true
+
