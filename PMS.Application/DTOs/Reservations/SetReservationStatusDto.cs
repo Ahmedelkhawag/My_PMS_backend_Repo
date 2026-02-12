@@ -8,6 +8,9 @@ namespace PMS.Application.DTOs.Reservations
     /// </summary>
     public class SetReservationStatusDto
     {
+        /// <summary>
+        /// حالة الحجز (1 = Pending, 2 = Confirmed, 3 = CheckIn, 4 = CheckOut, 5 = Cancelled, 6 = NoShow).
+        /// </summary>
         [Required]
         public ReservationStatus NewStatus { get; set; }
 

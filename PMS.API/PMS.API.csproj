@@ -27,6 +27,14 @@
     <ProjectReference Include="..\PMS.Infrastructure\PMS.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- Copy XML docs from class libraries so Swagger can read DTOs/enums descriptions -->
+  <ItemGroup>
+    <None Include="..\PMS.Application\bin\$(Configuration)\$(TargetFramework)\PMS.Application.xml"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\PMS.Domain\bin\$(Configuration)\$(TargetFramework)\PMS.Domain.xml"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <Folder Include="wwwroot\" />
   </ItemGroup>

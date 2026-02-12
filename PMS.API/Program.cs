@@ -59,6 +59,9 @@ builder.Services.AddSwaggerGen(options =>
     // أمثلة تلقائية لكل الـ endpoints
     options.OperationFilter<GlobalExamplesOperationFilter>();
 
+    // وصف تلقائي لقيم الـ Enums (1 = Pending, 2 = Confirmed, ...)
+    options.SchemaFilter<EnumDescriptionSchemaFilter>();
+
     // XML comments so enums and DTOs descriptions appear in Swagger
     var basePath = AppContext.BaseDirectory;
     var apiXml = Path.Combine(basePath, "PMS.API.xml");

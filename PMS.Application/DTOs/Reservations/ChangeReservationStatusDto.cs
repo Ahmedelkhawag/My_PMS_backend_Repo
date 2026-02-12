@@ -1,4 +1,4 @@
-﻿using PMS.Domain.Enums;
+using PMS.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -11,6 +11,9 @@ namespace PMS.Application.DTOs.Reservations
 		[Required]
 		public int ReservationId { get; set; }
 
+		/// <summary>
+		/// حالة الحجز الجديدة (1 = Pending, 2 = Confirmed, 3 = CheckIn, 4 = CheckOut, 5 = Cancelled, 6 = NoShow).
+		/// </summary>
 		[Required]
 		public ReservationStatus NewStatus { get; set; } // (CheckedIn, Cancelled, CheckedOut)
 

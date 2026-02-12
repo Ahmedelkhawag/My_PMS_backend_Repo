@@ -40,6 +40,9 @@ namespace PMS.Application.DTOs.Guests
 
         public string? Notes { get; set; }
 
+        /// <summary>
+        /// مستوى الولاء (0 = Bronze, 1 = Silver, 2 = Gold, 3 = Platinum).
+        /// </summary>
         public LoyaltyLevel? LoyaltyLevel { get; set; }
     }
 }
