@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Configuration;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
+using PMS.Domain.Enums;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace PMS.Infrastructure.Implmentations.Services
@@ -80,6 +82,21 @@ namespace PMS.Infrastructure.Implmentations.Services
 					IsPerDay = x.IsPerDay
 				})
 				.ToListAsync();
+		}
+
+		public Task<IEnumerable<LookupDto>> GetReservationStatusesAsync()
+		{
+			var values = Enum.GetValues(typeof(ReservationStatus))
+				.Cast<ReservationStatus>()
+				.Select(v => new LookupDto
+				{
+					Id = (int)v,
+					Name = v.ToString()
+				})
+				.ToList()
+				.AsEnumerable();
+
+			return Task.FromResult(values);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-﻿using PMS.Application.DTOs.Configuration;
+using PMS.Application.DTOs.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,5 +13,6 @@ namespace PMS.Application.Interfaces.Services
 		Task<IEnumerable<RoomStatusLookupDto>> GetRoomStatusesAsync();
 		Task<IEnumerable<LookupDto>> GetRoomTypesLookupAsync();
 		Task<IEnumerable<ExtraServiceLookupDto>> GetExtraServicesAsync();
+		Task<IEnumerable<LookupDto>> GetReservationStatusesAsync();
 	}
 }

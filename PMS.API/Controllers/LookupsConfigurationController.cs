@@ -64,5 +64,13 @@ namespace PMS.API.Controllers
         {
             return Ok(await _configService.GetExtraServicesAsync());
         }
+
+        [HttpGet("reservation-statuses")]
+        [ProducesResponseType(typeof(IEnumerable<LookupDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetReservationStatuses()
+        {
+            return Ok(await _configService.GetReservationStatusesAsync());
+        }
     }
 }
