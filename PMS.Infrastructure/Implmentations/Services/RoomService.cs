@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Rooms;
 using PMS.Application.Interfaces.Services;
@@ -145,15 +145,23 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 4. تحديث غرفة
-		public async Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(UpdateRoomDto dto)
+		// 4. تحديث غرفة (تحديث جزئي)
+		public async Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(int id, UpdateRoomDto dto)
 		{
 			var response = new ResponseObjectDto<RoomDto>();
+
+			if (dto == null || !HasAnyUpdateField(dto))
+			{
+				response.IsSuccess = false;
+				response.Message = "يجب إرسال حقل واحد على الأقل للتحديث";
+				response.StatusCode = 400;
+				return response;
+			}
 
 			var room = await _unitOfWork.Rooms.GetQueryable()
 				.Include(r => r.RoomType)
 				.Include(r => r.RoomStatus)
-				.FirstOrDefaultAsync(r => r.Id == dto.Id);
+				.FirstOrDefaultAsync(r => r.Id == id);
 
 			if (room == null)
 			{
@@ -163,42 +171,90 @@ namespace PMS.Infrastructure.Implmentations.Services
 				return response;
 			}
 
-			// التحقق من التكرار
-			var duplicateRoom = await _unitOfWork.Rooms.FindAsync(r => r.RoomNumber == dto.RoomNumber && r.Id != dto.Id);
-			if (duplicateRoom != null)
+			// التحقق من تكرار رقم الغرفة فقط إذا تم إرساله
+			if (!string.IsNullOrWhiteSpace(dto.RoomNumber))
 			{
-				response.IsSuccess = false;
-				response.Message = $"رقم الغرفة {dto.RoomNumber} مستخدم بالفعل!";
-				response.StatusCode = 400;
-				return response;
+				var duplicateRoom = await _unitOfWork.Rooms.FindAsync(r => r.RoomNumber == dto.RoomNumber && r.Id != id);
+				if (duplicateRoom != null)
+				{
+					response.IsSuccess = false;
+					response.Message = $"رقم الغرفة {dto.RoomNumber} مستخدم بالفعل!";
+					response.StatusCode = 400;
+					return response;
+				}
+
+				room.RoomNumber = dto.RoomNumber;
 			}
 
-			room.RoomNumber = dto.RoomNumber;
-			room.FloorNumber = dto.FloorNumber;
-			room.RoomTypeId = dto.RoomTypeId;
-			room.Notes = dto.Notes;
+			// تحديث رقم الطابق إذا تم إرساله
+			if (dto.FloorNumber.HasValue)
+			{
+				if (dto.FloorNumber.Value < 1 || dto.FloorNumber.Value > 100)
+				{
+					response.IsSuccess = false;
+					response.Message = "رقم الطابق غير صحيح";
+					response.StatusCode = 400;
+					return response;
+				}
 
-			if (!string.IsNullOrEmpty(dto.Status))
+				room.FloorNumber = dto.FloorNumber.Value;
+			}
+
+			// تحديث نوع الغرفة إذا تم إرساله
+			if (dto.RoomTypeId.HasValue)
+			{
+				var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId.Value);
+				if (roomType == null)
+				{
+					response.IsSuccess = false;
+					response.Message = "نوع الغرفة غير صحيح!";
+					response.StatusCode = 404;
+					return response;
+				}
+
+				room.RoomTypeId = dto.RoomTypeId.Value;
+			}
+
+			// تحديث الملاحظات إذا تم إرسالها (حتى لو كانت فارغة لمسحها)
+			if (dto.Notes != null)
+			{
+				room.Notes = dto.Notes;
+			}
+
+			// تحديث حالة الغرفة إذا تم إرسالها
+			if (!string.IsNullOrWhiteSpace(dto.Status))
 			{
 				var statusObj = await _unitOfWork.RoomStatuses.FindAsync(s => s.Name == dto.Status);
-				if (statusObj != null)
+				if (statusObj == null)
 				{
-					room.RoomStatusId = statusObj.Id;
+					response.IsSuccess = false;
+					response.Message = "حالة الغرفة غير صحيحة";
+					response.StatusCode = 400;
+					return response;
 				}
+
+				room.RoomStatusId = statusObj.Id;
 			}
 
 			_unitOfWork.Rooms.Update(room);
 			await _unitOfWork.CompleteAsync();
 
+			// إعادة تحميل الغرفة بعد التحديث لضمان البيانات الملاحَقة
+			room = await _unitOfWork.Rooms.GetQueryable()
+				.Include(r => r.RoomType)
+				.Include(r => r.RoomStatus)
+				.FirstOrDefaultAsync(r => r.Id == id);
+
 			response.IsSuccess = true;
 			response.Message = "تم تحديث بيانات الغرفة بنجاح";
+			response.StatusCode = 200;
 			response.Data = new RoomDto
 			{
-				Id = room.Id,
+				Id = room!.Id,
 				RoomNumber = room.RoomNumber,
 				FloorNumber = room.FloorNumber,
-				Status = room.RoomStatus?.Name ?? dto.Status,
-				StatusColor = room.RoomStatus?.Color ?? "#808080", // 👈
+				Status = room.RoomStatus?.Name ?? dto.Status ?? "Unknown",
+				StatusColor = room.RoomStatus?.Color ?? "#808080",
 				RoomType = room.RoomType?.Name ?? "",
 				Price = room.RoomType?.BasePrice ?? 0,
 				MaxAdults = room.RoomType?.MaxAdults ?? 0
@@ -268,6 +324,15 @@ namespace PMS.Infrastructure.Implmentations.Services
 			response.StatusCode = 200;
 
 			return response;
+		}
+
+		private static bool HasAnyUpdateField(UpdateRoomDto dto)
+		{
+			return !string.IsNullOrWhiteSpace(dto.RoomNumber)
+			       || dto.FloorNumber.HasValue
+			       || dto.RoomTypeId.HasValue
+			       || dto.Notes != null
+			       || !string.IsNullOrWhiteSpace(dto.Status);
 		}
 	}
 }

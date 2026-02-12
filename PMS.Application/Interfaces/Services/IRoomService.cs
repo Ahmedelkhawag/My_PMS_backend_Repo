@@ -1,4 +1,4 @@
-﻿using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Rooms;
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,7 @@ namespace PMS.Application.Interfaces.Services
 
 		Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto);
 
-        Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(UpdateRoomDto dto);
+        Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(int id, UpdateRoomDto dto);
         Task<ResponseObjectDto<bool>> DeleteRoomAsync(int id);
 
 		Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes);

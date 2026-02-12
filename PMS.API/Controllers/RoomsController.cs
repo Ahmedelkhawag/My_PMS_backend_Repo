@@ -54,13 +54,13 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomDto dto)
         {
-            if (id != dto.Id)
-                return BadRequest("رقم المعرف غير متطابق");
+            if (dto == null)
+                return BadRequest("يجب إرسال حقل واحد على الأقل للتحديث");
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _roomService.UpdateRoomAsync(dto);
+            var result = await _roomService.UpdateRoomAsync(id, dto);
 
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
