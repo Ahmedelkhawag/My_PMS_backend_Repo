@@ -4,6 +4,8 @@ using PMS.Application.DTOs.Rooms;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
+using PMS.Domain.Constants;
+using PMS.Application.Validation;
 // using PMS.Domain.Enums; // مش محتاجينه
 
 namespace PMS.Infrastructure.Implmentations.Services
@@ -98,8 +100,10 @@ namespace PMS.Infrastructure.Implmentations.Services
 				Id = room.Id,
 				RoomNumber = room.RoomNumber,
 				FloorNumber = room.FloorNumber,
-				Status = room.RoomStatus?.Name ?? "Unknown",
-				StatusColor = room.RoomStatus?.Color ?? "#808080", // 👈 اللون
+					Status = room.RoomStatus?.Name ?? "Unknown",
+					StatusColor = HexColorValidator.IsValid(room.RoomStatus?.Color)
+						? room.RoomStatus!.Color
+						: StatusColorPalette.Secondary,
 				RoomType = room.RoomType?.Name ?? "N/A",
 				Price = room.RoomType?.BasePrice ?? 0,
 				MaxAdults = room.RoomType?.MaxAdults ?? 0
@@ -155,7 +159,9 @@ namespace PMS.Infrastructure.Implmentations.Services
 				RoomNumber = room.RoomNumber,
 				FloorNumber = room.FloorNumber,
 				Status = status?.Name ?? "Clean",
-				StatusColor = status?.Color ?? "#008000", // 👈
+				StatusColor = HexColorValidator.IsValid(status?.Color)
+					? status!.Color
+					: StatusColorPalette.Success,
 				RoomType = roomType.Name,
 				Price = roomType.BasePrice,
 				MaxAdults = roomType.MaxAdults
@@ -274,7 +280,9 @@ namespace PMS.Infrastructure.Implmentations.Services
 				RoomNumber = room.RoomNumber,
 				FloorNumber = room.FloorNumber,
 				Status = room.RoomStatus?.Name ?? dto.Status ?? "Unknown",
-				StatusColor = room.RoomStatus?.Color ?? "#808080",
+				StatusColor = HexColorValidator.IsValid(room.RoomStatus?.Color)
+					? room.RoomStatus!.Color
+					: StatusColorPalette.Secondary,
 				RoomType = room.RoomType?.Name ?? "",
 				Price = room.RoomType?.BasePrice ?? 0,
 				MaxAdults = room.RoomType?.MaxAdults ?? 0

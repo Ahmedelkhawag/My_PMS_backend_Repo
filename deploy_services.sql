@@ -1,4 +1,4 @@
-﻿IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
         [MigrationId] nvarchar(150) NOT NULL,
@@ -1343,10 +1343,10 @@ BEGIN
     IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Color', N'IsActive', N'Name') AND [object_id] = OBJECT_ID(N'[RoomStatusLookups]'))
         SET IDENTITY_INSERT [RoomStatusLookups] ON;
     EXEC(N'INSERT INTO [RoomStatusLookups] ([Id], [Color], [IsActive], [Name])
-    VALUES (1, N''green'', CAST(1 AS bit), N''Clean (نظيفة)''),
-    (2, N''red'', CAST(1 AS bit), N''Dirty (متسخة)''),
-    (3, N''orange'', CAST(1 AS bit), N''Maintenance (صيانة)''),
-    (4, N''gray'', CAST(1 AS bit), N''Out of Order (خارج الخدمة)'')');
+    VALUES (1, N''#28A745'', CAST(1 AS bit), N''Clean (نظيفة)''),
+    (2, N''#DC3545'', CAST(1 AS bit), N''Dirty (متسخة)''),
+    (3, N''#FFC107'', CAST(1 AS bit), N''Maintenance (صيانة)''),
+    (4, N''#6C757D'', CAST(1 AS bit), N''Out of Order (خارج الخدمة)'')');
     IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Color', N'IsActive', N'Name') AND [object_id] = OBJECT_ID(N'[RoomStatusLookups]'))
         SET IDENTITY_INSERT [RoomStatusLookups] OFF;
 END;

@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.Configuration;
+using PMS.Domain.Constants;
 using PMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -140,12 +141,13 @@ namespace PMS.Infrastructure.Context
 				new MealPlan { Id = 4, Name = "Full Board (إفطار وغداء وعشاء)", Price = 700 }
 			);
 
-			// حالات الغرف
+			// حالات الغرف - colors use standardized hex codes
 			builder.Entity<RoomStatusLookup>().HasData(
-				new RoomStatusLookup { Id = 1, Name = "Clean (نظيفة)", Color = "green" },
-				new RoomStatusLookup { Id = 2, Name = "Dirty (متسخة)", Color = "red" },
-				new RoomStatusLookup { Id = 3, Name = "Maintenance (صيانة)", Color = "orange" },
-				new RoomStatusLookup { Id = 4, Name = "Out of Order (خارج الخدمة)", Color = "gray" }
+			new RoomStatusLookup { Id = 1, Name = "Clean (نظيفة)", Color = StatusColorPalette.Success },
+			new RoomStatusLookup { Id = 2, Name = "Dirty (متسخة)", Color = StatusColorPalette.Danger },
+			new RoomStatusLookup { Id = 3, Name = "Maintenance (صيانة)", Color = StatusColorPalette.Warning },
+			new RoomStatusLookup { Id = 4, Name = "Out of Order (خارج الخدمة)", Color = StatusColorPalette.Secondary },
+			new RoomStatusLookup { Id = 5, Name = "Occupied", Color = StatusColorPalette.Info }
 			);
 
 

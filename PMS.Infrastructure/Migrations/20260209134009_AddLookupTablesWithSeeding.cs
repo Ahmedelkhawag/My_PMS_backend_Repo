@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -109,10 +109,10 @@ namespace PMS.Infrastructure.Migrations
                 columns: new[] { "Id", "Color", "IsActive", "Name" },
                 values: new object[,]
                 {
-                    { 1, "green", true, "Clean (نظيفة)" },
-                    { 2, "red", true, "Dirty (متسخة)" },
-                    { 3, "orange", true, "Maintenance (صيانة)" },
-                    { 4, "gray", true, "Out of Order (خارج الخدمة)" }
+                    { 1, "#28A745", true, "Clean (نظيفة)" },
+                    { 2, "#DC3545", true, "Dirty (متسخة)" },
+                    { 3, "#FFC107", true, "Maintenance (صيانة)" },
+                    { 4, "#6C757D", true, "Out of Order (خارج الخدمة)" }
                 });
         }
 

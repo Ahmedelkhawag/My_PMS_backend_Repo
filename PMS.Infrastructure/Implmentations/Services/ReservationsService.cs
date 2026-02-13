@@ -6,6 +6,7 @@ using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
 using PMS.Domain.Enums;
+using PMS.Domain.Constants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -155,31 +156,140 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<bool>> ChangeStatusAsync(ChangeReservationStatusDto dto)
         {
-            var reservation = await _unitOfWork.Reservations.GetByIdAsync(dto.ReservationId);
-            if (reservation == null) return NotFoundResponse<bool>("Reservation not found");
+            // Load reservation with room, because we must update both atomically
+            var reservation = await _unitOfWork.Reservations.GetQueryable()
+                .Include(r => r.Room)
+                .FirstOrDefaultAsync(r => r.Id == dto.ReservationId);
 
-            var validationResult = ValidateStatusChange(reservation, dto);
-            if (!validationResult.IsSuccess) return validationResult;
-
-            if (dto.NewStatus == ReservationStatus.CheckIn)
+            if (reservation == null)
             {
-                if (dto.RoomId.HasValue) reservation.RoomId = dto.RoomId;
+                return NotFoundResponse<bool>("Reservation not found");
+            }
+
+            var currentStatus = reservation.Status;
+            var newStatus = dto.NewStatus;
+
+            // 1) Validate transition according to the state machine
+            var transitionValidation = ValidateTransition(currentStatus, newStatus);
+            if (!transitionValidation.IsSuccess)
+            {
+                return transitionValidation;
+            }
+
+            // 2) Additional business validations (room presence etc.)
+            var businessValidation = ValidateStatusChange(reservation, dto);
+            if (!businessValidation.IsSuccess)
+            {
+                return businessValidation;
+            }
+
+            // 3) Apply side effects (Reservation + Room) in one logical unit
+            // NOTE: We don't have explicit transaction support in IUnitOfWork,
+            // so we rely on a single SaveChanges call to keep changes consistent.
+
+            // Attach / update room assignment if provided
+            if (dto.RoomId.HasValue)
+            {
+                reservation.RoomId = dto.RoomId.Value;
+            }
+
+            // Load the room if we need to touch its status
+            Room? room = null;
+            if (reservation.RoomId.HasValue)
+            {
+                room = reservation.Room ?? await _unitOfWork.Rooms.GetByIdAsync(reservation.RoomId.Value);
+            }
+
+            const int ROOM_STATUS_CLEAN = 1;
+            const int ROOM_STATUS_DIRTY = 2;
+            const int ROOM_STATUS_OCCUPIED = 5; // new Occupied status
+
+            // A. Check-In
+            if (newStatus == ReservationStatus.CheckIn)
+            {
+                if (room == null)
+                {
+                    return new ResponseObjectDto<bool>
+                    {
+                        IsSuccess = false,
+                        StatusCode = 400,
+                        Message = "Cannot Check-In without a valid room."
+                    };
+                }
+
+                // Room must be Clean before Check-In
+                if (room.RoomStatusId != ROOM_STATUS_CLEAN)
+                {
+                    return new ResponseObjectDto<bool>
+                    {
+                        IsSuccess = false,
+                        StatusCode = 400,
+                        Message = "Room must be Clean before Check-In."
+                    };
+                }
+
+                room.RoomStatusId = ROOM_STATUS_OCCUPIED;
                 reservation.CheckInDate = DateTime.UtcNow;
             }
 
-            reservation.Status = dto.NewStatus;
+            // B. Check-Out
+            if (newStatus == ReservationStatus.CheckOut)
+            {
+                if (room != null)
+                {
+                    room.RoomStatusId = ROOM_STATUS_DIRTY;
+                }
+
+                reservation.CheckOutDate = DateTime.UtcNow;
+            }
+
+            // C. Cancel or NoShow → release room to Clean
+            if (newStatus == ReservationStatus.Cancelled || newStatus == ReservationStatus.NoShow)
+            {
+                if (room != null)
+                {
+                    room.RoomStatusId = ROOM_STATUS_CLEAN;
+                }
+            }
+
+            // D. Undo Check-In (back to Confirmed)
+            if (currentStatus == ReservationStatus.CheckIn && newStatus == ReservationStatus.Confirmed)
+            {
+                if (room != null)
+                {
+                    room.RoomStatusId = ROOM_STATUS_CLEAN;
+                }
+            }
+
+            // E. Undo Check-Out (back to CheckIn)
+            if (currentStatus == ReservationStatus.CheckOut && newStatus == ReservationStatus.CheckIn)
+            {
+                if (room != null)
+                {
+                    room.RoomStatusId = ROOM_STATUS_OCCUPIED;
+                }
+            }
+
+            // Finally, update reservation core status and note
+            reservation.Status = newStatus;
             if (!string.IsNullOrEmpty(dto.Note))
             {
-                reservation.Notes += $" | Status Update: {dto.Note}";
+                reservation.Notes = (reservation.Notes ?? string.Empty) +
+                                    $" | Status Update: {dto.Note}";
             }
 
             _unitOfWork.Reservations.Update(reservation);
+            if (room != null)
+            {
+                _unitOfWork.Rooms.Update(room);
+            }
+
             await _unitOfWork.CompleteAsync();
 
             return new ResponseObjectDto<bool>
             {
                 IsSuccess = true,
-                Message = $"Reservation status changed to {dto.NewStatus} successfully",
+                Message = $"Reservation status changed from {currentStatus} to {newStatus} successfully",
                 StatusCode = 200,
                 Data = true
             };
@@ -385,22 +495,49 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         private ResponseObjectDto<bool> ValidateStatusChange(Reservation reservation, ChangeReservationStatusDto dto)
         {
+            // Additional business rules on top of the transition matrix
             if (dto.NewStatus == ReservationStatus.CheckIn)
             {
-                if (reservation.Status == ReservationStatus.Cancelled || reservation.Status == ReservationStatus.CheckOut)
-                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Cannot Check-In a cancelled or checked-out reservation", StatusCode = 400 };
-
                 if (reservation.RoomId == null && dto.RoomId == null)
-                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Cannot Check-In without a room assignment", StatusCode = 400 };
-            }
-
-            if (dto.NewStatus == ReservationStatus.Cancelled)
-            {
-                if (reservation.Status == ReservationStatus.CheckIn || reservation.Status == ReservationStatus.CheckOut)
-                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Cannot Cancel an active or completed reservation", StatusCode = 400 };
+                {
+                    return new ResponseObjectDto<bool>
+                    {
+                        IsSuccess = false,
+                        Message = "Cannot Check-In without a room assignment",
+                        StatusCode = 400
+                    };
+                }
             }
 
             return new ResponseObjectDto<bool> { IsSuccess = true };
+        }
+
+        private ResponseObjectDto<bool> ValidateTransition(ReservationStatus current, ReservationStatus next)
+        {
+            bool allowed = current switch
+            {
+                ReservationStatus.Pending => next is ReservationStatus.Confirmed or ReservationStatus.Cancelled,
+                ReservationStatus.Confirmed => next is ReservationStatus.CheckIn
+                    or ReservationStatus.Cancelled
+                    or ReservationStatus.NoShow,
+                ReservationStatus.CheckIn => next is ReservationStatus.CheckOut or ReservationStatus.Confirmed,
+                ReservationStatus.CheckOut => next is ReservationStatus.CheckIn,
+                ReservationStatus.Cancelled => next is ReservationStatus.Confirmed,
+                ReservationStatus.NoShow => next is ReservationStatus.Confirmed or ReservationStatus.Cancelled,
+                _ => false
+            };
+
+            if (!allowed)
+            {
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = false,
+                    StatusCode = 400,
+                    Message = "Invalid status transition"
+                };
+            }
+
+            return new ResponseObjectDto<bool> { IsSuccess = true, StatusCode = 200 };
         }
 
         private async Task<bool> CheckRoomConflictAsync(int roomId, DateTime checkIn, DateTime checkOut, int? excludeReservationId = null)
@@ -503,11 +640,13 @@ namespace PMS.Infrastructure.Implmentations.Services
         {
             return status switch
             {
-                ReservationStatus.Confirmed => "green",
-                ReservationStatus.Pending => "orange",
-                ReservationStatus.CheckIn => "blue", // Added logical color for CheckIn
-                ReservationStatus.Cancelled => "red",
-                _ => "gray"
+                ReservationStatus.Confirmed => StatusColorPalette.Success,
+                ReservationStatus.Pending => StatusColorPalette.Warning,
+                ReservationStatus.CheckIn => StatusColorPalette.Info,
+                ReservationStatus.CheckOut => StatusColorPalette.Secondary,
+                ReservationStatus.Cancelled => StatusColorPalette.Danger,
+                ReservationStatus.NoShow => StatusColorPalette.Secondary,
+                _ => StatusColorPalette.Secondary
             };
         }
 
