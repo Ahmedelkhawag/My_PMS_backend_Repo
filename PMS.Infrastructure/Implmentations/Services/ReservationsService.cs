@@ -471,12 +471,50 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Data = MapToReservationDto(reservation, reservation.Guest, reservation.RoomType, reservation.Room)
             };
         }
+		public async Task<ResponseObjectDto<ReservationStatsDto>> GetReservationStatsAsync()
+		{
+			var response = new ResponseObjectDto<ReservationStatsDto>();
 
-        // ==========================================
-        // Private Helper Methods
-        // ==========================================
+			var today = DateTime.UtcNow.Date;
 
-        private async Task<ResponseObjectDto<bool>> ValidateReservationAsync(CreateReservationDto dto)
+			var reservationsQuery = _unitOfWork.Reservations
+				.GetQueryable()
+				.Where(r => !r.IsDeleted);
+
+			var totalReservations = await reservationsQuery.CountAsync();
+			var createdToday = await reservationsQuery.CountAsync(r => r.CreatedAt.Date == today);
+			var arrivalsToday = await reservationsQuery.CountAsync(r =>
+				r.CheckInDate.Date == today &&
+				r.Status == ReservationStatus.Confirmed);
+			var departuresToday = await reservationsQuery.CountAsync(r =>
+				r.CheckOutDate.Date == today &&
+				r.Status == ReservationStatus.CheckIn);
+			var activeInHouse = await reservationsQuery.CountAsync(r => r.Status == ReservationStatus.CheckIn);
+			var pendingConfirmations = await reservationsQuery.CountAsync(r => r.Status == ReservationStatus.Pending);
+
+			var stats = new ReservationStatsDto
+			{
+				TotalReservations = totalReservations,
+				CreatedToday = createdToday,
+				ArrivalsToday = arrivalsToday,
+				DeparturesToday = departuresToday,
+				ActiveInHouse = activeInHouse,
+				PendingConfirmations = pendingConfirmations
+			};
+
+			response.IsSuccess = true;
+			response.StatusCode = 200;
+			response.Message = "Reservation statistics retrieved successfully";
+			response.Data = stats;
+
+			return response;
+		}
+
+		// ==========================================
+		// Private Helper Methods
+		// ==========================================
+
+		private async Task<ResponseObjectDto<bool>> ValidateReservationAsync(CreateReservationDto dto)
         {
             if (dto.CheckOutDate <= dto.CheckInDate)
             {
@@ -705,43 +743,6 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-        public async Task<ResponseObjectDto<ReservationStatsDto>> GetReservationStatsAsync()
-        {
-            var response = new ResponseObjectDto<ReservationStatsDto>();
-
-            var today = DateTime.UtcNow.Date;
-
-            var reservationsQuery = _unitOfWork.Reservations
-                .GetQueryable()
-                .Where(r => !r.IsDeleted);
-
-            var totalReservations = await reservationsQuery.CountAsync();
-            var createdToday = await reservationsQuery.CountAsync(r => r.CreatedAt.Date == today);
-            var arrivalsToday = await reservationsQuery.CountAsync(r =>
-                r.CheckInDate.Date == today &&
-                r.Status == ReservationStatus.Confirmed);
-            var departuresToday = await reservationsQuery.CountAsync(r =>
-                r.CheckOutDate.Date == today &&
-                r.Status == ReservationStatus.CheckIn);
-            var activeInHouse = await reservationsQuery.CountAsync(r => r.Status == ReservationStatus.CheckIn);
-            var pendingConfirmations = await reservationsQuery.CountAsync(r => r.Status == ReservationStatus.Pending);
-
-            var stats = new ReservationStatsDto
-            {
-                TotalReservations = totalReservations,
-                CreatedToday = createdToday,
-                ArrivalsToday = arrivalsToday,
-                DeparturesToday = departuresToday,
-                ActiveInHouse = activeInHouse,
-                PendingConfirmations = pendingConfirmations
-            };
-
-            response.IsSuccess = true;
-            response.StatusCode = 200;
-            response.Message = "Reservation statistics retrieved successfully";
-            response.Data = stats;
-
-            return response;
-        }
+       
     }
 }
