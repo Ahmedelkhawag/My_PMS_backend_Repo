@@ -16,6 +16,7 @@ using PMS.Infrastructure.Context;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 
@@ -338,32 +339,46 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-        public async Task<List<UserResponseDto>> GetAllUsersAsync()
+        public async Task<ResponseObjectDto<PagedResult<UserResponseDto>>> GetAllUsersAsync(string? search, int pageNumber, int pageSize)
         {
-            // 1. نعرف مين اللي بينده الدالة دي حالياً
-            var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            var currentUser = await _userManager.FindByIdAsync(currentUserId);
+            var response = new ResponseObjectDto<PagedResult<UserResponseDto>>();
 
-            // 2. نجهز الكويري (هات اليوزرز)
+            // 1. Build queryable
             var query = _userManager.Users.AsQueryable();
 
-            // 3. تطبيق فلتر الفندق 🏨
-            // لو المستخدم الحالي مربوط بفندق معين، هاتله الناس اللي معاه في نفس الفندق بس
-            //if (currentUser.HotelId != null)
-            //{
-            //    query = query.Where(u => u.HotelId == currentUser.HotelId);
-            //}
-            // (لو HotelId بـ null يبقى ده SuperAdmin، هنسيب الكويري مفتوحة تجيب كله)
+            // 2. Apply search filter if provided
+            if (!string.IsNullOrEmpty(search))
+            {
+                var searchLower = search.ToLower();
+                query = query.Where(u =>
+                    (u.FullName != null && u.FullName.ToLower().Contains(searchLower)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(searchLower)) ||
+                    (u.PhoneNumber != null && u.PhoneNumber.Contains(search)) ||
+                    (u.UserName != null && u.UserName.ToLower().Contains(searchLower))
+                );
+            }
 
-            // تنفيذ الكويري
-            var users = await query.ToListAsync();
+            // 3. Count total records before pagination
+            var totalCount = await query.CountAsync();
 
-            // 4. تحويل النتيجة لـ DTO
+            // 4. Validate pagination parameters
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            // 5. Apply pagination
+            var skip = (pageNumber - 1) * pageSize;
+            var users = await query
+                .OrderByDescending(u => u.Id)
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // 6. Convert to DTOs
             var responseList = new List<UserResponseDto>();
 
             foreach (var user in users)
             {
-                // بنجيب الرول لكل يوزر (ممكن يكون عنده أكتر من رول، هناخد الأولى كمثال)
+                // Get roles for each user (required by UserManager API)
                 var roles = await _userManager.GetRolesAsync(user);
 
                 responseList.Add(new UserResponseDto
@@ -374,12 +389,20 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
                     IsActive = user.IsActive,
-                    Role = roles.FirstOrDefault() ?? "Employee", // أول رول تقابلنا
+                    Role = roles.FirstOrDefault() ?? "Employee",
                     HotelId = user.HotelId
                 });
             }
 
-            return responseList;
+            // 7. Create paged result
+            var pagedResult = new PagedResult<UserResponseDto>(responseList, totalCount, pageNumber, pageSize);
+
+            response.IsSuccess = true;
+            response.StatusCode = 200;
+            response.Message = "Users retrieved successfully";
+            response.Data = pagedResult;
+
+            return response;
         }
 
         public async Task<ApiResponse<UserDetailDto>> GetUserByIdAsync(string userId)

@@ -1,4 +1,4 @@
-﻿using PMS.Application.DTOs;
+using PMS.Application.DTOs;
 using PMS.Application.DTOs.Auth;
 using PMS.Application.DTOs.Common;
 using System;
@@ -15,7 +15,7 @@ namespace PMS.Application.Interfaces.Services
 
         Task<AuthModel> ChangePasswordAsync(ChangePasswordDto model);
 
-        Task<List<UserResponseDto>> GetAllUsersAsync();
+        Task<ResponseObjectDto<PagedResult<UserResponseDto>>> GetAllUsersAsync(string? search, int pageNumber, int pageSize);
 
         Task<ApiResponse<UserDetailDto>> GetUserByIdAsync(string userId);
 

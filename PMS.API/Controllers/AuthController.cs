@@ -118,12 +118,19 @@ namespace PMS.API.Controllers
 
         [HttpGet("users")]
         [Authorize]
-        [ProducesResponseType(typeof(PagedResult<UserResponseDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAllUsers([FromQuery] UserFilterDto filter)
+        [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<UserResponseDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetAllUsers(
+            [FromQuery] string? search,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var result = await _authService.GetAllUsersAsyncWithPagination(filter);
+            var result = await _authService.GetAllUsersAsync(search, pageNumber, pageSize);
+            
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            
             return Ok(result);
         }
 
