@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Rooms;
 using PMS.Application.Interfaces.Services;
 
@@ -130,6 +131,18 @@ namespace PMS.API.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _roomService.GetRoomByIdAsync(id);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
+        }
+
+        [HttpGet("summary")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<RoomStatsDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetSummary()
+        {
+            var result = await _roomService.GetRoomStatsAsync();
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Reservations;
 using PMS.Application.Interfaces.Services;
 
@@ -137,6 +138,18 @@ namespace PMS.API.Controllers
                 return BadRequest(ModelState);
 
             var result = await _reservationService.UpdateReservationAsync(dto);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
+        }
+
+        [HttpGet("summary")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<ReservationStatsDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetSummary()
+        {
+            var result = await _reservationService.GetReservationStatsAsync();
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);

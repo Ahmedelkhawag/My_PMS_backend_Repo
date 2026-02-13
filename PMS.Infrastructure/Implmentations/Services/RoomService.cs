@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Rooms;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
@@ -392,6 +393,52 @@ namespace PMS.Infrastructure.Implmentations.Services
 			response.Message = "تم تغيير حالة الغرفة بنجاح";
 			response.Data = true;
 			response.StatusCode = 200;
+
+			return response;
+		}
+
+		// 7. إحصائيات الغرف
+		public async Task<ResponseObjectDto<RoomStatsDto>> GetRoomStatsAsync()
+		{
+			var response = new ResponseObjectDto<RoomStatsDto>();
+
+			const int ROOM_STATUS_CLEAN = 1;
+			const int ROOM_STATUS_DIRTY = 2;
+			const int ROOM_STATUS_MAINTENANCE = 3;
+			const int ROOM_STATUS_OUT_OF_ORDER = 4;
+			const int ROOM_STATUS_OCCUPIED = 5;
+
+			var roomsQuery = _unitOfWork.Rooms
+				.GetQueryable()
+				.Where(r => !r.IsDeleted && r.IsActive);
+
+			var totalRooms = await roomsQuery.CountAsync();
+			var availableRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_CLEAN);
+			var occupiedRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_OCCUPIED);
+			var dirtyRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_DIRTY);
+			var outOfServiceRooms = await roomsQuery.CountAsync(r =>
+				r.RoomStatusId == ROOM_STATUS_MAINTENANCE || r.RoomStatusId == ROOM_STATUS_OUT_OF_ORDER);
+
+			decimal occupancyPercentage = 0;
+			if (totalRooms > 0 && occupiedRooms > 0)
+			{
+				occupancyPercentage = (decimal)occupiedRooms / totalRooms * 100m;
+			}
+
+			var stats = new RoomStatsDto
+			{
+				TotalRooms = totalRooms,
+				AvailableRooms = availableRooms,
+				OccupiedRooms = occupiedRooms,
+				DirtyRooms = dirtyRooms,
+				OutOfService = outOfServiceRooms,
+				OccupancyPercentage = occupancyPercentage
+			};
+
+			response.IsSuccess = true;
+			response.StatusCode = 200;
+			response.Message = "Room statistics retrieved successfully";
+			response.Data = stats;
 
 			return response;
 		}

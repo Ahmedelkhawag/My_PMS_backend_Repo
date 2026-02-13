@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Reservations;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
@@ -702,6 +703,45 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Total = s.TotalServicePrice
                 }).ToList() ?? new List<ReservationServiceDto>()
             };
+        }
+
+        public async Task<ResponseObjectDto<ReservationStatsDto>> GetReservationStatsAsync()
+        {
+            var response = new ResponseObjectDto<ReservationStatsDto>();
+
+            var today = DateTime.UtcNow.Date;
+
+            var reservationsQuery = _unitOfWork.Reservations
+                .GetQueryable()
+                .Where(r => !r.IsDeleted);
+
+            var totalReservations = await reservationsQuery.CountAsync();
+            var createdToday = await reservationsQuery.CountAsync(r => r.CreatedAt.Date == today);
+            var arrivalsToday = await reservationsQuery.CountAsync(r =>
+                r.CheckInDate.Date == today &&
+                r.Status == ReservationStatus.Confirmed);
+            var departuresToday = await reservationsQuery.CountAsync(r =>
+                r.CheckOutDate.Date == today &&
+                r.Status == ReservationStatus.CheckIn);
+            var activeInHouse = await reservationsQuery.CountAsync(r => r.Status == ReservationStatus.CheckIn);
+            var pendingConfirmations = await reservationsQuery.CountAsync(r => r.Status == ReservationStatus.Pending);
+
+            var stats = new ReservationStatsDto
+            {
+                TotalReservations = totalReservations,
+                CreatedToday = createdToday,
+                ArrivalsToday = arrivalsToday,
+                DeparturesToday = departuresToday,
+                ActiveInHouse = activeInHouse,
+                PendingConfirmations = pendingConfirmations
+            };
+
+            response.IsSuccess = true;
+            response.StatusCode = 200;
+            response.Message = "Reservation statistics retrieved successfully";
+            response.Data = stats;
+
+            return response;
         }
     }
 }

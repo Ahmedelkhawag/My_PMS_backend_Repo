@@ -55,6 +55,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             var outOfServiceRooms = await roomsQuery.CountAsync(r =>
                 r.RoomStatusId == ROOM_STATUS_MAINTENANCE || r.RoomStatusId == ROOM_STATUS_OUT_OF_ORDER);
 
+            var totalReservations = await reservationsQuery.CountAsync();
             var createdToday = await reservationsQuery.CountAsync(r => r.CreatedAt.Date == today);
             var arrivalsToday = await reservationsQuery.CountAsync(r =>
                 r.CheckInDate.Date == today &&
@@ -88,6 +89,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 },
                 ReservationStats = new ReservationStatsDto
                 {
+                    TotalReservations = totalReservations,
                     CreatedToday = createdToday,
                     ArrivalsToday = arrivalsToday,
                     DeparturesToday = departuresToday,

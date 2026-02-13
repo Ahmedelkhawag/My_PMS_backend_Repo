@@ -1,4 +1,5 @@
 using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Reservations;
 using System;
 using System.Collections.Generic;
@@ -18,5 +19,6 @@ namespace PMS.Application.Interfaces.Services
 		Task<ResponseObjectDto<bool>> RestoreReservationAsync(int id);
 
 		Task<ResponseObjectDto<ReservationDto>> UpdateReservationAsync(UpdateReservationDto dto);
+		Task<ResponseObjectDto<ReservationStatsDto>> GetReservationStatsAsync();
 	}
 }

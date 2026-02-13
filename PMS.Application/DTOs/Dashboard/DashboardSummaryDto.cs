@@ -21,6 +21,7 @@ namespace PMS.Application.DTOs.Dashboard
 
     public class ReservationStatsDto
     {
+        public int TotalReservations { get; set; }
         public int CreatedToday { get; set; }
         public int ArrivalsToday { get; set; }
         public int DeparturesToday { get; set; }

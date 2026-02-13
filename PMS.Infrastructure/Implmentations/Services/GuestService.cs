@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
+using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Guests;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
@@ -382,6 +383,37 @@ namespace PMS.Infrastructure.Implmentations.Services
 		//		StatusCode = 200
 		//	};
 		//}
+
+		// إحصائيات النزلاء
+		public async Task<ResponseObjectDto<GuestStatsDto>> GetGuestStatsAsync()
+		{
+			var response = new ResponseObjectDto<GuestStatsDto>();
+
+			var today = DateTime.UtcNow.Date;
+			var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
+			var firstDayOfNextMonth = firstDayOfMonth.AddMonths(1);
+
+			var guestsQuery = _unitOfWork.Guests
+				.GetQueryable()
+				.Where(g => !g.IsDeleted);
+
+			var totalGuests = await guestsQuery.CountAsync();
+			var newGuestsThisMonth = await guestsQuery.CountAsync(g =>
+				g.CreatedAt >= firstDayOfMonth && g.CreatedAt < firstDayOfNextMonth);
+
+			var stats = new GuestStatsDto
+			{
+				TotalGuests = totalGuests,
+				NewGuestsThisMonth = newGuestsThisMonth
+			};
+
+			response.IsSuccess = true;
+			response.StatusCode = 200;
+			response.Message = "Guest statistics retrieved successfully";
+			response.Data = stats;
+
+			return response;
+		}
 
 		private static bool HasAnyUpdateField(UpdateGuestDto dto)
 		{
