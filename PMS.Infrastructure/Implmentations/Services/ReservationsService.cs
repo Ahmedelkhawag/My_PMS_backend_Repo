@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using PMS.Application.DTOs.Common;
@@ -6,11 +7,13 @@ using PMS.Application.DTOs.Reservations;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
+using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Enums;
 using PMS.Domain.Constants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace PMS.Infrastructure.Implmentations.Services
@@ -19,17 +22,28 @@ namespace PMS.Infrastructure.Implmentations.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
         private const string TaxPercentageConfigKey = "FinancialSettings:TaxPercentage";
         private const decimal DefaultTaxPercentage = 0.15m;
 
-        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration)
+        private const int RoomStatusClean = 1;
+        private const int RoomStatusDirty = 2;
+        private const int RoomStatusMaintenance = 3;
+        private const int RoomStatusOccupied = 5;
+
+        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<ResponseObjectDto<ReservationDto>> CreateReservationAsync(CreateReservationDto dto)
         {
+            if (dto.MealPlanId <= 0) dto.MealPlanId = 1;
+            if (dto.MarketSegmentId <= 0) dto.MarketSegmentId = 1;
+
             var validationResult = await ValidateReservationAsync(dto);
             if (!validationResult.IsSuccess)
             {
@@ -41,8 +55,30 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            var nights = CalculateNights(dto.CheckInDate, dto.CheckOutDate);
-            var financials = CalculateFinancials(dto.NightlyRate, nights, dto.Services, dto.DiscountAmount);
+            List<ExtraService>? fetchedExtraServices = null;
+            if (dto.Services != null && dto.Services.Any())
+            {
+                var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
+                fetchedExtraServices = await _unitOfWork.ExtraServices.GetQueryable()
+                    .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
+                    .ToListAsync();
+                var foundIds = fetchedExtraServices.Select(e => e.Id).ToHashSet();
+                var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
+                if (invalidId != 0)
+                {
+                    return new ResponseObjectDto<ReservationDto>
+                    {
+                        IsSuccess = false,
+                        Message = $"Invalid Service ID: {invalidId}",
+                        StatusCode = 400
+                    };
+                }
+            }
+            fetchedExtraServices ??= new List<ExtraService>();
+
+            var checkInDate = dto.IsWalkIn ? DateTime.UtcNow : dto.CheckInDate;
+            var nights = CalculateNights(checkInDate, dto.CheckOutDate);
+            var financials = CalculateFinancials(dto.NightlyRate, nights, fetchedExtraServices, dto.Services, dto.DiscountAmount);
 
             var reservationNumber = await GenerateReservationNumberAsync();
 
@@ -52,7 +88,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 GuestId = dto.GuestId,
                 RoomTypeId = dto.RoomTypeId,
                 RoomId = dto.RoomId,
-                CheckInDate = dto.CheckInDate,
+                CheckInDate = checkInDate,
                 CheckOutDate = dto.CheckOutDate,
                 NightlyRate = dto.NightlyRate,
                 TotalAmount = financials.RoomTotal,
@@ -67,7 +103,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsPostMaster = dto.IsPostMaster,
                 IsGuestPay = dto.IsGuestPay,
                 IsNoExtend = dto.IsNoExtend,
-                Status = ReservationStatus.Pending,
+                Status = dto.IsWalkIn ? ReservationStatus.CheckIn : ReservationStatus.Pending,
                 Services = financials.ServiceEntities,
                 Adults = dto.Adults,
                 Children = dto.Children,
@@ -77,15 +113,24 @@ namespace PMS.Infrastructure.Implmentations.Services
                 CarPlate = dto.CarPlate
             };
 
+            reservation.CreatedBy = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? _httpContextAccessor.HttpContext?.User?.Identity?.Name
+                ?? "System";
+
+            if (dto.IsWalkIn && dto.RoomId.HasValue)
+            {
+                var roomToOccupy = await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value);
+                if (roomToOccupy != null)
+                    roomToOccupy.RoomStatusId = RoomStatusOccupied;
+            }
+
             await _unitOfWork.Reservations.AddAsync(reservation);
             await _unitOfWork.CompleteAsync();
 
-            // Fetch related entities for response mapping
             var guest = await _unitOfWork.Guests.GetByIdAsync(dto.GuestId);
             var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
             var room = dto.RoomId.HasValue ? await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value) : null;
 
-            // Map manually for response to avoid reloading the full entity just created
             var responseDto = MapToReservationDto(reservation, guest, roomType, room);
 
             return new ResponseObjectDto<ReservationDto>
@@ -417,17 +462,33 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
             }
 
-            // Recalculate Financials
+            List<ExtraService> updateFetchedExtraServices;
+            if (dto.Services != null && dto.Services.Any())
+            {
+                var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
+                var fetched = await _unitOfWork.ExtraServices.GetQueryable()
+                    .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
+                    .ToListAsync();
+                var foundIds = fetched.Select(e => e.Id).ToHashSet();
+                var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
+                if (invalidId != 0)
+                {
+                    return new ResponseObjectDto<ReservationDto>
+                    {
+                        IsSuccess = false,
+                        Message = $"Invalid Service ID: {invalidId}",
+                        StatusCode = 400
+                    };
+                }
+                updateFetchedExtraServices = fetched;
+            }
+            else
+            {
+                updateFetchedExtraServices = new List<ExtraService>();
+            }
+
             var nights = CalculateNights(dto.CheckInDate, dto.CheckOutDate);
-            var financials = CalculateFinancials(dto.NightlyRate, nights, 
-                dto.Services?.Select(s => new CreateReservationServiceDto 
-                { 
-                    ServiceName = s.ServiceName, 
-                    Price = s.Price, 
-                    Quantity = s.Quantity, 
-                    IsPerDay = s.IsPerDay 
-                }).ToList(), 
-                dto.DiscountAmount);
+            var financials = CalculateFinancials(dto.NightlyRate, nights, updateFetchedExtraServices, dto.Services, dto.DiscountAmount);
 
             // Update Fields
             reservation.GuestId = dto.GuestId;
@@ -521,8 +582,43 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Check-out date must be after check-in date", StatusCode = 400 };
             }
 
+            var guest = await _unitOfWork.Guests.GetByIdAsync(dto.GuestId);
+            if (guest == null)
+                return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Guest not found", StatusCode = 400 };
+
+            if (dto.IsWalkIn)
+            {
+                if (string.IsNullOrWhiteSpace(guest.NationalId))
+                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Walk-in requires Guest National ID/Passport for police reporting", StatusCode = 400 };
+                if (!dto.RoomId.HasValue)
+                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Walk-in requires a room assignment", StatusCode = 400 };
+            }
+
+            var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
+            if (roomType == null)
+                return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Room type not found", StatusCode = 400 };
+
+            var mealPlan = await _unitOfWork.MealPlans.GetByIdAsync(dto.MealPlanId);
+            if (mealPlan == null)
+                return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Meal plan not found", StatusCode = 400 };
+
+            var bookingSource = await _unitOfWork.BookingSources.GetByIdAsync(dto.BookingSourceId);
+            if (bookingSource == null)
+                return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Booking source not found", StatusCode = 400 };
+
+            var marketSegment = await _unitOfWork.MarketSegments.GetByIdAsync(dto.MarketSegmentId);
+            if (marketSegment == null)
+                return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Market segment not found", StatusCode = 400 };
+
             if (dto.RoomId.HasValue)
             {
+                var room = await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value);
+                if (room == null)
+                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Room not found", StatusCode = 400 };
+
+                if (dto.IsWalkIn && room.RoomStatusId != RoomStatusClean)
+                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Room is not ready for immediate check-in", StatusCode = 400 };
+
                 bool isRoomTaken = await CheckRoomConflictAsync(dto.RoomId.Value, dto.CheckInDate, dto.CheckOutDate);
                 if (isRoomTaken)
                 {
@@ -603,28 +699,32 @@ namespace PMS.Infrastructure.Implmentations.Services
         }
 
         private (decimal RoomTotal, decimal ServicesTotal, decimal TaxAmount, decimal GrandTotal, List<ReservationService> ServiceEntities)
-            CalculateFinancials(decimal nightlyRate, int nights, List<CreateReservationServiceDto>? services, decimal discountAmount)
+            CalculateFinancials(decimal nightlyRate, int nights, List<ExtraService> extraServices, List<CreateReservationServiceDto>? serviceDtos, decimal discountAmount)
         {
             decimal roomTotal = nightlyRate * nights;
             decimal servicesTotal = 0;
             var serviceEntities = new List<ReservationService>();
 
-            if (services != null && services.Any())
+            if (extraServices != null && extraServices.Any() && serviceDtos != null)
             {
-                foreach (var s in services)
+                foreach (var entity in extraServices)
                 {
-                    var itemTotal = s.IsPerDay
-                        ? (s.Price * s.Quantity * nights)
-                        : (s.Price * s.Quantity);
+                    var dto = serviceDtos.FirstOrDefault(s => s.ExtraServiceId == entity.Id);
+                    var quantity = dto?.Quantity ?? 0;
+                    if (quantity < 1) continue;
+
+                    var itemTotal = entity.IsPerDay
+                        ? (entity.Price * quantity * nights)
+                        : (entity.Price * quantity);
 
                     servicesTotal += itemTotal;
 
                     serviceEntities.Add(new ReservationService
                     {
-                        ServiceName = s.ServiceName,
-                        Price = s.Price,
-                        Quantity = s.Quantity,
-                        IsPerDay = s.IsPerDay,
+                        ServiceName = entity.Name,
+                        Price = entity.Price,
+                        Quantity = quantity,
+                        IsPerDay = entity.IsPerDay,
                         TotalServicePrice = itemTotal
                     });
                 }

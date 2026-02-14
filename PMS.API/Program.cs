@@ -162,10 +162,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+// Exception handler first so error responses go through the rest of the pipeline (including CORS).
+app.UseExceptionHandler("/error");
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
@@ -175,6 +176,17 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Error endpoint: returns JSON with 500 so CORS headers are applied (pipeline re-execution).
+app.MapGet("/error", (HttpContext context) =>
+{
+    var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+    var ex = feature?.Error;
+    var isDev = context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Unhandled exception: {Message}", ex?.Message);
+    var payload = new { message = "An error occurred.", detail = isDev ? ex?.ToString() : (string?)null };
+    return Results.Json(payload, statusCode: StatusCodes.Status500InternalServerError);
+});
 
 app.Run();
 

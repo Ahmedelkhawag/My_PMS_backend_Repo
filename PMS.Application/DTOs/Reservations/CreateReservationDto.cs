@@ -40,6 +40,9 @@ namespace PMS.Application.DTOs.Reservations
 		public bool IsGuestPay { get; set; }
 		public bool IsNoExtend { get; set; }
 
+		// Walk-in: immediate check-in and room occupancy
+		public bool IsWalkIn { get; set; } = false;
+
 		// ==========================
 		// 4. الخدمات الإضافية (القائمة)
 		// ==========================

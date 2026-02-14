@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
@@ -44,7 +44,7 @@ namespace PMS.Application.DTOs.Reservations
 		public bool IsGuestPay { get; set; }
 		public bool IsNoExtend { get; set; }
 
-		// قائمة الخدمات (ممكن النزيل يزود خدمة أو يلغي خدمة)
-		public List<ReservationServiceDto>? Services { get; set; }
+		// قائمة الخدمات (ExtraServiceId + Quantity; backend looks up name/price)
+		public List<CreateReservationServiceDto>? Services { get; set; }
 	}
 }
