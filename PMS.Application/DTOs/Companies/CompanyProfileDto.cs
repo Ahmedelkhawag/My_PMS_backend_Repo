@@ -1,6 +1,8 @@
+using PMS.Application.DTOs.Common;
+
 namespace PMS.Application.DTOs.Companies
 {
-    public class CompanyProfileDto
+    public class CompanyProfileDto : BaseAuditableDto
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;

@@ -97,7 +97,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 				Email = guest.Email,
 				CarNumber = guest.CarNumber,
 				Notes = guest.Notes,
-				IsActive = guest.IsActive
+				IsActive = guest.IsActive,
+				CreatedBy = guest.CreatedBy,
+				CreatedAt = guest.CreatedAt,
+				UpdatedBy = guest.LastModifiedBy,
+				UpdatedAt = guest.LastModifiedAt
 			};
 
 			return response;
@@ -143,7 +147,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 					Email = g.Email,
 					CarNumber = g.CarNumber,
 					Notes = g.Notes,
-					IsActive = g.IsActive
+					IsActive = g.IsActive,
+					CreatedBy = g.CreatedBy,
+					CreatedAt = g.CreatedAt,
+					UpdatedBy = g.LastModifiedBy,
+					UpdatedAt = g.LastModifiedAt
 				})
 				.ToListAsync();
 
@@ -271,7 +279,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 				Email = guest.Email,
 				CarNumber = guest.CarNumber,
 				Notes = guest.Notes,
-				IsActive = guest.IsActive
+				IsActive = guest.IsActive,
+				CreatedBy = guest.CreatedBy,
+				CreatedAt = guest.CreatedAt,
+				UpdatedBy = guest.LastModifiedBy,
+				UpdatedAt = guest.LastModifiedAt
 			};
 
 			return response;

@@ -63,7 +63,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 					StatusColor = r.RoomStatus!.Color,
 					RoomType = r.RoomType!.Name,
 					Price = r.RoomType!.BasePrice,
-					MaxAdults = r.RoomType!.MaxAdults
+					MaxAdults = r.RoomType!.MaxAdults,
+					CreatedBy = r.CreatedBy,
+					CreatedAt = r.CreatedAt,
+					UpdatedBy = r.LastModifiedBy,
+					UpdatedAt = r.LastModifiedAt
 				})
 				.ToListAsync();
 
@@ -107,7 +111,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 						: StatusColorPalette.Secondary,
 				RoomType = room.RoomType?.Name ?? "N/A",
 				Price = room.RoomType?.BasePrice ?? 0,
-				MaxAdults = room.RoomType?.MaxAdults ?? 0
+				MaxAdults = room.RoomType?.MaxAdults ?? 0,
+				CreatedBy = room.CreatedBy,
+				CreatedAt = room.CreatedAt,
+				UpdatedBy = room.LastModifiedBy,
+				UpdatedAt = room.LastModifiedAt
 			};
 			response.StatusCode = 200;
 
@@ -165,7 +173,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 					: StatusColorPalette.Success,
 				RoomType = roomType.Name,
 				Price = roomType.BasePrice,
-				MaxAdults = roomType.MaxAdults
+				MaxAdults = roomType.MaxAdults,
+				CreatedBy = room.CreatedBy,
+				CreatedAt = room.CreatedAt,
+				UpdatedBy = room.LastModifiedBy,
+				UpdatedAt = room.LastModifiedAt
 			};
 			response.StatusCode = 201;
 
@@ -286,7 +298,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 					: StatusColorPalette.Secondary,
 				RoomType = room.RoomType?.Name ?? "",
 				Price = room.RoomType?.BasePrice ?? 0,
-				MaxAdults = room.RoomType?.MaxAdults ?? 0
+				MaxAdults = room.RoomType?.MaxAdults ?? 0,
+				CreatedBy = room.CreatedBy,
+				CreatedAt = room.CreatedAt,
+				UpdatedBy = room.LastModifiedBy,
+				UpdatedAt = room.LastModifiedAt
 			};
 
 			return response;

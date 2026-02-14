@@ -44,7 +44,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 PhoneNumber = company.PhoneNumber,
                 Email = company.Email,
                 Address = company.Address,
-                ContractRateId = company.ContractRateId
+                ContractRateId = company.ContractRateId,
+                CreatedBy = company.CreatedBy,
+                CreatedAt = company.CreatedAt,
+                UpdatedBy = company.LastModifiedBy,
+                UpdatedAt = company.LastModifiedAt
             };
 
             return new ResponseObjectDto<CompanyProfileDto>
@@ -70,7 +74,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                     PhoneNumber = c.PhoneNumber,
                     Email = c.Email,
                     Address = c.Address,
-                    ContractRateId = c.ContractRateId
+                    ContractRateId = c.ContractRateId,
+                    CreatedBy = c.CreatedBy,
+                    CreatedAt = c.CreatedAt,
+                    UpdatedBy = c.LastModifiedBy,
+                    UpdatedAt = c.LastModifiedAt
                 })
                 .ToListAsync();
 

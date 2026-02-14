@@ -850,6 +850,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Notes = reservation.Notes,
                 ExternalReference = reservation.ExternalReference,
                 CarPlate = reservation.CarPlate,
+                CreatedBy = reservation.CreatedBy,
+                CreatedAt = reservation.CreatedAt,
+                UpdatedBy = reservation.LastModifiedBy,
+                UpdatedAt = reservation.LastModifiedAt,
                 Services = reservation.Services?.Select(s => new ReservationServiceDto
                 {
                     ServiceName = s.ServiceName,

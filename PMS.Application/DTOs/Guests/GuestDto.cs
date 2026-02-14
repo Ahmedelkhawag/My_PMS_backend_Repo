@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using PMS.Application.DTOs.Common;
 
 namespace PMS.Application.DTOs.Guests
 {
-    public class GuestDto
+    public class GuestDto : BaseAuditableDto
     {
 		public int Id { get; set; }
 		public string FullName { get; set; }

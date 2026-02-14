@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using PMS.Application.DTOs.Common;
 
 namespace PMS.Application.DTOs.Rooms
 {
-    public class RoomDto
+    public class RoomDto : BaseAuditableDto
     {
         public int Id { get; set; }
         public string RoomNumber { get; set; } = string.Empty;

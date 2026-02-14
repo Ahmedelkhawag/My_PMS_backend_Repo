@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using PMS.Application.DTOs.Common;
 
 namespace PMS.Application.DTOs.Reservations
 {
-    public class ReservationDto
+    public class ReservationDto : BaseAuditableDto
     {
 		public int Id { get; set; }
 		public string ReservationNumber { get; set; }
