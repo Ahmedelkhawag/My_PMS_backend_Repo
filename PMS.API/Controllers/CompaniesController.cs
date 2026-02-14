@@ -71,7 +71,7 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateCompanyProfileDto dto)
         {
-            if (dto != null && dto.Id != id)
+            if (dto != null && dto.Id.HasValue && dto.Id.Value != id)
                 return BadRequest("Route id does not match request body id.");
 
             if (!ModelState.IsValid)

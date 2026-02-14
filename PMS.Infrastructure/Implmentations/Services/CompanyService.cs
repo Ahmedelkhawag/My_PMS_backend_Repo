@@ -182,17 +182,17 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            var nameTrim = dto.Name?.Trim() ?? string.Empty;
-            var emailTrim = dto.Email?.Trim() ?? string.Empty;
-            var phoneTrim = dto.PhoneNumber?.Trim() ?? string.Empty;
-            var taxTrim = string.IsNullOrWhiteSpace(dto.TaxNumber) ? null : dto.TaxNumber.Trim();
+            var nameProposed = dto.Name?.Trim() ?? company.Name;
+            var emailProposed = dto.Email?.Trim() ?? company.Email;
+            var phoneProposed = dto.PhoneNumber?.Trim() ?? company.PhoneNumber;
+            var taxProposed = !string.IsNullOrWhiteSpace(dto.TaxNumber) ? dto.TaxNumber.Trim() : company.TaxNumber;
 
             var existing = await _unitOfWork.CompanyProfiles.GetQueryable()
                 .Where(c => !c.IsDeleted && c.Id != id &&
-                    (c.Name == nameTrim ||
-                     (taxTrim != null && c.TaxNumber == taxTrim) ||
-                     c.Email == emailTrim ||
-                     c.PhoneNumber == phoneTrim))
+                    (c.Name == nameProposed ||
+                     (taxProposed != null && c.TaxNumber == taxProposed) ||
+                     c.Email == emailProposed ||
+                     c.PhoneNumber == phoneProposed))
                 .FirstOrDefaultAsync();
 
             if (existing != null)
@@ -201,17 +201,17 @@ namespace PMS.Infrastructure.Implmentations.Services
                 {
                     IsSuccess = false,
                     StatusCode = 409,
-                    Message = GetDuplicateFieldMessage(existing, nameTrim, taxTrim, emailTrim, phoneTrim)
+                    Message = GetDuplicateFieldMessage(existing, nameProposed, taxProposed, emailProposed, phoneProposed)
                 };
             }
 
-            company.Name = dto.Name;
-            company.TaxNumber = dto.TaxNumber;
-            company.ContactPerson = dto.ContactPerson;
-            company.PhoneNumber = dto.PhoneNumber;
-            company.Email = dto.Email;
-            company.Address = dto.Address;
-            company.ContractRateId = dto.ContractRateId;
+            if (dto.Name != null) company.Name = dto.Name.Trim();
+            if (dto.TaxNumber != null) company.TaxNumber = dto.TaxNumber;
+            if (dto.ContactPerson != null) company.ContactPerson = dto.ContactPerson.Trim();
+            if (dto.PhoneNumber != null) company.PhoneNumber = dto.PhoneNumber.Trim();
+            if (dto.Email != null) company.Email = dto.Email.Trim();
+            if (dto.Address != null) company.Address = dto.Address;
+            if (dto.ContractRateId.HasValue) company.ContractRateId = dto.ContractRateId;
 
             _unitOfWork.CompanyProfiles.Update(company);
             await _unitOfWork.CompleteAsync();
