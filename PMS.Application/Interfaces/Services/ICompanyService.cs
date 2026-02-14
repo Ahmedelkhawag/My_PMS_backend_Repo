@@ -11,5 +11,6 @@ namespace PMS.Application.Interfaces.Services
         Task<ResponseObjectDto<CompanyProfileDto>> GetCompanyByIdAsync(int id);
         Task<ResponseObjectDto<bool>> UpdateCompanyAsync(int id, UpdateCompanyProfileDto dto);
         Task<ResponseObjectDto<bool>> DeleteCompanyAsync(int id);
+        Task<ResponseObjectDto<bool>> RestoreCompanyProfileAsync(int id);
     }
 }

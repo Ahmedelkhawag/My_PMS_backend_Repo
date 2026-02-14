@@ -250,6 +250,48 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
+        public async Task<ResponseObjectDto<bool>> RestoreCompanyProfileAsync(int id)
+        {
+            var company = await _unitOfWork.CompanyProfiles.GetQueryable()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (company == null)
+            {
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = false,
+                    Message = "Company not found",
+                    StatusCode = 404
+                };
+            }
+
+            if (!company.IsDeleted)
+            {
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = false,
+                    Message = "Company is not deleted",
+                    StatusCode = 400
+                };
+            }
+
+            company.IsDeleted = false;
+            company.DeletedAt = null;
+            company.DeletedBy = null;
+
+            _unitOfWork.CompanyProfiles.Update(company);
+            await _unitOfWork.CompleteAsync();
+
+            return new ResponseObjectDto<bool>
+            {
+                IsSuccess = true,
+                Message = "Company restored successfully",
+                StatusCode = 200,
+                Data = true
+            };
+        }
+
         private static string GetDuplicateFieldMessage(CompanyProfile existing, string name, string? taxNumber, string email, string phoneNumber)
         {
             var nameTrim = name?.Trim() ?? string.Empty;
