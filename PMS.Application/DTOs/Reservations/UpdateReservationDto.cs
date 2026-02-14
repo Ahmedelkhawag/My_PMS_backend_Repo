@@ -15,6 +15,8 @@ namespace PMS.Application.DTOs.Reservations
 		public int RoomTypeId { get; set; }
 		public int? RoomId { get; set; }
 
+		public int? CompanyId { get; set; }
+
 		// التواريخ (لو اتغيرت هيتغير السعر)
 		public DateTime CheckInDate { get; set; }
 		public DateTime CheckOutDate { get; set; }
@@ -43,6 +45,7 @@ namespace PMS.Application.DTOs.Reservations
 		public bool IsPostMaster { get; set; }
 		public bool IsGuestPay { get; set; }
 		public bool IsNoExtend { get; set; }
+		public bool IsConfidentialRate { get; set; } = false;
 
 		// قائمة الخدمات (ExtraServiceId + Quantity; backend looks up name/price)
 		public List<CreateReservationServiceDto>? Services { get; set; }

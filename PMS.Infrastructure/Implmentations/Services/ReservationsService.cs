@@ -88,6 +88,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 GuestId = dto.GuestId,
                 RoomTypeId = dto.RoomTypeId,
                 RoomId = dto.RoomId,
+                CompanyId = dto.CompanyId,
                 CheckInDate = checkInDate,
                 CheckOutDate = dto.CheckOutDate,
                 NightlyRate = dto.NightlyRate,
@@ -103,6 +104,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsPostMaster = dto.IsPostMaster,
                 IsGuestPay = dto.IsGuestPay,
                 IsNoExtend = dto.IsNoExtend,
+                IsConfidentialRate = dto.IsConfidentialRate,
                 Status = dto.IsWalkIn ? ReservationStatus.CheckIn : ReservationStatus.Pending,
                 Services = financials.ServiceEntities,
                 Adults = dto.Adults,
@@ -438,6 +440,16 @@ namespace PMS.Infrastructure.Implmentations.Services
             var reservation = await GetReservationWithDetailsAsync(dto.Id);
             if (reservation == null) return NotFoundResponse<ReservationDto>("Reservation not found");
 
+            if (reservation.IsNoExtend && dto.CheckOutDate.Date > reservation.CheckOutDate.Date)
+            {
+                return new ResponseObjectDto<ReservationDto>
+                {
+                    IsSuccess = false,
+                    Message = "Cannot extend stay. Reservation is marked as No-Extend.",
+                    StatusCode = 400
+                };
+            }
+
             if (dto.CheckOutDate.Date <= dto.CheckInDate.Date)
             {
                 return new ResponseObjectDto<ReservationDto>
@@ -512,6 +524,9 @@ namespace PMS.Infrastructure.Implmentations.Services
             reservation.CarPlate = dto.CarPlate;
             reservation.Adults = dto.Adults;
             reservation.Children = dto.Children;
+            reservation.CompanyId = dto.CompanyId;
+            reservation.IsConfidentialRate = dto.IsConfidentialRate;
+            reservation.IsNoExtend = dto.IsNoExtend;
 
             // Clear old services logic handled by establishing a new list
             // EF Core will handle the diff if we simply replace the collection or clear and add
@@ -772,6 +787,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Include(r => r.BookingSource)
                 .Include(r => r.MealPlan)
                 .Include(r => r.MarketSegment)
+                .Include(r => r.Company)
                 .FirstOrDefaultAsync(r => r.Id == id);
         }
 
@@ -814,6 +830,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 RoomTypeName = roomType?.Name ?? "Unknown",
                 RoomId = reservation.RoomId,
                 RoomNumber = room?.RoomNumber ?? "Unassigned",
+                CompanyId = reservation.CompanyId,
+                CompanyName = reservation.Company?.Name,
                 CheckInDate = reservation.CheckInDate,
                 CheckOutDate = reservation.CheckOutDate,
                 Nights = CalculateNights(reservation.CheckInDate, reservation.CheckOutDate),

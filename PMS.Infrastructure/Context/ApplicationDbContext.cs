@@ -36,6 +36,7 @@ namespace PMS.Infrastructure.Context
 		public DbSet<MarketSegment> MarketSegments { get; set; }
 		public DbSet<MealPlan> MealPlans { get; set; }
 		public DbSet<RoomStatusLookup> RoomStatusLookups { get; set; }
+		public DbSet<CompanyProfile> CompanyProfiles { get; set; }
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);

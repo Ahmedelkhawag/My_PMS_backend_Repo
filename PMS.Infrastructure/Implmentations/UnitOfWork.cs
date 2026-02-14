@@ -1,4 +1,4 @@
-﻿using PMS.Application.Interfaces.Repositories;
+using PMS.Application.Interfaces.Repositories;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.Configuration;
@@ -27,6 +27,7 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<MealPlan> MealPlans { get; private set; }
 		public IBaseRepository<RoomStatusLookup> RoomStatuses { get; private set; }
 		public IBaseRepository<ExtraService> ExtraServices { get; private set; }
+		public IBaseRepository<CompanyProfile> CompanyProfiles { get; private set; }
 		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -45,7 +46,8 @@ namespace PMS.Infrastructure.Implmentations
 			MarketSegments = new BaseRepository<MarketSegment>(_context);
 			MealPlans = new BaseRepository<MealPlan>(_context);
 			RoomStatuses = new BaseRepository<RoomStatusLookup>(_context);
-            ExtraServices = new BaseRepository<ExtraService>(_context);
+			ExtraServices = new BaseRepository<ExtraService>(_context);
+			CompanyProfiles = new BaseRepository<CompanyProfile>(_context);
 		}
 
         public async Task<int> CompleteAsync()

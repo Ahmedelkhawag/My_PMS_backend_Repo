@@ -16,6 +16,8 @@ namespace PMS.Application.DTOs.Reservations
 		// ممكن يكون null لو حجز "Waiting List" أو لسه مخصصناش غرفة
 		public int? RoomId { get; set; }
 
+		public int? CompanyId { get; set; }
+
 		// ==========================
 		// 2. التواريخ
 		// ==========================
@@ -39,6 +41,7 @@ namespace PMS.Application.DTOs.Reservations
 		public bool IsPostMaster { get; set; }
 		public bool IsGuestPay { get; set; }
 		public bool IsNoExtend { get; set; }
+		public bool IsConfidentialRate { get; set; } = false;
 
 		// Walk-in: immediate check-in and room occupancy
 		public bool IsWalkIn { get; set; } = false;

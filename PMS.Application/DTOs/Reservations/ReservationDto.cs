@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -21,6 +21,9 @@ namespace PMS.Application.DTOs.Reservations
 		public string RoomTypeName { get; set; }
 		public int? RoomId { get; set; }
 		public string? RoomNumber { get; set; }
+
+		public int? CompanyId { get; set; }
+		public string? CompanyName { get; set; }
 
 		// 3. التواريخ
 		public DateTime CheckInDate { get; set; }

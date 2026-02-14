@@ -1,4 +1,4 @@
-﻿using PMS.Application.Interfaces.Repositories;
+using PMS.Application.Interfaces.Repositories;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.Configuration;
 using System;
@@ -24,8 +24,7 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<MealPlan> MealPlans { get; }
 		IBaseRepository<RoomStatusLookup> RoomStatuses { get; }
 		IBaseRepository<ExtraService> ExtraServices { get; }
-
-
+		IBaseRepository<CompanyProfile> CompanyProfiles { get; }
 
 		//  SaveChanges
 		Task<int> CompleteAsync();

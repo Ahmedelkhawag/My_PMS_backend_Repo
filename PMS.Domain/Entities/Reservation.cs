@@ -1,4 +1,4 @@
-﻿using PMS.Domain.Entities.Configuration;
+using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Enums;
 using PMS.Domain.Interfaces;
 using System;
@@ -31,6 +31,9 @@ namespace PMS.Domain.Entities
 		[Required]
 		public int RoomTypeId { get; set; }
 		public RoomType RoomType { get; set; }
+
+		public int? CompanyId { get; set; }
+		public CompanyProfile? Company { get; set; }
 
 		public ICollection<ReservationService> Services { get; set; } = new List<ReservationService>();
 
@@ -75,6 +78,7 @@ namespace PMS.Domain.Entities
 		public bool IsPostMaster { get; set; } = false;
 		public bool IsNoExtend { get; set; } = false;
 		public bool IsGuestPay { get; set; } = true;
+		public bool IsConfidentialRate { get; set; } = false;
 
 		public int Adults { get; set; } = 1;
 		public int Children { get; set; } = 0;
