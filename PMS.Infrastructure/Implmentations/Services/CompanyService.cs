@@ -4,6 +4,7 @@ using PMS.Application.DTOs.Companies;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -20,6 +21,28 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<CompanyProfileDto>> CreateCompanyAsync(CreateCompanyProfileDto dto)
         {
+            var nameTrim = dto.Name?.Trim() ?? string.Empty;
+            var emailTrim = dto.Email?.Trim() ?? string.Empty;
+            var phoneTrim = dto.PhoneNumber?.Trim() ?? string.Empty;
+            var taxTrim = string.IsNullOrWhiteSpace(dto.TaxNumber) ? null : dto.TaxNumber.Trim();
+
+            var existing = await _unitOfWork.CompanyProfiles.GetQueryable()
+                .Where(c => !c.IsDeleted &&
+                    (c.Name == nameTrim ||
+                     (taxTrim != null && c.TaxNumber == taxTrim) ||
+                     c.Email == emailTrim ||
+                     c.PhoneNumber == phoneTrim))
+                .FirstOrDefaultAsync();
+            if (existing != null)
+            {
+                return new ResponseObjectDto<CompanyProfileDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = 409,
+                    Message = GetDuplicateFieldMessage(existing, nameTrim, taxTrim, emailTrim, phoneTrim)
+                };
+            }
+
             var company = new CompanyProfile
             {
                 Name = dto.Name,
@@ -146,9 +169,9 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-        public async Task<ResponseObjectDto<bool>> UpdateCompanyAsync(UpdateCompanyProfileDto dto)
+        public async Task<ResponseObjectDto<bool>> UpdateCompanyAsync(int id, UpdateCompanyProfileDto dto)
         {
-            var company = await _unitOfWork.CompanyProfiles.GetByIdAsync(dto.Id);
+            var company = await _unitOfWork.CompanyProfiles.GetByIdAsync(id);
             if (company == null || company.IsDeleted)
             {
                 return new ResponseObjectDto<bool>
@@ -156,6 +179,29 @@ namespace PMS.Infrastructure.Implmentations.Services
                     IsSuccess = false,
                     Message = "Company not found",
                     StatusCode = 404
+                };
+            }
+
+            var nameTrim = dto.Name?.Trim() ?? string.Empty;
+            var emailTrim = dto.Email?.Trim() ?? string.Empty;
+            var phoneTrim = dto.PhoneNumber?.Trim() ?? string.Empty;
+            var taxTrim = string.IsNullOrWhiteSpace(dto.TaxNumber) ? null : dto.TaxNumber.Trim();
+
+            var existing = await _unitOfWork.CompanyProfiles.GetQueryable()
+                .Where(c => !c.IsDeleted && c.Id != id &&
+                    (c.Name == nameTrim ||
+                     (taxTrim != null && c.TaxNumber == taxTrim) ||
+                     c.Email == emailTrim ||
+                     c.PhoneNumber == phoneTrim))
+                .FirstOrDefaultAsync();
+
+            if (existing != null)
+            {
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = false,
+                    StatusCode = 409,
+                    Message = GetDuplicateFieldMessage(existing, nameTrim, taxTrim, emailTrim, phoneTrim)
                 };
             }
 
@@ -202,6 +248,24 @@ namespace PMS.Infrastructure.Implmentations.Services
                 StatusCode = 200,
                 Data = true
             };
+        }
+
+        private static string GetDuplicateFieldMessage(CompanyProfile existing, string name, string? taxNumber, string email, string phoneNumber)
+        {
+            var nameTrim = name?.Trim() ?? string.Empty;
+            var emailTrim = email?.Trim() ?? string.Empty;
+            var phoneTrim = phoneNumber?.Trim() ?? string.Empty;
+
+            if (existing.Name.Equals(nameTrim, StringComparison.OrdinalIgnoreCase))
+                return "Company name already exists";
+            if (!string.IsNullOrWhiteSpace(taxNumber) && existing.TaxNumber != null && existing.TaxNumber.Equals(taxNumber.Trim(), StringComparison.Ordinal))
+                return "Tax Number already exists";
+            if (existing.Email.Equals(emailTrim, StringComparison.OrdinalIgnoreCase))
+                return "Email address is already registered";
+            if (existing.PhoneNumber?.Trim() == phoneTrim)
+                return "Phone number is already registered";
+
+            return "A company with the same details already exists";
         }
     }
 }

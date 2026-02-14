@@ -9,7 +9,7 @@ namespace PMS.Application.Interfaces.Services
         Task<ResponseObjectDto<CompanyProfileDto>> CreateCompanyAsync(CreateCompanyProfileDto dto);
         Task<ResponseObjectDto<PagedResult<CompanyProfileDto>>> GetAllCompaniesAsync(string? search, int pageNumber, int pageSize);
         Task<ResponseObjectDto<CompanyProfileDto>> GetCompanyByIdAsync(int id);
-        Task<ResponseObjectDto<bool>> UpdateCompanyAsync(UpdateCompanyProfileDto dto);
+        Task<ResponseObjectDto<bool>> UpdateCompanyAsync(int id, UpdateCompanyProfileDto dto);
         Task<ResponseObjectDto<bool>> DeleteCompanyAsync(int id);
     }
 }

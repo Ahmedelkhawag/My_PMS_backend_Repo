@@ -63,18 +63,21 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        [HttpPut]
+        [HttpPut("{id}")]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Update([FromBody] UpdateCompanyProfileDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateCompanyProfileDto dto)
         {
+            if (dto != null && dto.Id != id)
+                return BadRequest("Route id does not match request body id.");
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _companyService.UpdateCompanyAsync(dto);
+            var result = await _companyService.UpdateCompanyAsync(id, dto);
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);
