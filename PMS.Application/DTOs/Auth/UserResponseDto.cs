@@ -1,10 +1,9 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
+using PMS.Application.DTOs.Common;
 
 namespace PMS.Application.DTOs.Auth
 {
-    public class UserResponseDto
+    public class UserResponseDto : BaseAuditableDto
     {
         public string Id { get; set; }
         public string FullName { get; set; }
@@ -13,7 +12,6 @@ namespace PMS.Application.DTOs.Auth
         public string PhoneNumber { get; set; }
         public bool IsActive { get; set; } // true = Active, false = Inactive/Suspended
         public string Role { get; set; } // Manager, Receptionist...
-        public DateTime CreatedAt { get; set; } // لو عندك، أو ممكن نستغنى عنها
         public int? HotelId { get; set; }
     }
 }

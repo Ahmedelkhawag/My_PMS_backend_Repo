@@ -390,7 +390,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                     PhoneNumber = user.PhoneNumber,
                     IsActive = user.IsActive,
                     Role = roles.FirstOrDefault() ?? "Employee",
-                    HotelId = user.HotelId
+                    HotelId = user.HotelId,
+                    CreatedBy = user.CreatedBy,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedBy = user.LastModifiedBy,
+                    UpdatedAt = user.LastModifiedAt
                 });
             }
 
@@ -449,7 +453,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Gender = targetUser.Gender?.ToString(),
                 DateOfBirth = targetUser.DateOfBirth,
                 ProfileImagePath = targetUser.ProfileImagePath,
-                DocumentPaths = targetUser.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>()
+                DocumentPaths = targetUser.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>(),
+                CreatedBy = targetUser.CreatedBy,
+                CreatedAt = targetUser.CreatedAt,
+                UpdatedBy = targetUser.LastModifiedBy,
+                UpdatedAt = targetUser.LastModifiedAt
             };
 
             return new ApiResponse<UserDetailDto>(userDetail, "User details retrieved successfully");
@@ -486,7 +494,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Gender = user.Gender?.ToString(),
                 DateOfBirth = user.DateOfBirth,
                 ProfileImagePath = user.ProfileImagePath,
-                DocumentPaths = user.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>()
+                DocumentPaths = user.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>(),
+                CreatedBy = user.CreatedBy,
+                CreatedAt = user.CreatedAt,
+                UpdatedBy = user.LastModifiedBy,
+                UpdatedAt = user.LastModifiedAt
             };
 
             return new ApiResponse<UserDetailDto>(userDetail, "Profile retrieved successfully");
@@ -817,7 +829,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                     PhoneNumber = user.PhoneNumber,
                     IsActive = user.IsActive,
                     Role = roles.FirstOrDefault() ?? "Employee",
-                    HotelId = user.HotelId
+                    HotelId = user.HotelId,
+                    CreatedBy = user.CreatedBy,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedBy = user.LastModifiedBy,
+                    UpdatedAt = user.LastModifiedAt
                 });
             }
 
