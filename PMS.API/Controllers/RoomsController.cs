@@ -147,5 +147,35 @@ namespace PMS.API.Controllers
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);
         }
+
+        [HttpPost("{id}/maintenance/start")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> StartMaintenance(int id, [FromBody] RoomMaintenanceDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Reason))
+                return BadRequest("Reason is required.");
+            var result = await _roomService.StartMaintenanceAsync(id, dto);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/maintenance/finish")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> FinishMaintenance(int id)
+        {
+            var result = await _roomService.FinishMaintenanceAsync(id);
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+            return Ok(result);
+        }
     }
 }

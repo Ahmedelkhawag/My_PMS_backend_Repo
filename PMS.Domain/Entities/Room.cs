@@ -42,6 +42,12 @@ namespace PMS.Domain.Entities
 		public int RoomStatusId { get; set; } // بدل Enum - retained for legacy; FO status computed from reservations
 		[ForeignKey("RoomStatusId")]
 		public RoomStatusLookup RoomStatus { get; set; }
+
+		// Maintenance (OOO) tracking
+		public string? MaintenanceReason { get; set; }
+		public DateTime? MaintenanceStartDate { get; set; }
+		public DateTime? MaintenanceEndDate { get; set; }
+		public string? MaintenanceRemarks { get; set; }
 		public string? CreatedBy { get; set; }
 		public DateTime CreatedAt { get; set; }
 

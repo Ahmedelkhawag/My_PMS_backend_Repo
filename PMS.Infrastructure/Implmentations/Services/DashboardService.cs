@@ -49,7 +49,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             // على نفس الـ DbContext. لذلك ننفذ كل CountAsync بالتسلسل.
 
             var totalRooms = await roomsQuery.CountAsync();
-            var availableRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_CLEAN);
+            var availableRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_CLEAN && r.HKStatus != HKStatus.OOO);
             var occupiedRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_OCCUPIED);
             var dirtyRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_DIRTY);
             var outOfServiceRooms = await roomsQuery.CountAsync(r =>

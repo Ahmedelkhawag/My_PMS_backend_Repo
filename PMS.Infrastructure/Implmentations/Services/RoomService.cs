@@ -373,6 +373,82 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
+		public async Task<ResponseObjectDto<bool>> StartMaintenanceAsync(int roomId, RoomMaintenanceDto dto)
+		{
+			var response = new ResponseObjectDto<bool>();
+
+			var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
+			if (room == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة غير موجودة";
+				response.StatusCode = 404;
+				return response;
+			}
+
+			var occupiedReservation = await _unitOfWork.Reservations.GetQueryable()
+				.FirstOrDefaultAsync(r => r.RoomId == roomId && r.Status == ReservationStatus.CheckIn && !r.IsDeleted);
+			if (occupiedReservation != null)
+			{
+				response.IsSuccess = false;
+				response.Message = "Cannot place an occupied room Out of Order.";
+				response.StatusCode = 400;
+				return response;
+			}
+
+			room.HKStatus = HKStatus.OOO;
+			room.MaintenanceReason = dto.Reason;
+			room.MaintenanceStartDate = dto.StartDate;
+			room.MaintenanceEndDate = dto.EndDate;
+			room.MaintenanceRemarks = dto.Remarks;
+
+			_unitOfWork.Rooms.Update(room);
+			await _unitOfWork.CompleteAsync();
+
+			response.IsSuccess = true;
+			response.Message = "تم وضع الغرفة في حالة صيانة (خارج الخدمة) بنجاح";
+			response.Data = true;
+			response.StatusCode = 200;
+			return response;
+		}
+
+		public async Task<ResponseObjectDto<bool>> FinishMaintenanceAsync(int roomId)
+		{
+			var response = new ResponseObjectDto<bool>();
+
+			var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
+			if (room == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "الغرفة غير موجودة";
+				response.StatusCode = 404;
+				return response;
+			}
+
+			if (room.HKStatus != HKStatus.OOO)
+			{
+				response.IsSuccess = false;
+				response.Message = "Room is not in Out-of-Order status.";
+				response.StatusCode = 400;
+				return response;
+			}
+
+			room.HKStatus = HKStatus.Dirty;
+			room.MaintenanceReason = null;
+			room.MaintenanceStartDate = null;
+			room.MaintenanceEndDate = null;
+			room.MaintenanceRemarks = null;
+
+			_unitOfWork.Rooms.Update(room);
+			await _unitOfWork.CompleteAsync();
+
+			response.IsSuccess = true;
+			response.Message = "تم إنهاء الصيانة؛ الغرفة بحالة متسخة وتحتاج تنظيفاً.";
+			response.Data = true;
+			response.StatusCode = 200;
+			return response;
+		}
+
 		// 7. إحصائيات الغرف
 		public async Task<ResponseObjectDto<RoomStatsDto>> GetRoomStatsAsync()
 		{
@@ -389,7 +465,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				.Where(r => !r.IsDeleted && r.IsActive);
 
 			var totalRooms = await roomsQuery.CountAsync();
-			var availableRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_CLEAN);
+			var availableRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_CLEAN && r.HKStatus != HKStatus.OOO);
 			var occupiedRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_OCCUPIED);
 			var dirtyRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_DIRTY);
 			var outOfServiceRooms = await roomsQuery.CountAsync(r =>

@@ -20,5 +20,7 @@ namespace PMS.Application.Interfaces.Services
         Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes);
         Task<ResponseObjectDto<bool>> RestoreRoomAsync(int id);
         Task<ResponseObjectDto<RoomStatsDto>> GetRoomStatsAsync();
+        Task<ResponseObjectDto<bool>> StartMaintenanceAsync(int roomId, RoomMaintenanceDto dto);
+        Task<ResponseObjectDto<bool>> FinishMaintenanceAsync(int roomId);
     }
 }
