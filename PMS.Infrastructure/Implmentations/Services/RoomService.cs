@@ -454,22 +454,17 @@ namespace PMS.Infrastructure.Implmentations.Services
 		{
 			var response = new ResponseObjectDto<RoomStatsDto>();
 
-			const int ROOM_STATUS_CLEAN = 1;
-			const int ROOM_STATUS_DIRTY = 2;
-			const int ROOM_STATUS_MAINTENANCE = 3;
-			const int ROOM_STATUS_OUT_OF_ORDER = 4;
-			const int ROOM_STATUS_OCCUPIED = 5;
-
 			var roomsQuery = _unitOfWork.Rooms
 				.GetQueryable()
 				.Where(r => !r.IsDeleted && r.IsActive);
 
 			var totalRooms = await roomsQuery.CountAsync();
-			var availableRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_CLEAN && r.HKStatus != HKStatus.OOO);
-			var occupiedRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_OCCUPIED);
-			var dirtyRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_DIRTY);
+			var availableRooms = await roomsQuery.CountAsync(r => r.HKStatus == HKStatus.Clean);
+			var dirtyRooms = await roomsQuery.CountAsync(r => r.HKStatus == HKStatus.Dirty);
 			var outOfServiceRooms = await roomsQuery.CountAsync(r =>
-				r.RoomStatusId == ROOM_STATUS_MAINTENANCE || r.RoomStatusId == ROOM_STATUS_OUT_OF_ORDER);
+				r.HKStatus == HKStatus.OOO || r.HKStatus == HKStatus.OOS);
+			var occupiedRooms = await _unitOfWork.Reservations.GetQueryable()
+				.CountAsync(r => r.Status == ReservationStatus.CheckIn && !r.IsDeleted);
 
 			decimal occupancyPercentage = 0;
 			if (totalRooms > 0 && occupiedRooms > 0)

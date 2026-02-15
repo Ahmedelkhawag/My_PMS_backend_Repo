@@ -13,12 +13,6 @@ namespace PMS.Infrastructure.Implmentations.Services
     {
         private readonly IUnitOfWork _unitOfWork;
 
-        private const int ROOM_STATUS_CLEAN = 1;
-        private const int ROOM_STATUS_DIRTY = 2;
-        private const int ROOM_STATUS_MAINTENANCE = 3;
-        private const int ROOM_STATUS_OUT_OF_ORDER = 4;
-        private const int ROOM_STATUS_OCCUPIED = 5;
-
         public DashboardService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
@@ -49,11 +43,12 @@ namespace PMS.Infrastructure.Implmentations.Services
             // على نفس الـ DbContext. لذلك ننفذ كل CountAsync بالتسلسل.
 
             var totalRooms = await roomsQuery.CountAsync();
-            var availableRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_CLEAN && r.HKStatus != HKStatus.OOO);
-            var occupiedRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_OCCUPIED);
-            var dirtyRooms = await roomsQuery.CountAsync(r => r.RoomStatusId == ROOM_STATUS_DIRTY);
+            var availableRooms = await roomsQuery.CountAsync(r => r.HKStatus == HKStatus.Clean);
+            var dirtyRooms = await roomsQuery.CountAsync(r => r.HKStatus == HKStatus.Dirty);
             var outOfServiceRooms = await roomsQuery.CountAsync(r =>
-                r.RoomStatusId == ROOM_STATUS_MAINTENANCE || r.RoomStatusId == ROOM_STATUS_OUT_OF_ORDER);
+                r.HKStatus == HKStatus.OOO || r.HKStatus == HKStatus.OOS);
+            var occupiedRooms = await _unitOfWork.Reservations.GetQueryable()
+                .CountAsync(r => r.Status == ReservationStatus.CheckIn && !r.IsDeleted);
 
             var totalReservations = await reservationsQuery.CountAsync();
             var createdToday = await reservationsQuery.CountAsync(r => r.CreatedAt.Date == today);
