@@ -514,7 +514,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             reservation.DiscountAmount = dto.DiscountAmount;
             reservation.TaxAmount = financials.TaxAmount;
             reservation.GrandTotal = financials.GrandTotal;
-            reservation.RateCode = dto.RateCode;
+            reservation.RateCode = string.IsNullOrWhiteSpace(dto.RateCode) ? "Standard" : dto.RateCode;
             reservation.MealPlanId = dto.MealPlanId;
             reservation.BookingSourceId = dto.BookingSourceId;
             reservation.MarketSegmentId = dto.MarketSegmentId;
