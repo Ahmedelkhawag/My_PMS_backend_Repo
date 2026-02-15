@@ -15,12 +15,11 @@ namespace PMS.Domain.Entities
 
 		public int Id { get; set; }
 
-		// 1. الأساسيات
 		[Required]
 		public string ReservationNumber { get; set; } = string.Empty;
 		public string? ExternalReference { get; set; }
 
-		// 2. العلاقات (النزيل والغرفة)
+		
 		[Required]
 		public int GuestId { get; set; }
 		public Guest Guest { get; set; }
@@ -37,11 +36,11 @@ namespace PMS.Domain.Entities
 
 		public ICollection<ReservationService> Services { get; set; } = new List<ReservationService>();
 
-		// 3. التواريخ
+	
 		public DateTime CheckInDate { get; set; }
 		public DateTime CheckOutDate { get; set; }
 
-		// 4. الماليات
+		
 		[Column(TypeName = "decimal(18,2)")]
 		public decimal NightlyRate { get; set; }
 		[Column(TypeName = "decimal(18,2)")]
@@ -53,28 +52,24 @@ namespace PMS.Domain.Entities
 		[Column(TypeName = "decimal(18,2)")]
 		public decimal GrandTotal { get; set; }
 
-		// 5. الحالة والمصدر
 		public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
 
-		// 👇 تعديل المصدر (بدل Enum بقى جدول)
+
 		public int BookingSourceId { get; set; }
 		public BookingSource BookingSource { get; set; }
 
 
-		// 6. تفاصيل البيزنس (Lookups)
-		// ==========================================
 
-		public string RateCode { get; set; } = "Standard"; // دي لسه معملنلهاش جدول فهنسيبها نص مؤقتاً
+		public string RateCode { get; set; } = "Standard"; 
 
-		// 👇 تعديل خطة الوجبات (بدل string بقى جدول)
+		
 		public int MealPlanId { get; set; }
 		public MealPlan MealPlan { get; set; }
 
-		// 👇 تعديل قطاع السوق (بدل string بقى جدول)
+	
 		public int MarketSegmentId { get; set; }
 		public MarketSegment MarketSegment { get; set; }
 
-		// تفاصيل أخرى
 		public bool IsPostMaster { get; set; } = false;
 		public bool IsNoExtend { get; set; } = false;
 		public bool IsGuestPay { get; set; } = true;
