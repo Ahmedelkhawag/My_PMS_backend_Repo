@@ -44,6 +44,9 @@ namespace PMS.Application.DTOs.Reservations
 		public decimal TaxAmount { get; set; }
 		public decimal GrandTotal { get; set; }
 
+		public bool IsNoExtend { get; set; }
+		public bool IsConfidentialRate { get; set; }
+
 		public string Status { get; set; }
 		public string? Notes { get; set; }
 

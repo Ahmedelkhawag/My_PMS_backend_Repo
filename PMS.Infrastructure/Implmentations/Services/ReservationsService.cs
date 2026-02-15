@@ -817,7 +817,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         private ReservationDto MapToReservationDto(Reservation reservation, Guest? guest, RoomType? roomType, Room? room)
         {
-            return new ReservationDto
+            var dto = new ReservationDto
             {
                 Id = reservation.Id,
                 ReservationNumber = reservation.ReservationNumber,
@@ -841,6 +841,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 DiscountAmount = reservation.DiscountAmount,
                 TaxAmount = reservation.TaxAmount,
                 GrandTotal = reservation.GrandTotal,
+                IsNoExtend = reservation.IsNoExtend,
+                IsConfidentialRate = reservation.IsConfidentialRate,
                 Status = reservation.Status.ToString(),
                 RateCode = reservation.RateCode,
                 MealPlan = reservation.MealPlan?.Name ?? "Unknown",
@@ -863,6 +865,19 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Total = s.TotalServicePrice
                 }).ToList() ?? new List<ReservationServiceDto>()
             };
+
+            if (reservation.IsConfidentialRate)
+            {
+                dto.NightlyRate = 0;
+                dto.TotalAmount = 0;
+                dto.ServicesAmount = 0;
+                dto.DiscountAmount = 0;
+                dto.TaxAmount = 0;
+                dto.GrandTotal = 0;
+                dto.RateCode = "CONFIDENTIAL";
+            }
+
+            return dto;
         }
 
        
