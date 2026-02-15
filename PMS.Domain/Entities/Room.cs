@@ -1,4 +1,4 @@
-﻿using PMS.Domain.Entities.Configuration;
+using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Enums;
 using PMS.Domain.Interfaces;
 using System;
@@ -31,7 +31,15 @@ namespace PMS.Domain.Entities
         [ForeignKey("RoomTypeId")]
         public RoomType? RoomType { get; set; }
 
-		public int RoomStatusId { get; set; } // بدل Enum
+        public HKStatus HKStatus { get; set; } = HKStatus.Dirty;
+        public BedType BedType { get; set; } = BedType.Single;
+        public string? ViewType { get; set; }
+        public int MaxAdults { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal BasePrice { get; set; }
+
+		public int RoomStatusId { get; set; } // بدل Enum - retained for legacy; FO status computed from reservations
 		[ForeignKey("RoomStatusId")]
 		public RoomStatusLookup RoomStatus { get; set; }
 		public string? CreatedBy { get; set; }

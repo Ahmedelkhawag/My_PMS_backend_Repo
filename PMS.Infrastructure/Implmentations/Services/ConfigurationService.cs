@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Configuration;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
@@ -17,6 +18,51 @@ namespace PMS.Infrastructure.Implmentations.Services
 		public ConfigurationService(IUnitOfWork unitOfWork)
 		{
 			_unitOfWork = unitOfWork;
+		}
+
+		public Task<ResponseObjectDto<StatusConfigurationDto>> GetStatusConfigurationAsync()
+		{
+			var hkColors = new Dictionary<HKStatus, string>
+			{
+				{ HKStatus.Clean, "#28a745" },
+				{ HKStatus.Dirty, "#dc3545" },
+				{ HKStatus.Inspected, "#17a2b8" },
+				{ HKStatus.OOO, "#343a40" },
+				{ HKStatus.OOS, "#6c757d" }
+			};
+			var foColors = new Dictionary<FOStatus, string>
+			{
+				{ FOStatus.Vacant, "#28a745" },
+				{ FOStatus.Occupied, "#007bff" }
+			};
+			const string bedTypeColor = "#000000";
+
+			var hkStatuses = Enum.GetValues(typeof(HKStatus)).Cast<HKStatus>()
+				.Select(v => new EnumLookupDto { Value = (int)v, Name = v.ToString(), ColorCode = hkColors[v] })
+				.ToList();
+			var foStatuses = Enum.GetValues(typeof(FOStatus)).Cast<FOStatus>()
+				.Select(v => new EnumLookupDto { Value = (int)v, Name = v.ToString(), ColorCode = foColors[v] })
+				.ToList();
+			var bedTypes = Enum.GetValues(typeof(BedType)).Cast<BedType>()
+				.Select(v => new EnumLookupDto { Value = (int)v, Name = v.ToString(), ColorCode = bedTypeColor })
+				.ToList();
+
+			var data = new StatusConfigurationDto
+			{
+				HkStatuses = hkStatuses,
+				FoStatuses = foStatuses,
+				BedTypes = bedTypes
+			};
+
+			var response = new ResponseObjectDto<StatusConfigurationDto>
+			{
+				IsSuccess = true,
+				StatusCode = 200,
+				Message = "Status configuration retrieved successfully",
+				Data = data
+			};
+
+			return Task.FromResult(response);
 		}
 
 		public async Task<IEnumerable<LookupDto>> GetBookingSourcesAsync()

@@ -1,3 +1,4 @@
+using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Configuration;
 using System;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ namespace PMS.Application.Interfaces.Services
 {
     public interface IConfigurationService
     {
+		Task<ResponseObjectDto<StatusConfigurationDto>> GetStatusConfigurationAsync();
 		Task<IEnumerable<LookupDto>> GetBookingSourcesAsync();
 		Task<IEnumerable<LookupDto>> GetMarketSegmentsAsync();
 		Task<IEnumerable<MealPlanLookupDto>> GetMealPlansAsync();

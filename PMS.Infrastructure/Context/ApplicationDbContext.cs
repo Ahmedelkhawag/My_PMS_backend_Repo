@@ -21,6 +21,13 @@ namespace PMS.Infrastructure.Context
 		{
 			_httpContextAccessor = httpContextAccessor;
 		}
+
+		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+		{
+			base.OnConfiguring(optionsBuilder);
+			optionsBuilder.ConfigureWarnings(w =>
+				w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+		}
 		public DbSet<Status> Statuses { get; set; }
 		public DbSet<Country> Countries { get; set; }
 		public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }

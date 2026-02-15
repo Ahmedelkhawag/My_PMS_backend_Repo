@@ -6,8 +6,8 @@ using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
 using PMS.Domain.Constants;
+using PMS.Domain.Enums;
 using PMS.Application.Validation;
-// using PMS.Domain.Enums; // مش محتاجينه
 
 namespace PMS.Infrastructure.Implmentations.Services
 {
@@ -20,15 +20,15 @@ namespace PMS.Infrastructure.Implmentations.Services
 			_unitOfWork = unitOfWork;
 		}
 
-		// 1. استرجاع كل الغرف (مع الألوان) + Pagination
+		// 1. استرجاع كل الغرف (Dashboard: FO/HK status + current reservation) + Pagination
 		public async Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status, int pageNumber, int pageSize)
 		{
 			var response = new ResponseObjectDto<PagedResult<RoomDto>>();
 
 			var query = _unitOfWork.Rooms.GetQueryable()
 				.Include(r => r.RoomType)
-				.Include(r => r.RoomStatus) // ضروري
-				.Where(r => r.IsActive)     // لا نعرض الغرف المؤرشفة
+				.Include(r => r.RoomStatus)
+				.Where(r => r.IsActive)
 				.AsQueryable();
 
 			if (floor.HasValue)
@@ -38,9 +38,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				query = query.Where(r => r.RoomTypeId == roomTypeId);
 
 			if (!string.IsNullOrEmpty(status))
-			{
 				query = query.Where(r => r.RoomStatus.Name == status);
-			}
 
 			var totalCount = await query.CountAsync();
 
@@ -49,27 +47,24 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 			var skip = (pageNumber - 1) * pageSize;
 
-			var items = await query
+			var rooms = await query
 				.OrderBy(r => r.FloorNumber)
 				.ThenBy(r => r.RoomNumber)
 				.Skip(skip)
 				.Take(pageSize)
-				.Select(r => new RoomDto
-				{
-					Id = r.Id,
-					RoomNumber = r.RoomNumber,
-					FloorNumber = r.FloorNumber,
-					Status = r.RoomStatus!.Name,
-					StatusColor = r.RoomStatus!.Color,
-					RoomType = r.RoomType!.Name,
-					Price = r.RoomType!.BasePrice,
-					MaxAdults = r.RoomType!.MaxAdults,
-					CreatedBy = r.CreatedBy,
-					CreatedAt = r.CreatedAt,
-					UpdatedBy = r.LastModifiedBy,
-					UpdatedAt = r.LastModifiedAt
-				})
 				.ToListAsync();
+
+			// Single batch: all active (CheckedIn) reservations with RoomId, with Guest
+			var activeReservations = await _unitOfWork.Reservations.GetQueryable()
+				.Include(r => r.Guest)
+				.Where(r => r.Status == ReservationStatus.CheckIn && r.RoomId != null && !r.IsDeleted)
+				.ToListAsync();
+
+			var reservationByRoomId = activeReservations
+				.Where(r => r.RoomId.HasValue)
+				.ToDictionary(r => r.RoomId!.Value);
+
+			var items = rooms.Select(r => MapRoomToDto(r, reservationByRoomId)).ToList();
 
 			var paged = new PagedResult<RoomDto>(items, totalCount, pageNumber, pageSize);
 
@@ -81,7 +76,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 2. استرجاع غرفة واحدة (كانت ناقصة)
+		// 2. استرجاع غرفة واحدة (Dashboard: FO/HK + current reservation)
 		public async Task<ResponseObjectDto<RoomDto>> GetRoomByIdAsync(int id)
 		{
 			var response = new ResponseObjectDto<RoomDto>();
@@ -99,24 +94,16 @@ namespace PMS.Infrastructure.Implmentations.Services
 				return response;
 			}
 
+			Reservation? currentReservation = null;
+			var activeReservation = await _unitOfWork.Reservations.GetQueryable()
+				.Include(r => r.Guest)
+				.FirstOrDefaultAsync(r => r.RoomId == id && r.Status == ReservationStatus.CheckIn && !r.IsDeleted);
+			if (activeReservation != null)
+				currentReservation = activeReservation;
+
+			var dto = MapRoomToDto(room, currentReservation != null ? new Dictionary<int, Reservation> { { id, currentReservation } } : new Dictionary<int, Reservation>());
 			response.IsSuccess = true;
-			response.Data = new RoomDto
-			{
-				Id = room.Id,
-				RoomNumber = room.RoomNumber,
-				FloorNumber = room.FloorNumber,
-					Status = room.RoomStatus?.Name ?? "Unknown",
-					StatusColor = HexColorValidator.IsValid(room.RoomStatus?.Color)
-						? room.RoomStatus!.Color
-						: StatusColorPalette.Secondary,
-				RoomType = room.RoomType?.Name ?? "N/A",
-				Price = room.RoomType?.BasePrice ?? 0,
-				MaxAdults = room.RoomType?.MaxAdults ?? 0,
-				CreatedBy = room.CreatedBy,
-				CreatedAt = room.CreatedAt,
-				UpdatedBy = room.LastModifiedBy,
-				UpdatedAt = room.LastModifiedAt
-			};
+			response.Data = dto;
 			response.StatusCode = 200;
 
 			return response;
@@ -151,34 +138,23 @@ namespace PMS.Infrastructure.Implmentations.Services
 				FloorNumber = dto.FloorNumber,
 				RoomTypeId = dto.RoomTypeId,
 				Notes = dto.Notes,
-				RoomStatusId = 1, // Default Clean
-				IsActive = true
+				RoomStatusId = 1,
+				HKStatus = HKStatus.Clean,
+				IsActive = true,
+				MaxAdults = roomType.MaxAdults,
+				BasePrice = roomType.BasePrice
 			};
 
 			await _unitOfWork.Rooms.AddAsync(room);
 			await _unitOfWork.CompleteAsync();
 
-			var status = await _unitOfWork.RoomStatuses.GetByIdAsync(room.RoomStatusId);
+			var reloaded = await _unitOfWork.Rooms.GetQueryable()
+				.Include(r => r.RoomType)
+				.FirstOrDefaultAsync(r => r.Id == room.Id);
 
 			response.IsSuccess = true;
 			response.Message = "تم إضافة الغرفة بنجاح";
-			response.Data = new RoomDto
-			{
-				Id = room.Id,
-				RoomNumber = room.RoomNumber,
-				FloorNumber = room.FloorNumber,
-				Status = status?.Name ?? "Clean",
-				StatusColor = HexColorValidator.IsValid(status?.Color)
-					? status!.Color
-					: StatusColorPalette.Success,
-				RoomType = roomType.Name,
-				Price = roomType.BasePrice,
-				MaxAdults = roomType.MaxAdults,
-				CreatedBy = room.CreatedBy,
-				CreatedAt = room.CreatedAt,
-				UpdatedBy = room.LastModifiedBy,
-				UpdatedAt = room.LastModifiedAt
-			};
+			response.Data = MapRoomToDto(reloaded ?? room, new Dictionary<int, Reservation>());
 			response.StatusCode = 201;
 
 			return response;
@@ -260,7 +236,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				room.Notes = dto.Notes;
 			}
 
-			// تحديث حالة الغرفة إذا تم إرسالها
+			// تحديث حالة الغرفة إذا تم إرسالها (مع مزامنة HKStatus)
 			if (!string.IsNullOrWhiteSpace(dto.Status))
 			{
 				var statusObj = await _unitOfWork.RoomStatuses.FindAsync(s => s.Name == dto.Status);
@@ -273,37 +249,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 				}
 
 				room.RoomStatusId = statusObj.Id;
+				room.HKStatus = MapRoomStatusIdToHKStatus(statusObj.Id);
 			}
 
 			_unitOfWork.Rooms.Update(room);
 			await _unitOfWork.CompleteAsync();
 
-			// إعادة تحميل الغرفة بعد التحديث لضمان البيانات الملاحَقة
 			room = await _unitOfWork.Rooms.GetQueryable()
 				.Include(r => r.RoomType)
-				.Include(r => r.RoomStatus)
 				.FirstOrDefaultAsync(r => r.Id == id);
 
 			response.IsSuccess = true;
 			response.Message = "تم تحديث بيانات الغرفة بنجاح";
 			response.StatusCode = 200;
-			response.Data = new RoomDto
-			{
-				Id = room!.Id,
-				RoomNumber = room.RoomNumber,
-				FloorNumber = room.FloorNumber,
-				Status = room.RoomStatus?.Name ?? dto.Status ?? "Unknown",
-				StatusColor = HexColorValidator.IsValid(room.RoomStatus?.Color)
-					? room.RoomStatus!.Color
-					: StatusColorPalette.Secondary,
-				RoomType = room.RoomType?.Name ?? "",
-				Price = room.RoomType?.BasePrice ?? 0,
-				MaxAdults = room.RoomType?.MaxAdults ?? 0,
-				CreatedBy = room.CreatedBy,
-				CreatedAt = room.CreatedAt,
-				UpdatedBy = room.LastModifiedBy,
-				UpdatedAt = room.LastModifiedAt
-			};
+			response.Data = MapRoomToDto(room!, new Dictionary<int, Reservation>());
 
 			return response;
 		}
@@ -396,6 +355,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			}
 
 			room.RoomStatusId = statusId;
+			room.HKStatus = MapRoomStatusIdToHKStatus(statusId);
 
 			if (!string.IsNullOrEmpty(notes))
 			{
@@ -466,6 +426,56 @@ namespace PMS.Infrastructure.Implmentations.Services
 			       || dto.RoomTypeId.HasValue
 			       || dto.Notes != null
 			       || !string.IsNullOrWhiteSpace(dto.Status);
+		}
+
+		private static RoomDto MapRoomToDto(Room room, Dictionary<int, Reservation> reservationByRoomId)
+		{
+			var isOccupied = reservationByRoomId.TryGetValue(room.Id, out var res);
+			var maxAdults = room.MaxAdults > 0 ? room.MaxAdults : (room.RoomType?.MaxAdults ?? 0);
+			var basePrice = room.BasePrice > 0 ? room.BasePrice : (room.RoomType?.BasePrice ?? 0);
+
+			var dto = new RoomDto
+			{
+				Id = room.Id,
+				RoomNumber = room.RoomNumber,
+				FloorNumber = room.FloorNumber,
+				RoomTypeName = room.RoomType?.Name ?? "N/A",
+				RoomTypeCode = room.RoomType?.Name ?? "N/A",
+				FoStatus = isOccupied ? "OCCUPIED" : "VACANT",
+				HkStatus = room.HKStatus.ToString().ToUpperInvariant(),
+				BedType = room.BedType.ToString().ToUpperInvariant(),
+				MaxAdults = maxAdults,
+				BasePrice = basePrice,
+				CurrentReservation = null
+			};
+
+			if (isOccupied && res != null)
+			{
+				dto.CurrentReservation = new CurrentReservationDto
+				{
+					Id = res.Id,
+					GuestName = res.Guest?.FullName ?? "",
+					ArrivalDate = res.CheckInDate.ToString("yyyy-MM-dd"),
+					DepartureDate = res.CheckOutDate.ToString("yyyy-MM-dd"),
+					Balance = res.GrandTotal
+				};
+			}
+
+			return dto;
+		}
+
+		/// <summary>Maps legacy RoomStatusLookup Id to HKStatus (1=Clean, 2=Dirty, 3/4=OOO, 5=Dirty).</summary>
+		private static HKStatus MapRoomStatusIdToHKStatus(int roomStatusId)
+		{
+			return roomStatusId switch
+			{
+				1 => HKStatus.Clean,
+				2 => HKStatus.Dirty,
+				3 => HKStatus.OOO,
+				4 => HKStatus.OOO,
+				5 => HKStatus.Dirty,
+				_ => HKStatus.Dirty
+			};
 		}
 	}
 }
