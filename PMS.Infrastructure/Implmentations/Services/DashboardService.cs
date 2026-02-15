@@ -42,8 +42,15 @@ namespace PMS.Infrastructure.Implmentations.Services
             // EF Core لا يسمح بتشغيل أكثر من استعلام Async في نفس الوقت
             // على نفس الـ DbContext. لذلك ننفذ كل CountAsync بالتسلسل.
 
+            var occupiedRoomIds = await _unitOfWork.Reservations.GetQueryable()
+                .Where(r => r.Status == ReservationStatus.CheckIn && !r.IsDeleted && r.RoomId != null)
+                .Select(r => r.RoomId!.Value)
+                .Distinct()
+                .ToListAsync();
+
             var totalRooms = await roomsQuery.CountAsync();
-            var availableRooms = await roomsQuery.CountAsync(r => r.HKStatus == HKStatus.Clean);
+            var availableRooms = await roomsQuery.CountAsync(r =>
+                r.HKStatus == HKStatus.Clean && !occupiedRoomIds.Contains(r.Id));
             var dirtyRooms = await roomsQuery.CountAsync(r => r.HKStatus == HKStatus.Dirty);
             var outOfServiceRooms = await roomsQuery.CountAsync(r =>
                 r.HKStatus == HKStatus.OOO || r.HKStatus == HKStatus.OOS);

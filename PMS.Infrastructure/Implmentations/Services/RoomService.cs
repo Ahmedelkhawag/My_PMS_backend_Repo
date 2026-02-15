@@ -335,8 +335,15 @@ namespace PMS.Infrastructure.Implmentations.Services
 		public async Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes)
 		{
 			var response = new ResponseObjectDto<bool>();
+            if (statusId == 5)
+            {
+                response.IsSuccess = false;
+                response.Message = "لا يمكن تغيير حالة الغرفة إلى 'مشغولة' يدوياً. هذه الحالة تتم تلقائياً عند التسكين (Check-In).";
+                response.StatusCode = 400;
+                return response;
+            }
 
-			var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
+            var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
 			if (room == null)
 			{
 				response.IsSuccess = false;
