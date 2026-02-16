@@ -21,6 +21,8 @@ namespace PMS.Infrastructure.Implmentations
         public IBaseRepository<RoomType> RoomTypes { get; private set; }
 		public IBaseRepository<Guest> Guests { get; private set; }
 		public IBaseRepository<Reservation> Reservations { get; private set; }
+		public IBaseRepository<GuestFolio> GuestFolios { get; private set; }
+		public IBaseRepository<FolioTransaction> FolioTransactions { get; private set; }
         public IBaseRepository<ReservationService> ReservationServices { get; private set; }
 		public IBaseRepository<BookingSource> BookingSources { get; private set; }
 		public IBaseRepository<MarketSegment> MarketSegments { get; private set; }
@@ -41,6 +43,8 @@ namespace PMS.Infrastructure.Implmentations
             RoomTypes = new BaseRepository<RoomType>(_context);
             Guests = new BaseRepository<Guest>(_context);
             Reservations = new BaseRepository<Reservation>(_context);
+			GuestFolios = new BaseRepository<GuestFolio>(_context);
+			FolioTransactions = new BaseRepository<FolioTransaction>(_context);
             ReservationServices = new BaseRepository<ReservationService>(_context);
 			BookingSources = new BaseRepository<BookingSource>(_context);
 			MarketSegments = new BaseRepository<MarketSegment>(_context);

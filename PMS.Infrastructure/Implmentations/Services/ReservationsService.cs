@@ -119,6 +119,18 @@ namespace PMS.Infrastructure.Implmentations.Services
                 ?? _httpContextAccessor.HttpContext?.User?.Identity?.Name
                 ?? "System";
 
+            // Create an empty, active folio for this reservation so that
+            // financial transactions can be tracked from day one.
+            var folio = new GuestFolio
+            {
+                Reservation = reservation,
+                TotalCharges = 0m,
+                TotalPayments = 0m,
+                Balance = 0m,
+                IsActive = true,
+                Currency = "EGP"
+            };
+
             if (dto.IsWalkIn && dto.RoomId.HasValue)
             {
                 var roomToOccupy = await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value);
@@ -127,6 +139,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
 
             await _unitOfWork.Reservations.AddAsync(reservation);
+            await _unitOfWork.GuestFolios.AddAsync(folio);
             await _unitOfWork.CompleteAsync();
 
             var guest = await _unitOfWork.Guests.GetByIdAsync(dto.GuestId);

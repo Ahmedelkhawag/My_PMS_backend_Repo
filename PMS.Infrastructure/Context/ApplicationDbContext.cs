@@ -39,6 +39,9 @@ namespace PMS.Infrastructure.Context
 		public DbSet<Reservation> Reservations { get; set; }
 		public DbSet<ReservationService> ReservationServices { get; set; }
 
+		public DbSet<GuestFolio> GuestFolios { get; set; }
+		public DbSet<FolioTransaction> FolioTransactions { get; set; }
+
 		public DbSet<BookingSource> BookingSources { get; set; }
 		public DbSet<MarketSegment> MarketSegments { get; set; }
 		public DbSet<MealPlan> MealPlans { get; set; }
@@ -166,6 +169,38 @@ namespace PMS.Infrastructure.Context
 	new ExtraService { Id = 4, Name = "Spa (سبا)", Price = 300, IsPerDay = false },
 	new ExtraService { Id = 5, Name = "Laundry (غسيل)", Price = 75, IsPerDay = false }
 );
+
+
+			// Guest Folio configuration
+			builder.Entity<GuestFolio>(entity =>
+			{
+				entity.Property(f => f.TotalCharges).HasColumnType("decimal(18,2)");
+				entity.Property(f => f.TotalPayments).HasColumnType("decimal(18,2)");
+				entity.Property(f => f.Balance).HasColumnType("decimal(18,2)");
+
+				entity.Property(f => f.Currency)
+					  .HasMaxLength(3)
+					  .HasDefaultValue("EGP");
+
+				entity.HasIndex(f => f.ReservationId)
+					  .IsUnique();
+
+				entity.HasOne(f => f.Reservation)
+					  .WithOne(r => r.GuestFolio)
+					  .HasForeignKey<GuestFolio>(f => f.ReservationId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Folio Transaction configuration
+			builder.Entity<FolioTransaction>(entity =>
+			{
+				entity.Property(t => t.Amount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(t => t.Folio)
+					  .WithMany(f => f.Transactions)
+					  .HasForeignKey(t => t.FolioId)
+					  .OnDelete(DeleteBehavior.Cascade);
+			});
 
 
 			// 1. تطبيق الفلتر السحري (Global Query Filter) 🧹

@@ -70,6 +70,11 @@ namespace PMS.Domain.Entities
 		public int MarketSegmentId { get; set; }
 		public MarketSegment MarketSegment { get; set; }
 
+		/// <summary>
+		/// One-to-one Guest Folio associated with this reservation.
+		/// </summary>
+		public GuestFolio? GuestFolio { get; set; }
+
 		public bool IsPostMaster { get; set; } = false;
 		public bool IsNoExtend { get; set; } = false;
 		public bool IsGuestPay { get; set; } = true;
