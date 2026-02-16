@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PMS.Application.DTOs.Common;
@@ -92,6 +93,7 @@ namespace PMS.API.Controllers
 		}
 
 		[HttpGet("all")]
+        [Authorize]
 		[ProducesResponseType(typeof(ResponseObjectDto<AppLookupsDto>), StatusCodes.Status200OK)]
 		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
 		public async Task<IActionResult> GetAllLookups()
