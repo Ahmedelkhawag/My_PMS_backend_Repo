@@ -39,6 +39,8 @@ namespace PMS.Domain.Entities
         [Column(TypeName = "decimal(18,2)")]
         public decimal BasePrice { get; set; }
 
+        public FOStatus FOStatus { get; set; } = FOStatus.Vacant;
+
 		public int RoomStatusId { get; set; } // بدل Enum - retained for legacy; FO status computed from reservations
 		[ForeignKey("RoomStatusId")]
 		public RoomStatusLookup RoomStatus { get; set; }

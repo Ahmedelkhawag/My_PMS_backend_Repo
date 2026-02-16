@@ -20,7 +20,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<ResponseObjectDto<GuestFolioSummaryDto>> CreateFolioForReservationAsync(int reservationId)
+        public async Task<ResponseObjectDto<GuestFolioSummaryDto>> GetFolioSummaryAsync(int reservationId)
         {
             var reservation = await _unitOfWork.Reservations.GetByIdAsync(reservationId);
             if (reservation == null)

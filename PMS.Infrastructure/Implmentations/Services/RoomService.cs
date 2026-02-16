@@ -331,19 +331,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 6. 👇👇 دالة تغيير الحالة (Housekeeping) - دي الجديدة 👇👇
-		public async Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, int statusId, string? notes)
+		// 6. 👇👇 دالة تغيير الحالة (Housekeeping / FrontOffice) 👇👇
+		public async Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, ChangeRoomStatusDto dto)
 		{
 			var response = new ResponseObjectDto<bool>();
-            if (statusId == 5)
-            {
-                response.IsSuccess = false;
-                response.Message = "لا يمكن تغيير حالة الغرفة إلى 'مشغولة' يدوياً. هذه الحالة تتم تلقائياً عند التسكين (Check-In).";
-                response.StatusCode = 400;
-                return response;
-            }
 
-            var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
+			var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
 			if (room == null)
 			{
 				response.IsSuccess = false;
@@ -352,21 +345,59 @@ namespace PMS.Infrastructure.Implmentations.Services
 				return response;
 			}
 
-			var statusObj = await _unitOfWork.RoomStatuses.GetByIdAsync(statusId);
-			if (statusObj == null)
+			if (!Enum.IsDefined(typeof(RoomStatusType), dto.StatusType))
 			{
 				response.IsSuccess = false;
-				response.Message = "حالة الغرفة غير صحيحة";
+				response.Message = "نوع حالة الغرفة غير صحيح";
 				response.StatusCode = 400;
 				return response;
 			}
 
-			room.RoomStatusId = statusId;
-			room.HKStatus = MapRoomStatusIdToHKStatus(statusId);
-
-			if (!string.IsNullOrEmpty(notes))
+			if (dto.StatusType == RoomStatusType.HouseKeeping)
 			{
-				room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM}: {notes}";
+				// لا يمكن تعيين \"مشغولة\" من خلال HK بشكل يدوي
+				if (dto.StatusId == 5)
+				{
+					response.IsSuccess = false;
+					response.Message = "لا يمكن تغيير حالة الغرفة إلى 'مشغولة' يدوياً. هذه الحالة تتم تلقائياً عند التسكين (Check-In).";
+					response.StatusCode = 400;
+					return response;
+				}
+
+				var statusObj = await _unitOfWork.RoomStatuses.GetByIdAsync(dto.StatusId);
+				if (statusObj == null)
+				{
+					response.IsSuccess = false;
+					response.Message = "حالة الغرفة غير صحيحة";
+					response.StatusCode = 400;
+					return response;
+				}
+
+				room.RoomStatusId = dto.StatusId;
+				room.HKStatus = MapRoomStatusIdToHKStatus(dto.StatusId);
+
+				if (!string.IsNullOrEmpty(dto.Notes))
+				{
+					room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM}: {dto.Notes}";
+				}
+			}
+			else if (dto.StatusType == RoomStatusType.FrontOffice)
+			{
+				if (!Enum.IsDefined(typeof(FOStatus), dto.StatusId))
+				{
+					response.IsSuccess = false;
+					response.Message = "حالة Front Office غير صحيحة";
+					response.StatusCode = 400;
+					return response;
+				}
+
+				var foStatus = (FOStatus)dto.StatusId;
+				room.FOStatus = foStatus;
+
+				if (!string.IsNullOrEmpty(dto.Notes))
+				{
+					room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM}: [FO] {dto.Notes}";
+				}
 			}
 
 			_unitOfWork.Rooms.Update(room);

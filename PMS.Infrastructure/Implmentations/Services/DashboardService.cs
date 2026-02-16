@@ -72,6 +72,11 @@ namespace PMS.Infrastructure.Implmentations.Services
             var newGuestsThisMonth = await guestsQuery.CountAsync(g =>
                 g.CreatedAt >= firstDayOfMonth && g.CreatedAt < firstDayOfNextMonth);
 
+            // Financial metric: total receivables from active guest folios
+            var currentReceivables = await _unitOfWork.GuestFolios.GetQueryable()
+                .Where(f => !f.IsDeleted && f.IsActive)
+                .SumAsync(f => f.Balance);
+
             decimal occupancyPercentage = 0;
             if (totalRooms > 0 && occupiedRooms > 0)
             {
@@ -102,7 +107,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 {
                     TotalGuests = totalGuests,
                     NewGuestsThisMonth = newGuestsThisMonth
-                }
+                },
+                CurrentReceivables = currentReceivables
             };
 
             response.IsSuccess = true;

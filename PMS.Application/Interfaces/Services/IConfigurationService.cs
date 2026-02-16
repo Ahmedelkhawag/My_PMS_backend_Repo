@@ -16,5 +16,9 @@ namespace PMS.Application.Interfaces.Services
 		Task<IEnumerable<LookupDto>> GetRoomTypesLookupAsync();
 		Task<IEnumerable<ExtraServiceLookupDto>> GetExtraServicesAsync();
 		Task<IEnumerable<LookupDto>> GetReservationStatusesAsync();
+
+		Task<ResponseObjectDto<List<EnumLookupDto>>> GetTransactionTypesLookupAsync();
+
+		Task<ResponseObjectDto<AppLookupsDto>> GetAllLookupsAsync();
 	}
 }

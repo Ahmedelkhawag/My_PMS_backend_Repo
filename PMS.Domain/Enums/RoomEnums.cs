@@ -31,4 +31,13 @@ namespace PMS.Domain.Enums
         Queen = 3,
         King = 4
     }
+
+    /// <summary>
+    /// Distinguishes which status family is being updated.
+    /// </summary>
+    public enum RoomStatusType
+    {
+        HouseKeeping = 1,
+        FrontOffice = 2
+    }
 }

@@ -7,6 +7,7 @@ namespace PMS.Application.DTOs.Dashboard
         public RoomStatsDto RoomStats { get; set; } = new RoomStatsDto();
         public ReservationStatsDto ReservationStats { get; set; } = new ReservationStatsDto();
         public GuestStatsDto GuestStats { get; set; } = new GuestStatsDto();
+        public decimal CurrentReceivables { get; set; }
     }
 
     public class RoomStatsDto

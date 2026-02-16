@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -22,9 +22,8 @@ namespace PMS.Application.DTOs
         public string PhoneNumber { get; set; }
 
         public string? WorkNumber { get; set; } // اختياري
-
+        
         [Required]
-        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
         public string Password { get; set; }
 
         [Required]

@@ -144,5 +144,75 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 			return Task.FromResult(values);
 		}
+
+		public Task<ResponseObjectDto<List<EnumLookupDto>>> GetTransactionTypesLookupAsync()
+		{
+			var values = Enum.GetValues(typeof(TransactionType))
+				.Cast<TransactionType>()
+				.Select(v => new EnumLookupDto
+				{
+					Value = (int)v,
+					Name = v.ToString(),
+					ColorCode = string.Empty
+				})
+				.ToList();
+
+			var response = new ResponseObjectDto<List<EnumLookupDto>>
+			{
+				IsSuccess = true,
+				StatusCode = 200,
+				Message = "Transaction types retrieved successfully",
+				Data = values
+			};
+
+			return Task.FromResult(response);
+		}
+
+		public async Task<ResponseObjectDto<AppLookupsDto>> GetAllLookupsAsync()
+		{
+			// NOTE:
+			// We call the existing async lookup methods sequentially to avoid
+			// running multiple EF Core queries concurrently on the same DbContext.
+
+			var roomTypes = (await GetRoomTypesLookupAsync()).ToList();
+			var bookingSources = (await GetBookingSourcesAsync()).ToList();
+			var marketSegments = (await GetMarketSegmentsAsync()).ToList();
+			var mealPlans = (await GetMealPlansAsync()).ToList();
+			var extraServices = (await GetExtraServicesAsync()).ToList();
+			var roomStatuses = (await GetRoomStatusesAsync()).ToList();
+			var reservationStatuses = (await GetReservationStatusesAsync()).ToList();
+
+			var transactionTypesResult = await GetTransactionTypesLookupAsync();
+			if (!transactionTypesResult.IsSuccess || transactionTypesResult.Data == null)
+			{
+				return new ResponseObjectDto<AppLookupsDto>
+				{
+					IsSuccess = false,
+					StatusCode = transactionTypesResult.StatusCode > 0 ? transactionTypesResult.StatusCode : 500,
+					Message = transactionTypesResult.Message ?? "Failed to load transaction types",
+					Data = null
+				};
+			}
+
+			var lookups = new AppLookupsDto
+			{
+				RoomTypes = roomTypes,
+				BookingSources = bookingSources,
+				MarketSegments = marketSegments,
+				MealPlans = mealPlans,
+				ExtraServices = extraServices,
+				RoomStatuses = roomStatuses,
+				TransactionTypes = transactionTypesResult.Data,
+				ReservationStatuses = reservationStatuses
+			};
+
+			return new ResponseObjectDto<AppLookupsDto>
+			{
+				IsSuccess = true,
+				StatusCode = 200,
+				Message = "All lookups retrieved successfully",
+				Data = lookups
+			};
+		}
 	}
 }

@@ -81,5 +81,23 @@ namespace PMS.API.Controllers
             var result = await _configService.GetStatusConfigurationAsync();
             return Ok(result);
         }
+
+		[HttpGet("transaction-types")]
+		[ProducesResponseType(typeof(ResponseObjectDto<List<EnumLookupDto>>), StatusCodes.Status200OK)]
+		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
+		public async Task<IActionResult> GetTransactionTypes()
+		{
+			var result = await _configService.GetTransactionTypesLookupAsync();
+			return Ok(result);
+		}
+
+		[HttpGet("all")]
+		[ProducesResponseType(typeof(ResponseObjectDto<AppLookupsDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
+		public async Task<IActionResult> GetAllLookups()
+		{
+			var result = await _configService.GetAllLookupsAsync();
+			return Ok(result);
+		}
     }
 }

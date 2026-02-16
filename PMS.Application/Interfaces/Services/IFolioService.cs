@@ -6,7 +6,7 @@ namespace PMS.Application.Interfaces.Services
 {
     public interface IFolioService
     {
-        Task<ResponseObjectDto<GuestFolioSummaryDto>> CreateFolioForReservationAsync(int reservationId);
+        Task<ResponseObjectDto<GuestFolioSummaryDto>> GetFolioSummaryAsync(int reservationId);
 
         Task<ResponseObjectDto<FolioDetailsDto>> GetFolioDetailsAsync(int reservationId);
 

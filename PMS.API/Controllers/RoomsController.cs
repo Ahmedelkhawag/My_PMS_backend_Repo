@@ -5,6 +5,7 @@ using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Rooms;
 using PMS.Application.Interfaces.Services;
+using PMS.Domain.Enums;
 
 namespace PMS.API.Controllers
 {
@@ -114,9 +115,39 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ChangeStatus(int id, [FromQuery] int statusId, [FromQuery] string? notes)
+        public async Task<IActionResult> ChangeStatus(
+            int id,
+            [FromQuery] int statusId,
+            [FromQuery] string statusType,
+            [FromQuery] string? notes)
         {
-            var result = await _roomService.ChangeRoomStatusAsync(id, statusId, notes);
+            if (string.IsNullOrWhiteSpace(statusType))
+            {
+                return BadRequest("statusType is required. Use 'hk' for housekeeping or 'fk'/'fo' for front office.");
+            }
+
+            RoomStatusType parsedType;
+            switch (statusType.Trim().ToLowerInvariant())
+            {
+                case "hk":
+                    parsedType = RoomStatusType.HouseKeeping;
+                    break;
+                case "fk":
+                case "fo":
+                    parsedType = RoomStatusType.FrontOffice;
+                    break;
+                default:
+                    return BadRequest("Invalid statusType. Use 'hk' for housekeeping or 'fk'/'fo' for front office.");
+            }
+
+            var dto = new ChangeRoomStatusDto
+            {
+                StatusType = parsedType,
+                StatusId = statusId,
+                Notes = notes
+            };
+
+            var result = await _roomService.ChangeRoomStatusAsync(id, dto);
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);

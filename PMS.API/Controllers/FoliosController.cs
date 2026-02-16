@@ -76,6 +76,24 @@ namespace PMS.API.Controllers
 
             return Ok(result);
         }
+
+        /// <summary>
+        /// Returns a lightweight summary of the folio for the given reservation.
+        /// </summary>
+        [HttpGet("{reservationId}/summary")]
+        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetFolioSummary(int reservationId)
+        {
+            var result = await _folioService.GetFolioSummaryAsync(reservationId);
+
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+
+            return Ok(result);
+        }
     }
 }
 
