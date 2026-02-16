@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PMS.Domain.Constants;
 using PMS.Domain.Entities;
@@ -41,7 +41,9 @@ namespace PMS.Infrastructure.Context
                 }
             }
 
-            // 3. زراعة الـ SuperAdmin
+            // 3. زراعة / تحديث الـ SuperAdmin
+            const string superAdminPassword = "123";
+
             var defaultUser = new AppUser
             {
                 UserName = "admin",
@@ -59,7 +61,7 @@ namespace PMS.Infrastructure.Context
             var user = await userManager.FindByNameAsync(defaultUser.UserName);
             if (user == null)
             {
-                var result = await userManager.CreateAsync(defaultUser, "P@ssword123");
+                var result = await userManager.CreateAsync(defaultUser, superAdminPassword);
 
                 if (result.Succeeded)
                 {
@@ -67,10 +69,20 @@ namespace PMS.Infrastructure.Context
                 }
                 else
                 {
-                    // --- هنا التعديل المهم ---
-                    // هنجمع كل الأخطاء ونرميها في وشنا عشان نعرف السبب
                     var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                     throw new Exception($"فشل إنشاء الـ SuperAdmin: {errors}");
+                }
+            }
+            else
+            {
+                // تأكد من أن باسورد الـ SuperAdmin الحالي هو 123 في كل بيئة
+                var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+                var resetResult = await userManager.ResetPasswordAsync(user, resetToken, superAdminPassword);
+
+                if (!resetResult.Succeeded)
+                {
+                    var errors = string.Join(", ", resetResult.Errors.Select(e => e.Description));
+                    throw new Exception($"فشل تحديث باسورد الـ SuperAdmin: {errors}");
                 }
             }
         }
