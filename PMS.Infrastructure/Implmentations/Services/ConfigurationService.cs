@@ -179,7 +179,6 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var marketSegments = (await GetMarketSegmentsAsync()).ToList();
 			var mealPlans = (await GetMealPlansAsync()).ToList();
 			var extraServices = (await GetExtraServicesAsync()).ToList();
-			var roomStatuses = (await GetRoomStatusesAsync()).ToList();
 			var reservationStatuses = (await GetReservationStatusesAsync()).ToList();
 
 			var transactionTypesResult = await GetTransactionTypesLookupAsync();
@@ -194,6 +193,32 @@ namespace PMS.Infrastructure.Implmentations.Services
 				};
 			}
 
+			// Generate enum-based status lookups with color codes
+			var hkColors = new Dictionary<HKStatus, string>
+			{
+				{ HKStatus.Clean, "#43A047" },
+				{ HKStatus.Dirty, "#E53935" },
+				{ HKStatus.Inspected, "#00ACC1" },
+				{ HKStatus.OOO, "#263238" },
+				{ HKStatus.OOS, "#78909C" }
+			};
+			var foColors = new Dictionary<FOStatus, string>
+			{
+				{ FOStatus.Vacant, "#81C784" },
+				{ FOStatus.Occupied, "#1E88E5" }
+			};
+			const string bedTypeColor = "#000000";
+
+			var hkStatuses = Enum.GetValues(typeof(HKStatus)).Cast<HKStatus>()
+				.Select(v => new EnumLookupDto { Value = (int)v, Name = v.ToString(), ColorCode = hkColors[v] })
+				.ToList();
+			var foStatuses = Enum.GetValues(typeof(FOStatus)).Cast<FOStatus>()
+				.Select(v => new EnumLookupDto { Value = (int)v, Name = v.ToString(), ColorCode = foColors[v] })
+				.ToList();
+			var bedTypes = Enum.GetValues(typeof(BedType)).Cast<BedType>()
+				.Select(v => new EnumLookupDto { Value = (int)v, Name = v.ToString(), ColorCode = bedTypeColor })
+				.ToList();
+
 			var lookups = new AppLookupsDto
 			{
 				RoomTypes = roomTypes,
@@ -201,7 +226,9 @@ namespace PMS.Infrastructure.Implmentations.Services
 				MarketSegments = marketSegments,
 				MealPlans = mealPlans,
 				ExtraServices = extraServices,
-				RoomStatuses = roomStatuses,
+				HkStatuses = hkStatuses,
+				FoStatuses = foStatuses,
+				BedTypes = bedTypes,
 				TransactionTypes = transactionTypesResult.Data,
 				ReservationStatuses = reservationStatuses
 			};

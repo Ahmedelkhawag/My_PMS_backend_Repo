@@ -93,7 +93,7 @@ namespace PMS.API.Controllers
 		}
 
 		[HttpGet("all")]
-        [Authorize]
+		[Authorize]
 		[ProducesResponseType(typeof(ResponseObjectDto<AppLookupsDto>), StatusCodes.Status200OK)]
 		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
 		public async Task<IActionResult> GetAllLookups()
