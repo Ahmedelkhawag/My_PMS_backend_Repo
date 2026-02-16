@@ -20,6 +20,7 @@ namespace PMS.Application.DTOs.Rooms
         public string BedType { get; set; } = "SINGLE";
         public int MaxAdults { get; set; }
         public decimal BasePrice { get; set; }
+		public string? Notes { get; set; }
         /// <summary>Set only when FoStatus is OCCUPIED.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public CurrentReservationDto? CurrentReservation { get; set; }

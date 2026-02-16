@@ -203,8 +203,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                     CheckOutDate = r.CheckOutDate.ToString("yyyy-MM-dd"),
                     Nights = (r.CheckOutDate - r.CheckInDate).Days,
                     GrandTotal = r.GrandTotal,
-                    Status = r.Status.ToString(),
-                    StatusColor = GetStatusColor(r.Status)
+					Status = r.Status.ToString(),
+					StatusColor = GetStatusColor(r.Status),
+					Notes = r.Notes
                 })
                 .ToListAsync();
 

@@ -52,6 +52,20 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
+		[HttpGet("{id}")]
+		[Authorize]
+		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status401Unauthorized)]
+		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> GetById(int id)
+		{
+			var result = await _guestService.GetGuestByIdAsync(id);
+			if (!result.IsSuccess)
+				return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+			return Ok(result);
+		}
+
         [HttpPut("{id}")]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status200OK)]

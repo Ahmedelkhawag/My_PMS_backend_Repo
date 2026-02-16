@@ -12,6 +12,8 @@ namespace PMS.Application.Interfaces.Services
 		Task<ResponseObjectDto<GuestDto>> AddGuestAsync(CreateGuestDto dto);
 		Task<ResponseObjectDto<PagedResult<GuestDto>>> GetAllGuestsAsync(string? search, int pageNumber, int pageSize);
 
+		Task<ResponseObjectDto<GuestDto>> GetGuestByIdAsync(int id);
+
 		Task<ResponseObjectDto<GuestDto>> UpdateGuestAsync(int id, UpdateGuestDto dto);
 		Task<ResponseObjectDto<bool>> DeleteGuestAsync(int id);
 		Task<ResponseObjectDto<bool>> RestoreGuestAsync(int id);

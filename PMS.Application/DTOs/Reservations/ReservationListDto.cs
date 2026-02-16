@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -26,5 +26,6 @@ namespace PMS.Application.DTOs.Reservations
 		public decimal GrandTotal { get; set; }
 		public string Status { get; set; } // Confirmed, Pending...
 		public string StatusColor { get; set; } // لون الحالة (اختياري للفرونت)
+		public string? Notes { get; set; }
 	}
 }

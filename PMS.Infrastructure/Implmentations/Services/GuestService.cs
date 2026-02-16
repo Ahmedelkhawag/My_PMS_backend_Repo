@@ -165,6 +165,44 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
+		public async Task<ResponseObjectDto<GuestDto>> GetGuestByIdAsync(int id)
+		{
+			var response = new ResponseObjectDto<GuestDto>();
+
+			var guest = await _unitOfWork.Guests.GetByIdAsync(id);
+			if (guest == null)
+			{
+				response.IsSuccess = false;
+				response.Message = "النزيل غير موجود";
+				response.StatusCode = 404;
+				return response;
+			}
+
+			response.IsSuccess = true;
+			response.StatusCode = 200;
+			response.Message = "تم استرجاع بيانات النزيل بنجاح";
+			response.Data = new GuestDto
+			{
+				Id = guest.Id,
+				FullName = guest.FullName,
+				PhoneNumber = guest.PhoneNumber,
+				NationalId = guest.NationalId,
+				Nationality = guest.Nationality,
+				LoyaltyLevel = guest.LoyaltyLevel.ToString(),
+				DateOfBirth = guest.DateOfBirth,
+				Email = guest.Email,
+				CarNumber = guest.CarNumber,
+				Notes = guest.Notes,
+				IsActive = guest.IsActive,
+				CreatedBy = guest.CreatedBy,
+				CreatedAt = guest.CreatedAt,
+				UpdatedBy = guest.LastModifiedBy,
+				UpdatedAt = guest.LastModifiedAt
+			};
+
+			return response;
+		}
+
 
 
 		public async Task<ResponseObjectDto<GuestDto>> UpdateGuestAsync(int id, UpdateGuestDto dto)

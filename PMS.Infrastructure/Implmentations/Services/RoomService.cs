@@ -555,6 +555,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				BedType = room.BedType.ToString().ToUpperInvariant(),
 				MaxAdults = maxAdults,
 				BasePrice = basePrice,
+				Notes = room.Notes,
 				CurrentReservation = null
 			};
 
