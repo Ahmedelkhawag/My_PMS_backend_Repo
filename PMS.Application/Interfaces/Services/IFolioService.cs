@@ -8,6 +8,10 @@ namespace PMS.Application.Interfaces.Services
     {
         Task<ResponseObjectDto<GuestFolioSummaryDto>> CreateFolioForReservationAsync(int reservationId);
 
+        Task<ResponseObjectDto<FolioDetailsDto>> GetFolioDetailsAsync(int reservationId);
+
+        Task<ResponseObjectDto<bool>> CloseFolioAsync(int reservationId);
+
         Task<ResponseObjectDto<FolioTransactionDto>> AddTransactionAsync(CreateTransactionDto dto);
 
         Task<ResponseObjectDto<FolioTransactionDto>> VoidTransactionAsync(int transactionId);

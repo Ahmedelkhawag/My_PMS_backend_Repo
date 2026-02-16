@@ -23,7 +23,7 @@ namespace PMS.API.Controllers
         /// <summary>
         /// Adds a new transaction to the folio of the given reservation.
         /// </summary>
-        [HttpPost("transactions")]
+        [HttpPost("transaction")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status401Unauthorized)]
@@ -60,16 +60,16 @@ namespace PMS.API.Controllers
         }
 
         /// <summary>
-        /// Returns the summary of the folio for the given reservation.
+        /// Returns the full folio details and transaction ledger for the given reservation.
         /// </summary>
         [HttpGet("{reservationId}")]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetFolioByReservation(int reservationId)
         {
-            var result = await _folioService.CreateFolioForReservationAsync(reservationId);
+            var result = await _folioService.GetFolioDetailsAsync(reservationId);
 
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);

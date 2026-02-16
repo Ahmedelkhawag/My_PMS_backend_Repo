@@ -23,6 +23,7 @@ namespace PMS.Infrastructure.Implmentations.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IFolioService _folioService;
 
         private const string TaxPercentageConfigKey = "FinancialSettings:TaxPercentage";
         private const decimal DefaultTaxPercentage = 0.15m;
@@ -32,11 +33,12 @@ namespace PMS.Infrastructure.Implmentations.Services
         private const int RoomStatusMaintenance = 3;
         private const int RoomStatusOccupied = 5;
 
-        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
+        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFolioService folioService)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
             _httpContextAccessor = httpContextAccessor;
+            _folioService = folioService;
         }
 
         public async Task<ResponseObjectDto<ReservationDto>> CreateReservationAsync(CreateReservationDto dto)
@@ -242,6 +244,22 @@ namespace PMS.Infrastructure.Implmentations.Services
             if (!businessValidation.IsSuccess)
             {
                 return businessValidation;
+            }
+
+            // 2.5) For Check-Out, ensure folio can be closed (zero balance rule)
+            if (newStatus == ReservationStatus.CheckOut)
+            {
+                var closeResult = await _folioService.CloseFolioAsync(dto.ReservationId);
+                if (!closeResult.IsSuccess)
+                {
+                    return new ResponseObjectDto<bool>
+                    {
+                        IsSuccess = false,
+                        StatusCode = closeResult.StatusCode > 0 ? closeResult.StatusCode : 400,
+                        Message = closeResult.Message,
+                        Data = false
+                    };
+                }
             }
 
             // 3) Apply side effects (Reservation + Room) in one logical unit

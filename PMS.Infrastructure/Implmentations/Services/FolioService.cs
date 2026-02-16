@@ -45,6 +45,87 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
+        public async Task<ResponseObjectDto<FolioDetailsDto>> GetFolioDetailsAsync(int reservationId)
+        {
+            var reservation = await _unitOfWork.Reservations.GetByIdAsync(reservationId);
+            if (reservation == null)
+            {
+                return Failure<FolioDetailsDto>("Reservation not found", 404);
+            }
+
+            var folio = await _unitOfWork.GuestFolios
+                .GetQueryable()
+                .Include(f => f.Transactions)
+                .FirstOrDefaultAsync(f => f.ReservationId == reservationId);
+
+            if (folio == null)
+            {
+                return Failure<FolioDetailsDto>("Folio not found for this reservation", 404);
+            }
+
+            var orderedTransactions = folio.Transactions
+                .OrderByDescending(t => t.Date)
+                .ThenByDescending(t => t.Id)
+                .Select(MapToTransactionDto)
+                .ToList();
+
+            var details = new FolioDetailsDto
+            {
+                ReservationId = folio.ReservationId,
+                FolioId = folio.Id,
+                TotalCharges = folio.TotalCharges,
+                TotalPayments = folio.TotalPayments,
+                Balance = folio.Balance,
+                IsActive = folio.IsActive,
+                Currency = folio.Currency,
+                Transactions = orderedTransactions
+            };
+
+            return new ResponseObjectDto<FolioDetailsDto>
+            {
+                IsSuccess = true,
+                StatusCode = 200,
+                Message = "Folio details retrieved successfully",
+                Data = details
+            };
+        }
+
+        public async Task<ResponseObjectDto<bool>> CloseFolioAsync(int reservationId)
+        {
+            var folio = await _unitOfWork.GuestFolios
+                .GetQueryable()
+                .FirstOrDefaultAsync(f => f.ReservationId == reservationId);
+
+            if (folio == null)
+            {
+                return Failure<bool>("Folio not found for this reservation", 404);
+            }
+
+            if (!folio.IsActive)
+            {
+                return Failure<bool>("Folio is already closed.", 400);
+            }
+
+            if (folio.Balance != 0m)
+            {
+                var formattedBalance = folio.Balance.ToString("F2");
+                return Failure<bool>($"Cannot close folio. Guest still has an outstanding balance of {formattedBalance}.", 400);
+            }
+
+            folio.IsActive = false;
+            _unitOfWork.GuestFolios.Update(folio);
+
+            await _unitOfWork.CompleteAsync();
+
+            return new ResponseObjectDto<bool>
+            {
+                IsSuccess = true,
+                StatusCode = 200,
+                Message = "Folio closed successfully",
+                Data = true
+            };
+        }
+
         public async Task<ResponseObjectDto<FolioTransactionDto>> AddTransactionAsync(CreateTransactionDto dto)
         {
             if (dto.Amount <= 0)
