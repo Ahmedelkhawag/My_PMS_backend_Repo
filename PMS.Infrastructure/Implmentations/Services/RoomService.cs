@@ -331,87 +331,96 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 6. 👇👇 دالة تغيير الحالة (Housekeeping / FrontOffice) 👇👇
-		public async Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, ChangeRoomStatusDto dto)
-		{
-			var response = new ResponseObjectDto<bool>();
+        // 6. 👇👇 دالة تغيير الحالة (Housekeeping / FrontOffice) 👇👇
+        public async Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, ChangeRoomStatusDto dto)
+        {
+            var response = new ResponseObjectDto<bool>();
 
-			var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
-			if (room == null)
-			{
-				response.IsSuccess = false;
-				response.Message = "الغرفة غير موجودة";
-				response.StatusCode = 404;
-				return response;
-			}
+            // 1. التأكد من وجود الغرفة
+            var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
+            if (room == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "الغرفة غير موجودة";
+                response.StatusCode = 404;
+                return response;
+            }
 
-			if (!Enum.IsDefined(typeof(RoomStatusType), dto.StatusType))
-			{
-				response.IsSuccess = false;
-				response.Message = "نوع حالة الغرفة غير صحيح";
-				response.StatusCode = 400;
-				return response;
-			}
+            // 2. التحقق من نوع العملية (HK ولا FO)
+            if (!Enum.IsDefined(typeof(RoomStatusType), dto.StatusType))
+            {
+                response.IsSuccess = false;
+                response.Message = "نوع العملية (StatusType) غير صحيح";
+                response.StatusCode = 400;
+                return response;
+            }
 
-			if (dto.StatusType == RoomStatusType.HouseKeeping)
-			{
-				// لا يمكن تعيين \"مشغولة\" من خلال HK بشكل يدوي
-				if (dto.StatusId == 5)
-				{
-					response.IsSuccess = false;
-					response.Message = "لا يمكن تغيير حالة الغرفة إلى 'مشغولة' يدوياً. هذه الحالة تتم تلقائياً عند التسكين (Check-In).";
-					response.StatusCode = 400;
-					return response;
-				}
+            // =========================================================
+            // Scenario 1: House Keeping Change
+            // =========================================================
+            if (dto.StatusType == RoomStatusType.HouseKeeping)
+            {
+                // التحقق من أن الـ StatusId موجود في جدول الـ Lookups
+                if (!Enum.IsDefined(typeof(HKStatus), dto.StatusId))
+                {
+                    response.IsSuccess = false;
+                    response.Message = "حالة الغرفة غير صحيحة";
+                    response.StatusCode = 400;
+                    return response;
+                }
 
-				var statusObj = await _unitOfWork.RoomStatuses.GetByIdAsync(dto.StatusId);
-				if (statusObj == null)
-				{
-					response.IsSuccess = false;
-					response.Message = "حالة الغرفة غير صحيحة";
-					response.StatusCode = 400;
-					return response;
-				}
+                // 2. تحديث الـ Lookup ID (للداتابيز)
+                room.RoomStatusId = dto.StatusId;
 
-				room.RoomStatusId = dto.StatusId;
-				room.HKStatus = MapRoomStatusIdToHKStatus(dto.StatusId);
+                // 3. تحديث الـ Enum (للكود) - تحويل مباشر لأن الأرقام بقت واحد
+                room.HKStatus = (HKStatus)dto.StatusId;
 
-				if (!string.IsNullOrEmpty(dto.Notes))
-				{
-					room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM}: {dto.Notes}";
-				}
-			}
-			else if (dto.StatusType == RoomStatusType.FrontOffice)
-			{
-				if (!Enum.IsDefined(typeof(FOStatus), dto.StatusId))
-				{
-					response.IsSuccess = false;
-					response.Message = "حالة Front Office غير صحيحة";
-					response.StatusCode = 400;
-					return response;
-				}
+                if (!string.IsNullOrEmpty(dto.Notes))
+                {
+                    room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM} [HK]: {dto.Notes}";
+                }
+            }
+            // =========================================================
+            // Scenario 2: Front Office Change
+            // =========================================================
+            else if (dto.StatusType == RoomStatusType.FrontOffice)
+            {
+                // هنا لازم نتأكد إن الرقم اللي مبعوت هو قيمة صحيحة جوه الـ Enum بتاع FOStatus
+                if (!Enum.IsDefined(typeof(FOStatus), dto.StatusId))
+                {
+                    response.IsSuccess = false;
+                    response.Message = "حالة الاستقبال (FO Status) غير صحيحة";
+                    response.StatusCode = 400;
+                    return response;
+                }
 
-				var foStatus = (FOStatus)dto.StatusId;
-				room.FOStatus = foStatus;
+                var newFoStatus = (FOStatus)dto.StatusId;
+                room.FOStatus = newFoStatus;
 
-				if (!string.IsNullOrEmpty(dto.Notes))
-				{
-					room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM}: [FO] {dto.Notes}";
-				}
-			}
+                // ملحوظة: لو غيرنا الـ FO لـ Vacant، ممكن نحتاج نغير الـ RoomStatusId لـ Clean/Dirty
+                // ولو غيرناها لـ Occupied، الـ RoomStatusId المفروض يبقى 5
+                // بس حالياً هنلتزم بتغيير الـ FO Status بس عشان منبوظش اللوجيك بتاعك
 
-			_unitOfWork.Rooms.Update(room);
-			await _unitOfWork.CompleteAsync();
+                if (!string.IsNullOrEmpty(dto.Notes))
+                {
+                    room.Notes = (room.Notes ?? "") + $" | {DateTime.Now:dd/MM} [FO]: {dto.Notes}";
+                }
+            }
 
-			response.IsSuccess = true;
-			response.Message = "تم تغيير حالة الغرفة بنجاح";
-			response.Data = true;
-			response.StatusCode = 200;
+            // 3. الحفظ وتحديث الـ Auditing
+            // مش محتاج تنادي room.LastModifiedAt يدوياً لأن الـ Override في DbContext بيعملها
+            _unitOfWork.Rooms.Update(room);
+            await _unitOfWork.CompleteAsync();
 
-			return response;
-		}
+            response.IsSuccess = true;
+            response.Message = "تم تحديث حالة الغرفة بنجاح";
+            response.Data = true;
+            response.StatusCode = 200;
 
-		public async Task<ResponseObjectDto<bool>> StartMaintenanceAsync(int roomId, RoomMaintenanceDto dto)
+            return response;
+        }
+
+        public async Task<ResponseObjectDto<bool>> StartMaintenanceAsync(int roomId, RoomMaintenanceDto dto)
 		{
 			var response = new ResponseObjectDto<bool>();
 
@@ -537,45 +546,105 @@ namespace PMS.Infrastructure.Implmentations.Services
 			       || !string.IsNullOrWhiteSpace(dto.Status);
 		}
 
-		private static RoomDto MapRoomToDto(Room room, Dictionary<int, Reservation> reservationByRoomId)
-		{
-			var isOccupied = reservationByRoomId.TryGetValue(room.Id, out var res);
-			var maxAdults = room.MaxAdults > 0 ? room.MaxAdults : (room.RoomType?.MaxAdults ?? 0);
-			var basePrice = room.BasePrice > 0 ? room.BasePrice : (room.RoomType?.BasePrice ?? 0);
 
-			var dto = new RoomDto
-			{
-				Id = room.Id,
-				RoomNumber = room.RoomNumber,
-				FloorNumber = room.FloorNumber,
-				RoomTypeName = room.RoomType?.Name ?? "N/A",
-				RoomTypeCode = room.RoomType?.Name ?? "N/A",
-				FoStatus = isOccupied ? "OCCUPIED" : "VACANT",
-				HkStatus = room.HKStatus.ToString().ToUpperInvariant(),
-				BedType = room.BedType.ToString().ToUpperInvariant(),
-				MaxAdults = maxAdults,
-				BasePrice = basePrice,
-				Notes = room.Notes,
-				CurrentReservation = null
-			};
+        private static RoomDto MapRoomToDto(Room room, Dictionary<int, Reservation> activeReservations)
+        {
+            // 1. الكشف عن وجود حجز نشط
+            Reservation? reservation = null;
+            if (activeReservations.TryGetValue(room.Id, out var foundRes))
+            {
+                reservation = foundRes;
+            }
 
-			if (isOccupied && res != null)
-			{
-				dto.CurrentReservation = new CurrentReservationDto
-				{
-					Id = res.Id,
-					GuestName = res.Guest?.FullName ?? "",
-					ArrivalDate = res.CheckInDate.ToString("yyyy-MM-dd"),
-					DepartureDate = res.CheckOutDate.ToString("yyyy-MM-dd"),
-					Balance = res.GrandTotal
-				};
-			}
+            // 2. تحويل الـ Entity لـ DTO
+            var dto = new RoomDto
+            {
+                Id = room.Id,
+                RoomNumber = room.RoomNumber,
+                FloorNumber = room.FloorNumber,
 
-			return dto;
-		}
+                // بيانات نوع الغرفة
+                RoomTypeName = room.RoomType?.Name ?? "",
+                RoomTypeCode = "", // لو عندك حقل Code في جدول RoomType ضيفه هنا (room.RoomType?.Code)
 
-		/// <summary>Maps legacy RoomStatusLookup Id to HKStatus (1=Clean, 2=Dirty, 3/4=OOO, 5=Dirty).</summary>
-		private static HKStatus MapRoomStatusIdToHKStatus(int roomStatusId)
+                BasePrice = room.BasePrice,
+                MaxAdults = room.MaxAdults,
+                Notes = room.Notes,
+
+                // =============================================================
+                // التعديل هنا: تحويل الـ Enums لنصوص (ToString) عشان الـ DTO طالب String
+                // =============================================================
+                BedType = room.BedType.ToString(),
+                HkStatus = room.HKStatus.ToString(), // Entity Enum -> String "Clean"/"Dirty"
+                FoStatus = room.FOStatus.ToString(), // Entity Enum -> String "Vacant"/"Occupied"
+
+                CurrentReservation = null
+            };
+
+            // 3. معالجة بيانات الحجز (Nested Object)
+            if (reservation != null)
+            {
+                // Business Rule: طالما فيه حجز نشط، يبقى الـ FO Status لازم يظهر Occupied
+                dto.FoStatus = FOStatus.Occupied.ToString();
+
+                // ملء بيانات الـ CurrentReservationDto
+                dto.CurrentReservation = new CurrentReservationDto
+                {
+                    // تأكد إن أسماء الـ Properties دي موجودة جوه كلاس CurrentReservationDto عندك
+                    Id = reservation.Id, // أو Id حسب ما هي متسمية عندك
+                    GuestName = reservation.Guest?.FullName ?? "",
+                    ArrivalDate = reservation.CheckInDate.ToString("yyyy-MM-dd"),
+                    DepartureDate = reservation.CheckOutDate.ToString("yyyy-MM-dd"),
+					Balance = reservation.GrandTotal
+
+                };
+            }
+
+            return dto;
+        }
+
+
+        //private static RoomDto MapRoomToDto(Room room, Dictionary<int, Reservation> reservationByRoomId)
+        //{
+        //	var isOccupied = reservationByRoomId.TryGetValue(room.Id, out var res);
+        //	var maxAdults = room.MaxAdults > 0 ? room.MaxAdults : (room.RoomType?.MaxAdults ?? 0);
+        //	var basePrice = room.BasePrice > 0 ? room.BasePrice : (room.RoomType?.BasePrice ?? 0);
+
+        //	var dto = new RoomDto
+        //	{
+        //		Id = room.Id,
+        //		RoomNumber = room.RoomNumber,
+        //		FloorNumber = room.FloorNumber,
+        //		RoomTypeName = room.RoomType?.Name ?? "N/A",
+        //		RoomTypeCode = room.RoomType?.Name ?? "N/A",
+        //		FoStatus = isOccupied ? "OCCUPIED" : "VACANT",
+        //		HkStatus = room.HKStatus.ToString().ToUpperInvariant(),
+        //		BedType = room.BedType.ToString().ToUpperInvariant(),
+        //		MaxAdults = maxAdults,
+        //		BasePrice = basePrice,
+        //		Notes = room.Notes,
+        //		CurrentReservation = null
+        //	};
+
+        //	if (isOccupied && res != null)
+        //	{
+        //		dto.CurrentReservation = new CurrentReservationDto
+        //		{
+        //			Id = res.Id,
+        //			GuestName = res.Guest?.FullName ?? "",
+        //			ArrivalDate = res.CheckInDate.ToString("yyyy-MM-dd"),
+        //			DepartureDate = res.CheckOutDate.ToString("yyyy-MM-dd"),
+        //			Balance = res.GrandTotal
+        //		};
+        //	}
+
+        //	return dto;
+        //}
+
+
+
+        /// <summary>Maps legacy RoomStatusLookup Id to HKStatus (1=Clean, 2=Dirty, 3/4=OOO, 5=Dirty).</summary>
+        private static HKStatus MapRoomStatusIdToHKStatus(int roomStatusId)
 		{
 			return roomStatusId switch
 			{

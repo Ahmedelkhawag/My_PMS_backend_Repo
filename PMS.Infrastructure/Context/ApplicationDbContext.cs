@@ -152,13 +152,14 @@ namespace PMS.Infrastructure.Context
 				new MealPlan { Id = 4, Name = "Full Board (إفطار وغداء وعشاء)", Price = 700 }
 			);
 
-			// حالات الغرف - colors use standardized hex codes
-			builder.Entity<RoomStatusLookup>().HasData(
-			new RoomStatusLookup { Id = 1, Name = "Clean (نظيفة)", Color = StatusColorPalette.Success },
-			new RoomStatusLookup { Id = 2, Name = "Dirty (متسخة)", Color = StatusColorPalette.Danger },
-			new RoomStatusLookup { Id = 3, Name = "Maintenance (صيانة)", Color = StatusColorPalette.Warning },
-			new RoomStatusLookup { Id = 4, Name = "Out of Order (خارج الخدمة)", Color = StatusColorPalette.Secondary },
-			new RoomStatusLookup { Id = 5, Name = "Occupied", Color = StatusColorPalette.Info }
+            // حالات الغرف - colors use standardized hex codes
+            builder.Entity<RoomStatusLookup>().HasData(
+        new RoomStatusLookup { Id = 1, Name = "Clean (نظيفة)", Color = StatusColorPalette.Success }, // أخضر
+        new RoomStatusLookup { Id = 2, Name = "Dirty (متسخة)", Color = StatusColorPalette.Danger },  // أحمر
+        new RoomStatusLookup { Id = 3, Name = "Inspected (تم الفحص)", Color = "#2ecc71" },           // أخضر فاتح أو مميز
+        new RoomStatusLookup { Id = 4, Name = "Out of Order (صيانة جسيمة)", Color = StatusColorPalette.Secondary }, // رمادي
+        new RoomStatusLookup { Id = 5, Name = "Out of Service (صيانة بسيطة)", Color = StatusColorPalette.Warning }  // أصفر
+                                                                                                                    // ملحوظة: شيلنا Occupied من هنا لأنها حالة FO مش HK، أو ممكن تخليها رقم 6 لو محتاجها ضروري للعرض
 			);
 
 
