@@ -18,6 +18,11 @@ namespace PMS.Domain.Entities
         [ForeignKey(nameof(FolioId))]
         public GuestFolio Folio { get; set; }
 
+        public int? ShiftId { get; set; }
+
+        [ForeignKey(nameof(ShiftId))]
+        public virtual EmployeeShift? Shift { get; set; }
+
         /// <summary>
         /// The effective date/time of the transaction (UTC).
         /// </summary>

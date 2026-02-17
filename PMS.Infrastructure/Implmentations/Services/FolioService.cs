@@ -7,17 +7,21 @@ using PMS.Domain.Entities;
 using PMS.Domain.Enums;
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace PMS.Infrastructure.Implmentations.Services
 {
     public class FolioService : IFolioService
     {
         private readonly IUnitOfWork _unitOfWork;
+		private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public FolioService(IUnitOfWork unitOfWork)
+        public FolioService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
+			_httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<ResponseObjectDto<GuestFolioSummaryDto>> GetFolioSummaryAsync(int reservationId)
@@ -160,6 +164,31 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return Failure<FolioTransactionDto>("Unsupported transaction type", 400);
             }
 
+			// Payment/Refund operations must be tied to an active shift.
+			// In this codebase, payments are credit transactions (20-29). Refunds are represented as negative payment amounts (e.g. void reversal).
+			int? activeShiftId = null;
+			if (IsCredit(dto.Type))
+			{
+				var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+				if (string.IsNullOrWhiteSpace(currentUserId))
+				{
+					return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
+				}
+
+				var activeShift = await _unitOfWork.EmployeeShifts
+					.GetQueryable()
+					.AsNoTracking()
+					.OrderByDescending(s => s.StartedAt)
+					.FirstOrDefaultAsync(s => s.EmployeeId == currentUserId && !s.IsClosed);
+
+				if (activeShift == null)
+				{
+					return Failure<FolioTransactionDto>("No active shift found. Please open a shift before taking payments/refunds.", 400);
+				}
+
+				activeShiftId = activeShift.Id;
+			}
+
             var transaction = new FolioTransaction
             {
                 FolioId = folio.Id,
@@ -168,7 +197,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Amount = signedAmount,
                 Description = dto.Description,
                 ReferenceNo = dto.ReferenceNo,
-                IsVoided = false
+                IsVoided = false,
+				ShiftId = activeShiftId
             };
 
             await _unitOfWork.FolioTransactions.AddAsync(transaction);
@@ -231,7 +261,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Amount = signedReverseAmount,
                 Description = $"VOID: {transaction.Description}",
                 ReferenceNo = transaction.ReferenceNo,
-                IsVoided = false
+                IsVoided = false,
+				ShiftId = transaction.ShiftId
             };
 
             await _unitOfWork.FolioTransactions.AddAsync(reversal);

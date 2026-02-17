@@ -41,6 +41,7 @@ namespace PMS.Infrastructure.Context
 
 		public DbSet<GuestFolio> GuestFolios { get; set; }
 		public DbSet<FolioTransaction> FolioTransactions { get; set; }
+		public DbSet<EmployeeShift> EmployeeShifts { get; set; }
 
 		public DbSet<BookingSource> BookingSources { get; set; }
 		public DbSet<MarketSegment> MarketSegments { get; set; }
@@ -201,6 +202,31 @@ namespace PMS.Infrastructure.Context
 					  .WithMany(f => f.Transactions)
 					  .HasForeignKey(t => t.FolioId)
 					  .OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(t => t.Shift)
+					  .WithMany()
+					  .HasForeignKey(t => t.ShiftId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Employee Shift configuration
+			builder.Entity<EmployeeShift>(entity =>
+			{
+				entity.Property(s => s.StartingCash).HasColumnType("decimal(18,2)");
+				entity.Property(s => s.SystemCalculatedCash).HasColumnType("decimal(18,2)");
+				entity.Property(s => s.ActualCashHanded).HasColumnType("decimal(18,2)");
+				entity.Property(s => s.Difference).HasColumnType("decimal(18,2)");
+
+				entity.Property(s => s.StartedAt)
+					  .HasDefaultValueSql("GETUTCDATE()");
+
+				entity.Property(s => s.IsClosed)
+					  .HasDefaultValue(false);
+
+				entity.HasOne(s => s.Employee)
+					  .WithMany()
+					  .HasForeignKey(s => s.EmployeeId)
+					  .OnDelete(DeleteBehavior.Restrict);
 			});
 
 

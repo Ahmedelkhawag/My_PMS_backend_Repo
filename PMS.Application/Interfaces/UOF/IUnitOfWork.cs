@@ -20,6 +20,7 @@ namespace PMS.Application.Interfaces.UOF
 
 		IBaseRepository<GuestFolio> GuestFolios { get; }
 		IBaseRepository<FolioTransaction> FolioTransactions { get; }
+		IBaseRepository<EmployeeShift> EmployeeShifts { get; }
 
 		IBaseRepository<ReservationService> ReservationServices { get; }
 		IBaseRepository<BookingSource> BookingSources { get; }
