@@ -59,17 +59,12 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateRatePlanDto dto)
         {
-            if (id != dto.Id)
-            {
-                return BadRequest(new ApiResponse<string>("Route id does not match body id"));
-            }
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(new ApiResponse<string>("Validation failed"));
             }
 
-            var result = await _ratePlanService.UpdateAsync(dto);
+            var result = await _ratePlanService.UpdateAsync(id, dto);
             return StatusCode(result.StatusCode, result);
         }
 

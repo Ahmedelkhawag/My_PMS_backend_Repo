@@ -129,10 +129,10 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-        public async Task<ResponseObjectDto<RatePlanDto>> UpdateAsync(UpdateRatePlanDto dto)
+        public async Task<ResponseObjectDto<RatePlanDto>> UpdateAsync(int id, UpdateRatePlanDto dto)
         {
             var entity = await _unitOfWork.RatePlans.GetQueryable()
-                .FirstOrDefaultAsync(rp => rp.Id == dto.Id && !rp.IsDeleted);
+                .FirstOrDefaultAsync(rp => rp.Id == id && !rp.IsDeleted);
 
             if (entity == null)
             {

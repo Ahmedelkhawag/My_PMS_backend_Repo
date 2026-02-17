@@ -8,9 +8,6 @@ namespace PMS.Application.DTOs.Configuration
 {
     public class UpdateRatePlanDto
     {
-        [Required]
-        public int Id { get; set; }
-
         [MaxLength(200)]
         public string? Name { get; set; }
 
