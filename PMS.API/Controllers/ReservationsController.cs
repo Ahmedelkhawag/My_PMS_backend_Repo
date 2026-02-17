@@ -131,11 +131,11 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateReservationDto dto)
         {
-            if (id != dto.Id)
-                return BadRequest("رقم المعرف غير متطابق");
-
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // Always use the id from route, not from body
+            dto.Id = id;
 
             var result = await _reservationService.UpdateReservationAsync(dto);
             if (!result.IsSuccess)

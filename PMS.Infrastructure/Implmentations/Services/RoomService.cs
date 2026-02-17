@@ -374,14 +374,14 @@ namespace PMS.Infrastructure.Implmentations.Services
             if (dto.StatusType == RoomStatusType.HouseKeeping)
             {
                 // BLOCK: منع تعيين كود الحالة 5 (Occupied) يدوياً — هذه الحالة مملوكة للموديول الخاص بالحجز
-                if (dto.StatusId == 5)
-                {
-                    response.IsSuccess = false;
-                    response.Message = "Cannot set room status to Occupied manually. FO Occupied is controlled by Reservations (Check-In).";
-                    response.StatusCode = 400;
-                    response.Data = false;
-                    return response;
-                }
+                //if (dto.StatusId == 5)
+                //{
+                //    response.IsSuccess = false;
+                //    response.Message = "Cannot set room status to Occupied manually. FO Occupied is controlled by Reservations (Check-In).";
+                //    response.StatusCode = 400;
+                //    response.Data = false;
+                //    return response;
+                //}
 
                 // BLOCK: لا يمكن تحويل غرفة عليها حجز Checked-In إلى Vacant Clean مباشرة
                 if (hasActiveReservation && dto.StatusId == 1)

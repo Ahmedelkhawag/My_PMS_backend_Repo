@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace PMS.Application.DTOs.Reservations
 {
     public class UpdateReservationDto
     {
-		[Required]
-		public int Id { get; set; } // لازم نعرف بنعدل انهي حجز
+		[JsonIgnore]
+		public int Id { get; set; } // بيتم تعيينه من الـ route في الكنترولر
 
 		// البيانات الأساسية
 		public int GuestId { get; set; }
