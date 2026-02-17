@@ -113,6 +113,7 @@ builder.Services.AddScoped<IGuestService, GuestService>();
 builder.Services.AddScoped<IReservationService, ReservationsService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
+builder.Services.AddScoped<IRatePlanService, RatePlanService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IFolioService, FolioService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();

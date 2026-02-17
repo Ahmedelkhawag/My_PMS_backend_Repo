@@ -135,6 +135,28 @@ namespace PMS.Infrastructure.Implmentations.Services
 				.ToListAsync();
 		}
 
+		public async Task<IEnumerable<RatePlanLookupDto>> GetRatePlansAsync(bool? isPublicOnly = null)
+		{
+			var query = _unitOfWork.RatePlans.GetQueryable()
+				.Where(x => !x.IsDeleted && x.IsActive);
+
+			if (isPublicOnly == true)
+			{
+				query = query.Where(x => x.IsPublic);
+			}
+
+			return await query
+				.OrderBy(x => x.Name)
+				.Select(x => new RatePlanLookupDto
+				{
+					Id = x.Id,
+					Code = x.Code,
+					Name = x.Name,
+					IsPublic = x.IsPublic
+				})
+				.ToListAsync();
+		}
+
 		public Task<IEnumerable<LookupDto>> GetReservationStatusesAsync()
 		{
 			var values = Enum.GetValues(typeof(ReservationStatus))
@@ -185,6 +207,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var mealPlans = (await GetMealPlansAsync()).ToList();
 			var extraServices = (await GetExtraServicesAsync()).ToList();
 			var reservationStatuses = (await GetReservationStatusesAsync()).ToList();
+			var ratePlans = (await GetRatePlansAsync(null)).ToList();
 
 			var transactionTypesResult = await GetTransactionTypesLookupAsync();
 			if (!transactionTypesResult.IsSuccess || transactionTypesResult.Data == null)
@@ -235,7 +258,8 @@ namespace PMS.Infrastructure.Implmentations.Services
 				FoStatuses = foStatuses,
 				BedTypes = bedTypes,
 				TransactionTypes = transactionTypesResult.Data,
-				ReservationStatuses = reservationStatuses
+				ReservationStatuses = reservationStatuses,
+				RatePlans = ratePlans
 			};
 
 			return new ResponseObjectDto<AppLookupsDto>

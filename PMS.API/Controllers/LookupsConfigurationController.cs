@@ -66,6 +66,15 @@ namespace PMS.API.Controllers
             return Ok(await _configService.GetExtraServicesAsync());
         }
 
+        [HttpGet("rate-plans")]
+        [ProducesResponseType(typeof(IEnumerable<RatePlanLookupDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetRatePlans([FromQuery] bool? isPublicOnly)
+        {
+            var result = await _configService.GetRatePlansAsync(isPublicOnly);
+            return Ok(result);
+        }
+
         [HttpGet("reservation-statuses")]
         [ProducesResponseType(typeof(IEnumerable<LookupDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]

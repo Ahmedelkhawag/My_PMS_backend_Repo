@@ -16,7 +16,8 @@ namespace PMS.Application.DTOs.Configuration
         public List<EnumLookupDto> FoStatuses { get; set; } = new List<EnumLookupDto>();
         public List<EnumLookupDto> BedTypes { get; set; } = new List<EnumLookupDto>();
         public List<EnumLookupDto> TransactionTypes { get; set; } = new List<EnumLookupDto>();
-        public List<LookupDto> ReservationStatuses { get; set; } = new List<LookupDto>();
+		public List<LookupDto> ReservationStatuses { get; set; } = new List<LookupDto>();
+		public List<RatePlanLookupDto> RatePlans { get; set; } = new List<RatePlanLookupDto>();
     }
 }
 
