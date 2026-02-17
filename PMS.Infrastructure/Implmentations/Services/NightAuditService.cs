@@ -72,7 +72,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<AuditResponseDto>("Invalid user id.");
             }
 
-            var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            // Always work with a pure date component for the business day.
+            var currentBusinessDate = (await _unitOfWork.GetCurrentBusinessDateAsync()).Date;
 
             _logger.LogInformation("Starting night audit for BusinessDate={Date} by User={UserId}, Force={Force}",
                 currentBusinessDate, userId, force);
@@ -112,7 +113,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                         .Where(r =>
                             (r.Status == ReservationStatus.Pending ||
                              r.Status == ReservationStatus.Confirmed) &&
-                            r.CheckInDate.Date == currentBusinessDate)
+                            r.CheckInDate.Date == currentBusinessDate.Date)
                         .CountAsync();
 
                     if (pendingOrConfirmedArrivals > 0)
@@ -224,8 +225,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 var noShowCandidates = await _unitOfWork.Reservations
                     .GetQueryable()
                     .Where(r =>
-                        r.Status == ReservationStatus.Confirmed &&
-                        r.CheckInDate.Date <= currentBusinessDate)
+                        (r.Status == ReservationStatus.Confirmed ||
+                         r.Status == ReservationStatus.Pending) &&
+                        r.CheckInDate.Date <= currentBusinessDate.Date)
                     .ToListAsync();
 
                 foreach (var reservation in noShowCandidates)
