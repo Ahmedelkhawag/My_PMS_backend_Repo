@@ -18,6 +18,8 @@ namespace PMS.Application.DTOs.Reservations
 
 		public int? CompanyId { get; set; }
 
+		public int? RatePlanId { get; set; }
+
 		// ==========================
 		// 2. التواريخ
 		// ==========================
@@ -34,6 +36,11 @@ namespace PMS.Application.DTOs.Reservations
 		public decimal NightlyRate { get; set; } // السعر المتفق عليه
 
 		public string RateCode { get; set; } = "Standard"; // كود السعر
+
+		/// <summary>
+		/// Allows overriding the calculated rate from the selected Rate Plan.
+		/// </summary>
+		public bool IsRateOverridden { get; set; } = false;
 		[Required(ErrorMessage = "خطة الوجبات مطلوبة")]
 		public int MealPlanId { get; set; }
 

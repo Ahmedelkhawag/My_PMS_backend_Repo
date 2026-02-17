@@ -80,7 +80,65 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             var checkInDate = dto.IsWalkIn ? DateTime.UtcNow : dto.CheckInDate;
             var nights = CalculateNights(checkInDate, dto.CheckOutDate);
-            var financials = CalculateFinancials(dto.NightlyRate, nights, fetchedExtraServices, dto.Services, dto.DiscountAmount);
+
+            // Determine base price from room type
+            var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
+            if (roomType == null)
+            {
+                return new ResponseObjectDto<ReservationDto>
+                {
+                    IsSuccess = false,
+                    Message = "Room type not found",
+                    StatusCode = 400
+                };
+            }
+
+            // Determine applicable RatePlan
+            RatePlan? selectedRatePlan = null;
+
+            if (dto.CompanyId.HasValue)
+            {
+                var company = await _unitOfWork.CompanyProfiles.GetQueryable()
+                    .Include(c => c.RatePlan)
+                    .FirstOrDefaultAsync(c => c.Id == dto.CompanyId.Value && !c.IsDeleted);
+
+                if (company?.RatePlanId != null)
+                {
+                    selectedRatePlan = company.RatePlan;
+                    if (selectedRatePlan == null)
+                    {
+                        selectedRatePlan = await _unitOfWork.RatePlans.GetByIdAsync(company.RatePlanId.Value);
+                    }
+                }
+            }
+
+            if (selectedRatePlan == null && dto.RatePlanId.HasValue)
+            {
+                selectedRatePlan = await _unitOfWork.RatePlans.GetQueryable()
+                    .FirstOrDefaultAsync(rp => rp.Id == dto.RatePlanId.Value && !rp.IsDeleted && rp.IsActive);
+            }
+
+            if (selectedRatePlan == null)
+            {
+                selectedRatePlan = await _unitOfWork.RatePlans.GetQueryable()
+                    .FirstOrDefaultAsync(rp => rp.Id == 1 && !rp.IsDeleted && rp.IsActive);
+            }
+
+            decimal calculatedNightlyRate;
+            if (selectedRatePlan != null)
+            {
+                calculatedNightlyRate = CalculateRate(roomType.BasePrice, selectedRatePlan);
+            }
+            else
+            {
+                calculatedNightlyRate = dto.NightlyRate;
+            }
+
+            var effectiveNightlyRate = (!dto.IsRateOverridden || dto.NightlyRate <= 0)
+                ? calculatedNightlyRate
+                : dto.NightlyRate;
+
+            var financials = CalculateFinancials(effectiveNightlyRate, nights, fetchedExtraServices, dto.Services, dto.DiscountAmount);
 
             var reservationNumber = await GenerateReservationNumberAsync();
 
@@ -91,15 +149,16 @@ namespace PMS.Infrastructure.Implmentations.Services
                 RoomTypeId = dto.RoomTypeId,
                 RoomId = dto.RoomId,
                 CompanyId = dto.CompanyId,
+                RatePlanId = selectedRatePlan?.Id,
                 CheckInDate = checkInDate,
                 CheckOutDate = dto.CheckOutDate,
-                NightlyRate = dto.NightlyRate,
+                NightlyRate = effectiveNightlyRate,
                 TotalAmount = financials.RoomTotal,
                 ServicesAmount = financials.ServicesTotal,
                 DiscountAmount = dto.DiscountAmount,
                 TaxAmount = financials.TaxAmount,
                 GrandTotal = financials.GrandTotal,
-                RateCode = dto.RateCode,
+                RateCode = selectedRatePlan?.Code ?? dto.RateCode,
                 MealPlanId = dto.MealPlanId,
                 MarketSegmentId = dto.MarketSegmentId,
                 BookingSourceId = dto.BookingSourceId,
@@ -114,7 +173,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Notes = dto.Notes,
                 PurposeOfVisit = dto.PurposeOfVisit,
                 ExternalReference = dto.ExternalReference,
-                CarPlate = dto.CarPlate
+                CarPlate = dto.CarPlate,
+                IsRateOverridden = dto.IsRateOverridden || selectedRatePlan == null,
+                LegacyRateCode = dto.RateCode
             };
 
             reservation.CreatedBy = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -145,7 +206,6 @@ namespace PMS.Infrastructure.Implmentations.Services
             await _unitOfWork.CompleteAsync();
 
             var guest = await _unitOfWork.Guests.GetByIdAsync(dto.GuestId);
-            var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
             var room = dto.RoomId.HasValue ? await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value) : null;
 
             var responseDto = MapToReservationDto(reservation, guest, roomType, room);
@@ -167,6 +227,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Include(r => r.RoomType)
                 .Include(r => r.BookingSource)
                 .Include(r => r.MealPlan)
+                .Include(r => r.RatePlan)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(search))
@@ -199,6 +260,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     GuestPhone = r.Guest.PhoneNumber,
                     RoomNumber = r.Room != null ? r.Room.RoomNumber : "Unassigned",
                     RoomTypeName = r.RoomType.Name,
+                    RatePlanName = r.RatePlan != null ? r.RatePlan.Name : null,
                     CheckInDate = r.CheckInDate.ToString("yyyy-MM-dd"),
                     CheckOutDate = r.CheckOutDate.ToString("yyyy-MM-dd"),
                     Nights = (r.CheckOutDate - r.CheckInDate).Days,
@@ -852,6 +914,34 @@ namespace PMS.Infrastructure.Implmentations.Services
             return (roomTotal, servicesTotal, taxAmount, grandTotal, serviceEntities);
         }
 
+        private static decimal CalculateRate(decimal basePrice, RatePlan plan)
+        {
+            decimal result;
+
+            switch (plan.RateType)
+            {
+                case RateType.FixedAmount:
+                    result = plan.RateValue;
+                    break;
+                case RateType.PercentageDiscount:
+                    result = basePrice - (basePrice * plan.RateValue / 100m);
+                    break;
+                case RateType.FlatDiscount:
+                    result = basePrice - plan.RateValue;
+                    break;
+                default:
+                    result = basePrice;
+                    break;
+            }
+
+            if (result < 0)
+            {
+                result = 0;
+            }
+
+            return Math.Round(result, 2, MidpointRounding.AwayFromZero);
+        }
+
         private async Task<string> GenerateReservationNumberAsync()
         {
             var today = DateTime.UtcNow.Date;
@@ -885,6 +975,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Include(r => r.MealPlan)
                 .Include(r => r.MarketSegment)
                 .Include(r => r.Company)
+                .Include(r => r.RatePlan)
                 .FirstOrDefaultAsync(r => r.Id == id);
         }
 
@@ -929,6 +1020,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 RoomNumber = room?.RoomNumber ?? "Unassigned",
                 CompanyId = reservation.CompanyId,
                 CompanyName = reservation.Company?.Name,
+                RatePlanId = reservation.RatePlanId,
+                RatePlanName = reservation.RatePlan?.Name,
                 CheckInDate = reservation.CheckInDate,
                 CheckOutDate = reservation.CheckOutDate,
                 Nights = CalculateNights(reservation.CheckInDate, reservation.CheckOutDate),

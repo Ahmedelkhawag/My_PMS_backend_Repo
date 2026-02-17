@@ -26,6 +26,9 @@ namespace PMS.Application.DTOs.Reservations
 		public int? CompanyId { get; set; }
 		public string? CompanyName { get; set; }
 
+		public int? RatePlanId { get; set; }
+		public string? RatePlanName { get; set; }
+
 		// 3. التواريخ
 		public DateTime CheckInDate { get; set; }
 		public DateTime CheckOutDate { get; set; }

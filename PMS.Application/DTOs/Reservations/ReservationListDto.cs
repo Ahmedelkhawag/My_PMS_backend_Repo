@@ -17,6 +17,8 @@ namespace PMS.Application.DTOs.Reservations
 		public string RoomNumber { get; set; }
 		public string RoomTypeName { get; set; }
 
+		public string? RatePlanName { get; set; }
+
 		// التواريخ
 		public string CheckInDate { get; set; } // هنرجعها String فورمات جاهز للعرض
 		public string CheckOutDate { get; set; }

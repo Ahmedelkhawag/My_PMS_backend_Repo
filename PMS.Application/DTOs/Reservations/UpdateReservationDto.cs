@@ -18,6 +18,8 @@ namespace PMS.Application.DTOs.Reservations
 
 		public int? CompanyId { get; set; }
 
+		public int? RatePlanId { get; set; }
+
 		// التواريخ (لو اتغيرت هيتغير السعر) - nullable لتحديث جزئي
 		public DateTime? CheckInDate { get; set; }
 		public DateTime? CheckOutDate { get; set; }
@@ -47,6 +49,8 @@ namespace PMS.Application.DTOs.Reservations
 		public bool? IsGuestPay { get; set; }
 		public bool? IsNoExtend { get; set; }
 		public bool? IsConfidentialRate { get; set; }
+
+		public bool? IsRateOverridden { get; set; }
 
 		// قائمة الخدمات (ExtraServiceId + Quantity; backend looks up name/price)
 		public List<CreateReservationServiceDto>? Services { get; set; }
