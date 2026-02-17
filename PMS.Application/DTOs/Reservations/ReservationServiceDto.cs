@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,5 +11,6 @@ namespace PMS.Application.DTOs.Reservations
 		public int Quantity { get; set; }
 		public bool IsPerDay { get; set; }
 		public decimal Total { get; set; }
+		public int? ExtraServiceId { get; set; }
 	}
 }

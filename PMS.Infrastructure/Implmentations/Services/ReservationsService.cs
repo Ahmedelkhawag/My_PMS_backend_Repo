@@ -1038,6 +1038,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 MealPlan = reservation.MealPlan?.Name ?? "Unknown",
                 Source = reservation.BookingSource?.Name ?? "Unknown",
                 MarketSegment = reservation.MarketSegment?.Name ?? "Unknown",
+                BookingSourceId = reservation.BookingSourceId,
+                MarketSegmentId = reservation.MarketSegmentId,
+                MealPlanId = reservation.MealPlanId,
                 PurposeOfVisit = reservation.PurposeOfVisit,
                 Notes = reservation.Notes,
                 ExternalReference = reservation.ExternalReference,
@@ -1052,7 +1055,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Price = s.Price,
                     Quantity = s.Quantity,
                     IsPerDay = s.IsPerDay,
-                    Total = s.TotalServicePrice
+                    Total = s.TotalServicePrice,
+                    ExtraServiceId = null // ReservationService entity doesn't store ExtraServiceId (snapshot pattern)
                 }).ToList() ?? new List<ReservationServiceDto>()
             };
 

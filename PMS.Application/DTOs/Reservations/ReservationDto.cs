@@ -38,6 +38,9 @@ namespace PMS.Application.DTOs.Reservations
 		public string RateCode { get; set; }  // إضافة (Standard, Corporate)
 		public string MealPlan { get; set; }  // إضافة (Breakfast..)
 		public string Source { get; set; }    // إضافة (Booking.com..)
+		public int BookingSourceId { get; set; }
+		public int MarketSegmentId { get; set; }
+		public int MealPlanId { get; set; }
 
 		// 5. الماليات
 		public decimal NightlyRate { get; set; }
