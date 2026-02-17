@@ -20,7 +20,11 @@ namespace PMS.Application.DTOs.Rooms
         public string BedType { get; set; } = "SINGLE";
         public int MaxAdults { get; set; }
         public decimal BasePrice { get; set; }
-		public string? Notes { get; set; }
+        public string? Notes { get; set; }
+        /// <summary>Active reservation id when the room is occupied; null when vacant.</summary>
+        public int? CurrentReservationId { get; set; }
+        /// <summary>Guest full name for the active in-house reservation; null when vacant.</summary>
+        public string? GuestName { get; set; }
         /// <summary>Set only when FoStatus is OCCUPIED.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public CurrentReservationDto? CurrentReservation { get; set; }

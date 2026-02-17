@@ -248,6 +248,15 @@ namespace PMS.Infrastructure.Implmentations.Services
 					return response;
 				}
 
+				// BLOCK: منع تعيين الحالة Occupied (Id = 5) يدوياً، لأنها مملوكة لموديول الحجز
+				if (statusObj.Id == 5)
+				{
+					response.IsSuccess = false;
+					response.Message = "Cannot set room status to Occupied manually. FO Occupied is controlled by Reservations (Check-In).";
+					response.StatusCode = 400;
+					return response;
+				}
+
 				room.RoomStatusId = statusObj.Id;
 				room.HKStatus = MapRoomStatusIdToHKStatus(statusObj.Id);
 			}
@@ -346,6 +355,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return response;
             }
 
+            // 1.5 الكشف عن وجود حجز Checked-In نشط (الذي يملك حالة Occupied فعلياً)
+            var hasActiveReservation = await _unitOfWork.Reservations.GetQueryable()
+                .AnyAsync(r => r.RoomId == roomId && r.Status == ReservationStatus.CheckIn && !r.IsDeleted);
+
             // 2. التحقق من نوع العملية (HK ولا FO)
             if (!Enum.IsDefined(typeof(RoomStatusType), dto.StatusType))
             {
@@ -360,6 +373,26 @@ namespace PMS.Infrastructure.Implmentations.Services
             // =========================================================
             if (dto.StatusType == RoomStatusType.HouseKeeping)
             {
+                // BLOCK: منع تعيين كود الحالة 5 (Occupied) يدوياً — هذه الحالة مملوكة للموديول الخاص بالحجز
+                if (dto.StatusId == 5)
+                {
+                    response.IsSuccess = false;
+                    response.Message = "Cannot set room status to Occupied manually. FO Occupied is controlled by Reservations (Check-In).";
+                    response.StatusCode = 400;
+                    response.Data = false;
+                    return response;
+                }
+
+                // BLOCK: لا يمكن تحويل غرفة عليها حجز Checked-In إلى Vacant Clean مباشرة
+                if (hasActiveReservation && dto.StatusId == 1)
+                {
+                    response.IsSuccess = false;
+                    response.Message = "Cannot change an occupied room to Vacant Clean while a reservation is checked in.";
+                    response.StatusCode = 400;
+                    response.Data = false;
+                    return response;
+                }
+
                 // التحقق من أن الـ StatusId موجود في جدول الـ Lookups
                 if (!Enum.IsDefined(typeof(HKStatus), dto.StatusId))
                 {
@@ -385,6 +418,16 @@ namespace PMS.Infrastructure.Implmentations.Services
             // =========================================================
             else if (dto.StatusType == RoomStatusType.FrontOffice)
             {
+                // ممنوع تغيير FO Status يدوياً لغرفة عليها نزيل حاليّاً
+                if (hasActiveReservation)
+                {
+                    response.IsSuccess = false;
+                    response.Message = "Cannot change Front Office status for an occupied room. FO Occupied is owned by the Reservation module.";
+                    response.StatusCode = 400;
+                    response.Data = false;
+                    return response;
+                }
+
                 // هنا لازم نتأكد إن الرقم اللي مبعوت هو قيمة صحيحة جوه الـ Enum بتاع FOStatus
                 if (!Enum.IsDefined(typeof(FOStatus), dto.StatusId))
                 {
@@ -395,6 +438,17 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
 
                 var newFoStatus = (FOStatus)dto.StatusId;
+
+                // BLOCK: لا يمكن تعيين FO = Occupied يدوياً (لازم ييجي من Check-In)
+                if (newFoStatus == FOStatus.Occupied)
+                {
+                    response.IsSuccess = false;
+                    response.Message = "Cannot set Front Office status to Occupied manually. Use Reservation Check-In.";
+                    response.StatusCode = 400;
+                    response.Data = false;
+                    return response;
+                }
+
                 room.FOStatus = newFoStatus;
 
                 // ملحوظة: لو غيرنا الـ FO لـ Vacant، ممكن نحتاج نغير الـ RoomStatusId لـ Clean/Dirty
@@ -578,25 +632,30 @@ namespace PMS.Infrastructure.Implmentations.Services
                 HkStatus = room.HKStatus.ToString(), // Entity Enum -> String "Clean"/"Dirty"
                 FoStatus = room.FOStatus.ToString(), // Entity Enum -> String "Vacant"/"Occupied"
 
+                // Default occupancy details (null when vacant)
+                CurrentReservationId = null,
+                GuestName = null,
                 CurrentReservation = null
             };
 
-            // 3. معالجة بيانات الحجز (Nested Object)
+            // 3. معالجة بيانات الحجز (Nested Object + flat occupancy fields)
             if (reservation != null)
             {
                 // Business Rule: طالما فيه حجز نشط، يبقى الـ FO Status لازم يظهر Occupied
                 dto.FoStatus = FOStatus.Occupied.ToString();
 
-                // ملء بيانات الـ CurrentReservationDto
+                // تعبئة تفاصيل الإشغال الحالية
+                dto.CurrentReservationId = reservation.Id;
+                dto.GuestName = reservation.Guest?.FullName;
+
+                // ملء بيانات الـ CurrentReservationDto (للإسترجاع التفصيلي)
                 dto.CurrentReservation = new CurrentReservationDto
                 {
-                    // تأكد إن أسماء الـ Properties دي موجودة جوه كلاس CurrentReservationDto عندك
-                    Id = reservation.Id, // أو Id حسب ما هي متسمية عندك
+                    Id = reservation.Id,
                     GuestName = reservation.Guest?.FullName ?? "",
                     ArrivalDate = reservation.CheckInDate.ToString("yyyy-MM-dd"),
                     DepartureDate = reservation.CheckOutDate.ToString("yyyy-MM-dd"),
-					Balance = reservation.GrandTotal
-
+                    Balance = reservation.GrandTotal
                 };
             }
 

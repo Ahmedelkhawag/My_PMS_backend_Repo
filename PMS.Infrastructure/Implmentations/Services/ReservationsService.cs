@@ -297,14 +297,14 @@ namespace PMS.Infrastructure.Implmentations.Services
                     };
                 }
 
-                // Room must be Clean before Check-In
+                // Room must be Clean/Ready before Check-In
                 if (room.RoomStatusId != ROOM_STATUS_CLEAN)
                 {
                     return new ResponseObjectDto<bool>
                     {
                         IsSuccess = false,
                         StatusCode = 400,
-                        Message = "Room must be Clean before Check-In."
+                        Message = "Cannot Check-In. Room is not Clean/Ready."
                     };
                 }
 
@@ -317,6 +317,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             {
                 if (room != null)
                 {
+                    // Upon Check-Out, mark the room as Dirty so housekeeping can clean it.
                     room.RoomStatusId = ROOM_STATUS_DIRTY;
                 }
 
@@ -664,7 +665,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Room not found", StatusCode = 400 };
 
                 if (dto.IsWalkIn && room.RoomStatusId != RoomStatusClean)
-                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Room is not ready for immediate check-in", StatusCode = 400 };
+                    return new ResponseObjectDto<bool> { IsSuccess = false, Message = "Cannot Check-In. Room is not Clean/Ready.", StatusCode = 400 };
 
                 bool isRoomTaken = await CheckRoomConflictAsync(dto.RoomId.Value, dto.CheckInDate, dto.CheckOutDate);
                 if (isRoomTaken)
