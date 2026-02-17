@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using PMS.Application.Interfaces.Repositories;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
@@ -24,6 +25,7 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<GuestFolio> GuestFolios { get; private set; }
 		public IBaseRepository<FolioTransaction> FolioTransactions { get; private set; }
 		public IBaseRepository<EmployeeShift> EmployeeShifts { get; private set; }
+		public IBaseRepository<BusinessDay> BusinessDays { get; private set; }
         public IBaseRepository<ReservationService> ReservationServices { get; private set; }
 		public IBaseRepository<BookingSource> BookingSources { get; private set; }
 		public IBaseRepository<MarketSegment> MarketSegments { get; private set; }
@@ -54,12 +56,32 @@ namespace PMS.Infrastructure.Implmentations
 			RoomStatuses = new BaseRepository<RoomStatusLookup>(_context);
 			ExtraServices = new BaseRepository<ExtraService>(_context);
 			CompanyProfiles = new BaseRepository<CompanyProfile>(_context);
+			BusinessDays = new BaseRepository<BusinessDay>(_context);
 		}
 
         public async Task<int> CompleteAsync()
         {
             return await _context.SaveChangesAsync();
         }
+
+		/// <summary>
+		/// Returns the current business (financial) date based on the open BusinessDay.
+		/// If no open business day exists, falls back to today's UTC date.
+		/// </summary>
+		public async Task<DateTime> GetCurrentBusinessDateAsync()
+		{
+			var openBusinessDay = await _context.BusinessDays
+				.AsNoTracking()
+				.FirstOrDefaultAsync(b => b.Status == Domain.Enums.BusinessDayStatus.Open);
+
+			if (openBusinessDay != null)
+			{
+				return openBusinessDay.Date;
+			}
+
+			// Fallback – should be rare if seeding/operations are correct.
+			return DateTime.UtcNow.Date;
+		}
 
         public void Dispose()
         {

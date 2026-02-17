@@ -28,6 +28,12 @@ namespace PMS.Domain.Entities
         /// </summary>
         public DateTime Date { get; set; }
 
+        /// <summary>
+        /// The business (financial) date this transaction belongs to.
+        /// Only the date part is stored/used.
+        /// </summary>
+        public DateTime BusinessDate { get; set; }
+
         [Required]
         public TransactionType Type { get; set; }
 

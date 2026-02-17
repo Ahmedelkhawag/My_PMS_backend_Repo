@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PMS.Domain.Constants;
 using PMS.Domain.Entities;
+using PMS.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -84,6 +85,23 @@ namespace PMS.Infrastructure.Context
                     var errors = string.Join(", ", resetResult.Errors.Select(e => e.Description));
                     throw new Exception($"فشل تحديث باسورد الـ SuperAdmin: {errors}");
                 }
+            }
+
+            // 4. Seed initial BusinessDay if none exists
+            if (!await context.BusinessDays.AnyAsync())
+            {
+                var today = DateTime.UtcNow.Date;
+
+                await context.BusinessDays.AddAsync(new BusinessDay
+                {
+                    Date = today,
+                    Status = BusinessDayStatus.Open,
+                    StartedAt = DateTime.UtcNow,
+                    EndedAt = null,
+                    ClosedById = null
+                });
+
+                await context.SaveChangesAsync();
             }
         }
     }

@@ -4,6 +4,7 @@ using PMS.Domain.Entities.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Text;
+	using System.Threading.Tasks;
 
 namespace PMS.Application.Interfaces.UOF
 {
@@ -21,6 +22,7 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<GuestFolio> GuestFolios { get; }
 		IBaseRepository<FolioTransaction> FolioTransactions { get; }
 		IBaseRepository<EmployeeShift> EmployeeShifts { get; }
+		IBaseRepository<BusinessDay> BusinessDays { get; }
 
 		IBaseRepository<ReservationService> ReservationServices { get; }
 		IBaseRepository<BookingSource> BookingSources { get; }
@@ -32,5 +34,10 @@ namespace PMS.Application.Interfaces.UOF
 
 		//  SaveChanges
 		Task<int> CompleteAsync();
+
+		/// <summary>
+		/// Returns the current business (financial) date based on the open BusinessDay.
+		/// </summary>
+		Task<DateTime> GetCurrentBusinessDateAsync();
     }
 }

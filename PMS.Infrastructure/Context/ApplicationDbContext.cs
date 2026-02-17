@@ -42,6 +42,7 @@ namespace PMS.Infrastructure.Context
 		public DbSet<GuestFolio> GuestFolios { get; set; }
 		public DbSet<FolioTransaction> FolioTransactions { get; set; }
 		public DbSet<EmployeeShift> EmployeeShifts { get; set; }
+		public DbSet<BusinessDay> BusinessDays { get; set; }
 
 		public DbSet<BookingSource> BookingSources { get; set; }
 		public DbSet<MarketSegment> MarketSegments { get; set; }
@@ -197,6 +198,7 @@ namespace PMS.Infrastructure.Context
 			builder.Entity<FolioTransaction>(entity =>
 			{
 				entity.Property(t => t.Amount).HasColumnType("decimal(18,2)");
+				entity.Property(t => t.BusinessDate).HasColumnType("date");
 
 				entity.HasOne(t => t.Folio)
 					  .WithMany(f => f.Transactions)
@@ -206,6 +208,27 @@ namespace PMS.Infrastructure.Context
 				entity.HasOne(t => t.Shift)
 					  .WithMany()
 					  .HasForeignKey(t => t.ShiftId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Business Day configuration
+			builder.Entity<BusinessDay>(entity =>
+			{
+				entity.Property(b => b.Date).HasColumnType("date");
+
+				// Ensure each calendar date is unique.
+				entity.HasIndex(b => b.Date)
+					  .IsUnique();
+
+				// Ensure only one open business day exists at a time.
+				// BusinessDayStatus.Open = 1
+				entity.HasIndex(b => b.Status)
+					  .IsUnique()
+					  .HasFilter("[Status] = 1");
+
+				entity.HasOne(b => b.ClosedBy)
+					  .WithMany()
+					  .HasForeignKey(b => b.ClosedById)
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 

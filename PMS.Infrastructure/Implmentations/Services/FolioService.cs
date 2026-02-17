@@ -189,10 +189,14 @@ namespace PMS.Infrastructure.Implmentations.Services
 				activeShiftId = activeShift.Id;
 			}
 
+			// Use the current BusinessDate for all financial postings.
+			var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+
             var transaction = new FolioTransaction
             {
                 FolioId = folio.Id,
                 Date = DateTime.UtcNow,
+				BusinessDate = currentBusinessDate,
                 Type = dto.Type,
                 Amount = signedAmount,
                 Description = dto.Description,

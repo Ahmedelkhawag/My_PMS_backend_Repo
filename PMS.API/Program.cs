@@ -116,6 +116,7 @@ builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IFolioService, FolioService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
+builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
