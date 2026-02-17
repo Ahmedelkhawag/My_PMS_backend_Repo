@@ -473,7 +473,14 @@ namespace PMS.Infrastructure.Implmentations.Services
             var reservation = await GetReservationWithDetailsAsync(dto.Id);
             if (reservation == null) return NotFoundResponse<ReservationDto>("Reservation not found");
 
-            if (reservation.IsNoExtend && dto.CheckOutDate.Date > reservation.CheckOutDate.Date)
+            // استخدم القيم الحالية لو الـ body ما بعتهاش قيم جديدة
+            var newCheckInDate = dto.CheckInDate ?? reservation.CheckInDate;
+            var newCheckOutDate = dto.CheckOutDate ?? reservation.CheckOutDate;
+            var newNightlyRate = dto.NightlyRate ?? reservation.NightlyRate;
+            var newDiscountAmount = dto.DiscountAmount ?? reservation.DiscountAmount;
+            var effectiveRoomId = dto.RoomId ?? reservation.RoomId;
+
+            if (reservation.IsNoExtend && newCheckOutDate.Date > reservation.CheckOutDate.Date)
             {
                 return new ResponseObjectDto<ReservationDto>
                 {
@@ -483,7 +490,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            if (dto.CheckOutDate.Date <= dto.CheckInDate.Date)
+            if (newCheckOutDate.Date <= newCheckInDate.Date)
             {
                 return new ResponseObjectDto<ReservationDto>
                 {
@@ -493,9 +500,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            if (dto.RoomId.HasValue)
+            if (effectiveRoomId.HasValue)
             {
-                bool isRoomTaken = await CheckRoomConflictAsync(dto.RoomId.Value, dto.CheckInDate, dto.CheckOutDate, dto.Id);
+                bool isRoomTaken = await CheckRoomConflictAsync(effectiveRoomId.Value, newCheckInDate, newCheckOutDate, dto.Id);
                 if (isRoomTaken)
                 {
                     return new ResponseObjectDto<ReservationDto>
@@ -507,67 +514,124 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
             }
 
-            List<ExtraService> updateFetchedExtraServices;
-            if (dto.Services != null && dto.Services.Any())
+            var nights = CalculateNights(newCheckInDate, newCheckOutDate);
+
+            decimal roomTotal;
+            decimal servicesTotal;
+            decimal taxAmount;
+            decimal grandTotal;
+            List<ReservationService> newServiceEntities = null;
+
+            if (dto.Services != null)
             {
-                var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
-                var fetched = await _unitOfWork.ExtraServices.GetQueryable()
-                    .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
-                    .ToListAsync();
-                var foundIds = fetched.Select(e => e.Id).ToHashSet();
-                var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
-                if (invalidId != 0)
+                // المستخدم عايز يغير الخدمات (أو يحذفها لو بعت ليست فاضية)
+                List<ExtraService> updateFetchedExtraServices;
+                if (dto.Services.Any())
                 {
-                    return new ResponseObjectDto<ReservationDto>
+                    var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
+                    var fetched = await _unitOfWork.ExtraServices.GetQueryable()
+                        .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
+                        .ToListAsync();
+                    var foundIds = fetched.Select(e => e.Id).ToHashSet();
+                    var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
+                    if (invalidId != 0)
                     {
-                        IsSuccess = false,
-                        Message = $"Invalid Service ID: {invalidId}",
-                        StatusCode = 400
-                    };
+                        return new ResponseObjectDto<ReservationDto>
+                        {
+                            IsSuccess = false,
+                            Message = $"Invalid Service ID: {invalidId}",
+                            StatusCode = 400
+                        };
+                    }
+                    updateFetchedExtraServices = fetched;
                 }
-                updateFetchedExtraServices = fetched;
+                else
+                {
+                    // ليست فاضية = امسح كل الخدمات
+                    updateFetchedExtraServices = new List<ExtraService>();
+                }
+
+                var financials = CalculateFinancials(newNightlyRate, nights, updateFetchedExtraServices, dto.Services, newDiscountAmount);
+                roomTotal = financials.RoomTotal;
+                servicesTotal = financials.ServicesTotal;
+                taxAmount = financials.TaxAmount;
+                grandTotal = financials.GrandTotal;
+                newServiceEntities = financials.ServiceEntities;
             }
             else
             {
-                updateFetchedExtraServices = new List<ExtraService>();
+                // المستخدم ما بعتش Services -> احتفظ بالخدمات الحالية لكن حدّث الإجماليات حسب عدد الليالي والسعر الجديد
+                var activeServices = reservation.Services?.Where(s => !s.IsDeleted).ToList() ?? new List<ReservationService>();
+                foreach (var service in activeServices)
+                {
+                    if (service.IsPerDay)
+                    {
+                        service.TotalServicePrice = service.Price * service.Quantity * nights;
+                    }
+                    else
+                    {
+                        service.TotalServicePrice = service.Price * service.Quantity;
+                    }
+                }
+
+                servicesTotal = activeServices.Sum(s => s.TotalServicePrice);
+                roomTotal = newNightlyRate * nights;
+
+                var subTotal = (roomTotal + servicesTotal) - newDiscountAmount;
+                if (subTotal < 0) subTotal = 0;
+
+                var taxPercentage = _configuration.GetValue<decimal?>(TaxPercentageConfigKey) ?? DefaultTaxPercentage;
+                taxAmount = subTotal * taxPercentage;
+                grandTotal = subTotal + taxAmount;
             }
 
-            var nights = CalculateNights(dto.CheckInDate, dto.CheckOutDate);
-            var financials = CalculateFinancials(dto.NightlyRate, nights, updateFetchedExtraServices, dto.Services, dto.DiscountAmount);
+            // Update Fields (فقط الحاجات اللي اتبعتت أو القيم المحسوبة)
+            reservation.GuestId = dto.GuestId ?? reservation.GuestId;
+            reservation.RoomTypeId = dto.RoomTypeId ?? reservation.RoomTypeId;
+            reservation.RoomId = effectiveRoomId;
+            reservation.CheckInDate = newCheckInDate;
+            reservation.CheckOutDate = newCheckOutDate;
+            reservation.NightlyRate = newNightlyRate;
+            reservation.TotalAmount = roomTotal;
+            reservation.ServicesAmount = servicesTotal;
+            reservation.DiscountAmount = newDiscountAmount;
+            reservation.TaxAmount = taxAmount;
+            reservation.GrandTotal = grandTotal;
 
-            // Update Fields
-            reservation.GuestId = dto.GuestId;
-            reservation.RoomTypeId = dto.RoomTypeId;
-            reservation.RoomId = dto.RoomId;
-            reservation.CheckInDate = dto.CheckInDate;
-            reservation.CheckOutDate = dto.CheckOutDate;
-            reservation.NightlyRate = dto.NightlyRate;
-            reservation.TotalAmount = financials.RoomTotal;
-            reservation.ServicesAmount = financials.ServicesTotal;
-            reservation.DiscountAmount = dto.DiscountAmount;
-            reservation.TaxAmount = financials.TaxAmount;
-            reservation.GrandTotal = financials.GrandTotal;
-            reservation.RateCode = string.IsNullOrWhiteSpace(dto.RateCode) ? "Standard" : dto.RateCode;
-            reservation.MealPlanId = dto.MealPlanId;
-            reservation.BookingSourceId = dto.BookingSourceId;
-            reservation.MarketSegmentId = dto.MarketSegmentId;
-            reservation.PurposeOfVisit = dto.PurposeOfVisit;
-            reservation.Notes = dto.Notes;
-            reservation.ExternalReference = dto.ExternalReference;
-            reservation.CarPlate = dto.CarPlate;
-            reservation.Adults = dto.Adults;
-            reservation.Children = dto.Children;
-            reservation.CompanyId = dto.CompanyId;
-            reservation.IsConfidentialRate = dto.IsConfidentialRate;
-            reservation.IsNoExtend = dto.IsNoExtend;
-
-            // Clear old services logic handled by establishing a new list
-            // EF Core will handle the diff if we simply replace the collection or clear and add
-            if (reservation.Services != null)
+            if (dto.RateCode != null)
             {
-                reservation.Services.Clear();
+                reservation.RateCode = string.IsNullOrWhiteSpace(dto.RateCode) ? "Standard" : dto.RateCode;
             }
-            reservation.Services = financials.ServiceEntities;
+
+            reservation.MealPlanId = dto.MealPlanId ?? reservation.MealPlanId;
+            reservation.BookingSourceId = dto.BookingSourceId ?? reservation.BookingSourceId;
+            reservation.MarketSegmentId = dto.MarketSegmentId ?? reservation.MarketSegmentId;
+            reservation.PurposeOfVisit = dto.PurposeOfVisit ?? reservation.PurposeOfVisit;
+            reservation.Notes = dto.Notes ?? reservation.Notes;
+            reservation.ExternalReference = dto.ExternalReference ?? reservation.ExternalReference;
+            reservation.CarPlate = dto.CarPlate ?? reservation.CarPlate;
+            reservation.Adults = dto.Adults ?? reservation.Adults;
+            reservation.Children = dto.Children ?? reservation.Children;
+            reservation.CompanyId = dto.CompanyId ?? reservation.CompanyId;
+
+            if (dto.IsConfidentialRate.HasValue)
+                reservation.IsConfidentialRate = dto.IsConfidentialRate.Value;
+            if (dto.IsNoExtend.HasValue)
+                reservation.IsNoExtend = dto.IsNoExtend.Value;
+            if (dto.IsPostMaster.HasValue)
+                reservation.IsPostMaster = dto.IsPostMaster.Value;
+            if (dto.IsGuestPay.HasValue)
+                reservation.IsGuestPay = dto.IsGuestPay.Value;
+
+            if (dto.Services != null)
+            {
+                // استبدل قائمة الخدمات فقط لو المستخدم بعت Services
+                if (reservation.Services != null)
+                {
+                    reservation.Services.Clear();
+                }
+                reservation.Services = newServiceEntities ?? new List<ReservationService>();
+            }
 
             _unitOfWork.Reservations.Update(reservation);
             await _unitOfWork.CompleteAsync();

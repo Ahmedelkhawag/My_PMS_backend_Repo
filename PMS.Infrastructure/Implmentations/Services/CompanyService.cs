@@ -182,29 +182,52 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
+            // القيم المقترحة (تستخدم القيم الحالية لو الحقول ما اتبعتش)
             var nameProposed = dto.Name?.Trim() ?? company.Name;
-            var emailProposed = dto.Email?.Trim() ?? company.Email;
-            var phoneProposed = dto.PhoneNumber?.Trim() ?? company.PhoneNumber;
-            var taxProposed = !string.IsNullOrWhiteSpace(dto.TaxNumber) ? dto.TaxNumber.Trim() : company.TaxNumber;
+            var emailProposed = dto.Email?.Trim() ?? company.Email ?? string.Empty;
+            var phoneProposed = dto.PhoneNumber?.Trim() ?? company.PhoneNumber ?? string.Empty;
+            var taxProposed = !string.IsNullOrWhiteSpace(dto.TaxNumber)
+                ? dto.TaxNumber.Trim()
+                : company.TaxNumber;
 
-            var existing = await _unitOfWork.CompanyProfiles.GetQueryable()
-                .Where(c => !c.IsDeleted && c.Id != id &&
-                    (c.Name == nameProposed ||
-                     (taxProposed != null && c.TaxNumber == taxProposed) ||
-                     c.Email == emailProposed ||
-                     c.PhoneNumber == phoneProposed))
-                .FirstOrDefaultAsync();
+            // نتحقق الأول: هل في أي من الحقول الحساسة هيتغير فعلاً؟
+            var isNameChanging = dto.Name != null &&
+                                 !string.Equals(dto.Name.Trim(), company.Name, StringComparison.OrdinalIgnoreCase);
 
-            if (existing != null)
+            var isEmailChanging = dto.Email != null &&
+                                  !string.Equals(dto.Email.Trim(), company.Email, StringComparison.OrdinalIgnoreCase);
+
+            var isPhoneChanging = dto.PhoneNumber != null &&
+                                  !string.Equals(dto.PhoneNumber.Trim(), company.PhoneNumber, StringComparison.Ordinal);
+
+            var isTaxChanging = dto.TaxNumber != null &&
+                                !string.Equals(dto.TaxNumber.Trim(), company.TaxNumber, StringComparison.Ordinal);
+
+            // لو ولا واحد من دول هيتغير، يبقى مفيش داعي نعمل duplicate check
+            if (isNameChanging || isEmailChanging || isPhoneChanging || isTaxChanging)
             {
-                return new ResponseObjectDto<bool>
+                var existing = await _unitOfWork.CompanyProfiles.GetQueryable()
+                    .Where(c => !c.IsDeleted && c.Id != id &&
+                        (
+                            (isNameChanging && c.Name == nameProposed) ||
+                            (isTaxChanging && taxProposed != null && c.TaxNumber == taxProposed) ||
+                            (isEmailChanging && c.Email == emailProposed) ||
+                            (isPhoneChanging && c.PhoneNumber == phoneProposed)
+                        ))
+                    .FirstOrDefaultAsync();
+
+                if (existing != null)
                 {
-                    IsSuccess = false,
-                    StatusCode = 409,
-                    Message = GetDuplicateFieldMessage(existing, nameProposed, taxProposed, emailProposed, phoneProposed)
-                };
+                    return new ResponseObjectDto<bool>
+                    {
+                        IsSuccess = false,
+                        StatusCode = 409,
+                        Message = GetDuplicateFieldMessage(existing, nameProposed, taxProposed, emailProposed, phoneProposed)
+                    };
+                }
             }
 
+            // تحديث الحقول فقط لو بعتّها
             if (dto.Name != null) company.Name = dto.Name.Trim();
             if (dto.TaxNumber != null) company.TaxNumber = dto.TaxNumber;
             if (dto.ContactPerson != null) company.ContactPerson = dto.ContactPerson.Trim();
