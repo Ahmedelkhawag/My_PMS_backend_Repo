@@ -13,9 +13,11 @@ namespace PMS.Application.Interfaces.Services
 
         Task<ResponseObjectDto<RatePlanDto>> CreateAsync(CreateRatePlanDto dto);
 
-        Task<ResponseObjectDto<RatePlanDto>> UpdateAsync(UpdateRatePlanDto dto);
+		Task<ResponseObjectDto<RatePlanDto>> UpdateAsync(UpdateRatePlanDto dto);
 
-        Task<ResponseObjectDto<bool>> DeleteAsync(int id);
+		Task<ResponseObjectDto<bool>> DeleteAsync(int id);
+
+		Task<ResponseObjectDto<bool>> RestoreAsync(int id);
     }
 }
 

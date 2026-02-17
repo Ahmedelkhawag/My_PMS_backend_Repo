@@ -144,7 +144,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            var validation = ValidateRateValue(dto.RateType, dto.RateValue);
+            // Use existing values as defaults when fields are not provided
+            var effectiveRateType = dto.RateType ?? entity.RateType;
+            var effectiveRateValue = dto.RateValue ?? entity.RateValue;
+
+            var validation = ValidateRateValue(effectiveRateType, effectiveRateValue);
             if (!validation.IsSuccess)
             {
                 return new ResponseObjectDto<RatePlanDto>
@@ -155,12 +159,28 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            entity.Name = dto.Name.Trim();
-            entity.Description = dto.Description;
-            entity.RateType = dto.RateType;
-            entity.RateValue = dto.RateValue;
-            entity.IsPublic = dto.IsPublic;
-            entity.IsActive = dto.IsActive;
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                entity.Name = dto.Name.Trim();
+            }
+
+            if (dto.Description != null)
+            {
+                entity.Description = dto.Description;
+            }
+
+            entity.RateType = effectiveRateType;
+            entity.RateValue = effectiveRateValue;
+
+            if (dto.IsPublic.HasValue)
+            {
+                entity.IsPublic = dto.IsPublic.Value;
+            }
+
+            if (dto.IsActive.HasValue)
+            {
+                entity.IsActive = dto.IsActive.Value;
+            }
 
             _unitOfWork.RatePlans.Update(entity);
             await _unitOfWork.CompleteAsync();
@@ -229,6 +249,51 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsSuccess = true,
                 StatusCode = 200,
                 Message = "Rate plan deleted successfully",
+                Data = true
+            };
+        }
+
+        public async Task<ResponseObjectDto<bool>> RestoreAsync(int id)
+        {
+            var entity = await _unitOfWork.RatePlans.GetQueryable()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(rp => rp.Id == id);
+
+            if (entity == null)
+            {
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = false,
+                    StatusCode = 404,
+                    Message = "Rate plan not found",
+                    Data = false
+                };
+            }
+
+            if (!entity.IsDeleted)
+            {
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = false,
+                    StatusCode = 400,
+                    Message = "Rate plan is already active",
+                    Data = false
+                };
+            }
+
+            entity.IsDeleted = false;
+            entity.IsActive = true;
+            entity.DeletedAt = null;
+            entity.DeletedBy = null;
+
+            _unitOfWork.RatePlans.Update(entity);
+            await _unitOfWork.CompleteAsync();
+
+            return new ResponseObjectDto<bool>
+            {
+                IsSuccess = true,
+                StatusCode = 200,
+                Message = "Rate plan restored successfully",
                 Data = true
             };
         }

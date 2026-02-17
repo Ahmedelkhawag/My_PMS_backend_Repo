@@ -82,6 +82,16 @@ namespace PMS.API.Controllers
             var result = await _ratePlanService.DeleteAsync(id);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpPost("{id:int}/restore")]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var result = await _ratePlanService.RestoreAsync(id);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }
 
