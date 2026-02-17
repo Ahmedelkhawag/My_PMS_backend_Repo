@@ -144,6 +144,30 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
+            // Validate Code uniqueness if it's being changed
+            if (!string.IsNullOrWhiteSpace(dto.Code))
+            {
+                var trimmedCode = dto.Code.Trim();
+                if (!string.Equals(trimmedCode, entity.Code, StringComparison.OrdinalIgnoreCase))
+                {
+                    var existingWithCode = await _unitOfWork.RatePlans.GetQueryable()
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(rp => rp.Code.ToLower() == trimmedCode.ToLower() && rp.Id != id);
+
+                    if (existingWithCode != null && !existingWithCode.IsDeleted)
+                    {
+                        return new ResponseObjectDto<RatePlanDto>
+                        {
+                            IsSuccess = false,
+                            StatusCode = 400,
+                            Message = "Rate plan code must be unique"
+                        };
+                    }
+
+                    entity.Code = trimmedCode;
+                }
+            }
+
             // Use existing values as defaults when fields are not provided
             var effectiveRateType = dto.RateType ?? entity.RateType;
             var effectiveRateValue = dto.RateValue ?? entity.RateValue;
