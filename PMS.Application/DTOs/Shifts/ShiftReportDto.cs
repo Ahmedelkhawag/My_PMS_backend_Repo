@@ -12,6 +12,8 @@ namespace PMS.Application.DTOs.Shifts
 
 		public decimal TotalVisaPayments { get; set; }
 
+		public decimal TotalVisaRefunds { get; set; }
+
 		public decimal NetCash { get; set; }
 	}
 }

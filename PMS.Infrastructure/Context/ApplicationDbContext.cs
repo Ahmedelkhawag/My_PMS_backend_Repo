@@ -223,6 +223,11 @@ namespace PMS.Infrastructure.Context
 				entity.Property(s => s.IsClosed)
 					  .HasDefaultValue(false);
 
+				// Enforce one active (open) shift per employee (filtered unique index).
+				entity.HasIndex(s => new { s.EmployeeId, s.IsClosed })
+					  .IsUnique()
+					  .HasFilter("[IsClosed] = 0");
+
 				entity.HasOne(s => s.Employee)
 					  .WithMany()
 					  .HasForeignKey(s => s.EmployeeId)

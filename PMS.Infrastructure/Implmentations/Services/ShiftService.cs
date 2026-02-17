@@ -141,6 +141,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 					: query.Where(s => s.IsClosed);
 			}
 
+			// Only closed shifts have a calculated Difference
+			if (filter.ShowOnlyDiscrepancies == true)
+			{
+				query = query.Where(s => s.IsClosed && s.Difference.HasValue && s.Difference.Value != 0m);
+			}
+
 			var shifts = await query
 				.OrderByDescending(s => s.StartedAt)
 				.Skip((pageNumber - 1) * pageSize)
@@ -173,6 +179,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 					t.Amount > 0m)
 				.SumAsync(t => (decimal?)t.Amount) ?? 0m;
 
+			var visaRefunds = await txQuery
+				.Where(t =>
+					(t.Type == TransactionType.CardPayment || t.Type == TransactionType.BankTransferPayment) &&
+					t.Amount < 0m)
+				.SumAsync(t => (decimal?)(-t.Amount)) ?? 0m;
+
 			var netCash = cashPayments - cashRefunds;
 
 			return new ShiftReportDto
@@ -181,6 +193,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				TotalCashPayments = cashPayments,
 				TotalCashRefunds = cashRefunds,
 				TotalVisaPayments = visaPayments,
+				TotalVisaRefunds = visaRefunds,
 				NetCash = netCash
 			};
 		}

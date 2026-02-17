@@ -12,5 +12,11 @@ namespace PMS.Application.DTOs
 
         public string? Role { get; set; }   // فلتر بالرول (مثلاً: "Manager")
         public bool? IsActive { get; set; } // فلتر بالحالة المنطقية: true/false
+
+		/// <summary>
+		/// When true, returns only closed items that have a non-zero discrepancy (Difference).
+		/// Used by shift history reporting.
+		/// </summary>
+		public bool? ShowOnlyDiscrepancies { get; set; }
     }
 }
