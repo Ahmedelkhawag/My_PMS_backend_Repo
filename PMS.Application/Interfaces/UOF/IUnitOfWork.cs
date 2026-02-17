@@ -31,6 +31,7 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<RoomStatusLookup> RoomStatuses { get; }
 		IBaseRepository<ExtraService> ExtraServices { get; }
 		IBaseRepository<CompanyProfile> CompanyProfiles { get; }
+		IBaseRepository<RatePlan> RatePlans { get; }
 
 		//  SaveChanges
 		Task<int> CompleteAsync();

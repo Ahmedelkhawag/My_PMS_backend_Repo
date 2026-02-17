@@ -31,8 +31,11 @@ namespace PMS.Domain.Entities
 		public int RoomTypeId { get; set; }
 		public RoomType RoomType { get; set; }
 
-		public int? CompanyId { get; set; }
-		public CompanyProfile? Company { get; set; }
+        public int? CompanyId { get; set; }
+        public CompanyProfile? Company { get; set; }
+
+        public int? RatePlanId { get; set; }
+        public RatePlan? RatePlan { get; set; }
 
 		public ICollection<ReservationService> Services { get; set; } = new List<ReservationService>();
 
@@ -84,8 +87,18 @@ namespace PMS.Domain.Entities
 		public int Children { get; set; } = 0;
 		public string? Notes { get; set; }
 
-		[Column(TypeName = "decimal(18,2)")]
-		public decimal DiscountAmount { get; set; } = 0;
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal DiscountAmount { get; set; } = 0;
+
+        /// <summary>
+        /// Indicates that the user intentionally overrode the calculated nightly rate.
+        /// </summary>
+        public bool IsRateOverridden { get; set; } = false;
+
+        /// <summary>
+        /// Stores the original legacy RateCode for historical data after migration.
+        /// </summary>
+        public string? LegacyRateCode { get; set; }
 
 		public string? PurposeOfVisit { get; set; }
 		public string? CarPlate { get; set; }

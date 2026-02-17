@@ -33,6 +33,7 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<RoomStatusLookup> RoomStatuses { get; private set; }
 		public IBaseRepository<ExtraService> ExtraServices { get; private set; }
 		public IBaseRepository<CompanyProfile> CompanyProfiles { get; private set; }
+		public IBaseRepository<RatePlan> RatePlans { get; private set; }
 		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -56,6 +57,7 @@ namespace PMS.Infrastructure.Implmentations
 			RoomStatuses = new BaseRepository<RoomStatusLookup>(_context);
 			ExtraServices = new BaseRepository<ExtraService>(_context);
 			CompanyProfiles = new BaseRepository<CompanyProfile>(_context);
+			RatePlans = new BaseRepository<RatePlan>(_context);
 			BusinessDays = new BaseRepository<BusinessDay>(_context);
 		}
 

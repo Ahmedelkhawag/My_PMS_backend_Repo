@@ -1,5 +1,6 @@
 using PMS.Domain.Interfaces;
 using System.ComponentModel.DataAnnotations;
+using PMS.Domain.Entities.Configuration;
 
 namespace PMS.Domain.Entities
 {
@@ -23,6 +24,12 @@ namespace PMS.Domain.Entities
         public string Email { get; set; } = string.Empty;
 
         public int? ContractRateId { get; set; }
+
+        /// <summary>
+        /// Linked RatePlan for this company (takes precedence over public rate plans).
+        /// </summary>
+        public int? RatePlanId { get; set; }
+        public RatePlan? RatePlan { get; set; }
 
         public string? Address { get; set; }
 

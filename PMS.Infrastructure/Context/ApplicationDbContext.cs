@@ -49,6 +49,7 @@ namespace PMS.Infrastructure.Context
 		public DbSet<MealPlan> MealPlans { get; set; }
 		public DbSet<RoomStatusLookup> RoomStatusLookups { get; set; }
 		public DbSet<CompanyProfile> CompanyProfiles { get; set; }
+		public DbSet<RatePlan> RatePlans { get; set; }
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);
@@ -166,12 +167,50 @@ namespace PMS.Infrastructure.Context
 
 
 			builder.Entity<ExtraService>().HasData(
-	new ExtraService { Id = 1, Name = "Airport Transfer (نقل مطار)", Price = 150, IsPerDay = false },
-	new ExtraService { Id = 2, Name = "Parking (موقف سيارات)", Price = 30, IsPerDay = true },
-	new ExtraService { Id = 3, Name = "VIP Service (خدمة VIP)", Price = 200, IsPerDay = true },
-	new ExtraService { Id = 4, Name = "Spa (سبا)", Price = 300, IsPerDay = false },
-	new ExtraService { Id = 5, Name = "Laundry (غسيل)", Price = 75, IsPerDay = false }
-);
+				new ExtraService { Id = 1, Name = "Airport Transfer (نقل مطار)", Price = 150, IsPerDay = false },
+				new ExtraService { Id = 2, Name = "Parking (موقف سيارات)", Price = 30, IsPerDay = true },
+				new ExtraService { Id = 3, Name = "VIP Service (خدمة VIP)", Price = 200, IsPerDay = true },
+				new ExtraService { Id = 4, Name = "Spa (سبا)", Price = 300, IsPerDay = false },
+				new ExtraService { Id = 5, Name = "Laundry (غسيل)", Price = 75, IsPerDay = false }
+			);
+
+			// Rate Plans configuration
+			builder.Entity<RatePlan>(entity =>
+			{
+				entity.Property(r => r.RateValue).HasColumnType("decimal(18,2)");
+
+				entity.HasIndex(r => r.Code)
+					  .IsUnique();
+			});
+
+			builder.Entity<RatePlan>().HasData(
+				new RatePlan
+				{
+					Id = 1,
+					Code = "STANDARD",
+					Name = "Standard Rate",
+					Description = "Standard public rate plan (no discount).",
+					RateType = PMS.Domain.Enums.RateType.PercentageDiscount,
+					RateValue = 0m,
+					IsPublic = true,
+					IsActive = true,
+					CreatedAt = new DateTime(2026, 1, 1),
+					CreatedBy = "System"
+				},
+				new RatePlan
+				{
+					Id = 2,
+					Code = "NONREF",
+					Name = "Non-Refundable",
+					Description = "Non-refundable rate with 10% discount.",
+					RateType = PMS.Domain.Enums.RateType.PercentageDiscount,
+					RateValue = 10m,
+					IsPublic = true,
+					IsActive = true,
+					CreatedAt = new DateTime(2026, 1, 1),
+					CreatedBy = "System"
+				}
+			);
 
 
 			// Guest Folio configuration
