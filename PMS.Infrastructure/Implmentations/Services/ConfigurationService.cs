@@ -65,12 +65,17 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return Task.FromResult(response);
 		}
 
-		public async Task<IEnumerable<LookupDto>> GetBookingSourcesAsync()
+		public async Task<IEnumerable<BookingSourceLookupDto>> GetBookingSourcesAsync()
 		{
 			// بنستخدم GetQueryable عشان نعمل Projection (Select) في الداتابيز
 			return await _unitOfWork.BookingSources.GetQueryable()
 				.Where(x => x.IsActive)
-				.Select(x => new LookupDto { Id = x.Id, Name = x.Name })
+				.Select(x => new BookingSourceLookupDto
+				{
+					Id = x.Id,
+					Name = x.Name,
+					RequiresExternalReference = x.RequiresExternalReference
+				})
 				.ToListAsync();
 		}
 

@@ -19,7 +19,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("sources")]
-        [ProducesResponseType(typeof(IEnumerable<LookupDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<BookingSourceLookupDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSources()
         {

@@ -8,7 +8,7 @@ namespace PMS.Application.DTOs.Configuration
     public class AppLookupsDto
     {
         public List<LookupDto> RoomTypes { get; set; } = new List<LookupDto>();
-        public List<LookupDto> BookingSources { get; set; } = new List<LookupDto>();
+        public List<BookingSourceLookupDto> BookingSources { get; set; } = new List<BookingSourceLookupDto>();
         public List<LookupDto> MarketSegments { get; set; } = new List<LookupDto>();
         public List<MealPlanLookupDto> MealPlans { get; set; } = new List<MealPlanLookupDto>();
         public List<ExtraServiceLookupDto> ExtraServices { get; set; } = new List<ExtraServiceLookupDto>();

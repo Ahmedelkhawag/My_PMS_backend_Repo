@@ -9,7 +9,7 @@ namespace PMS.Application.Interfaces.Services
     public interface IConfigurationService
     {
 		Task<ResponseObjectDto<StatusConfigurationDto>> GetStatusConfigurationAsync();
-		Task<IEnumerable<LookupDto>> GetBookingSourcesAsync();
+		Task<IEnumerable<BookingSourceLookupDto>> GetBookingSourcesAsync();
 		Task<IEnumerable<LookupDto>> GetMarketSegmentsAsync();
 		Task<IEnumerable<MealPlanLookupDto>> GetMealPlansAsync();
 		Task<IEnumerable<RoomStatusLookupDto>> GetRoomStatusesAsync();

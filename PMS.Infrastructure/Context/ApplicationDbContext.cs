@@ -131,11 +131,11 @@ namespace PMS.Infrastructure.Context
 
 
 			builder.Entity<BookingSource>().HasData(
-		new BookingSource { Id = 1, Name = "Direct (Walk-in)" },
-		new BookingSource { Id = 2, Name = "Phone" },
-		new BookingSource { Id = 3, Name = "Booking.com" },
-		new BookingSource { Id = 4, Name = "Expedia" },
-		new BookingSource { Id = 5, Name = "Website" }
+		new BookingSource { Id = 1, Name = "Direct (Walk-in)", IsActive = true, RequiresExternalReference = false },
+		new BookingSource { Id = 2, Name = "Phone", IsActive = true, RequiresExternalReference = false },
+		new BookingSource { Id = 3, Name = "Booking.com", IsActive = true, RequiresExternalReference = true },
+		new BookingSource { Id = 4, Name = "Expedia", IsActive = true, RequiresExternalReference = true },
+		new BookingSource { Id = 5, Name = "Website", IsActive = true, RequiresExternalReference = false }
 	);
 
 			// قطاعات السوق
