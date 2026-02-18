@@ -94,6 +94,34 @@ namespace PMS.API.Controllers
 
             return Ok(result);
         }
+
+
+
+        /// <summary>
+        /// Processes a payment and an optional discount in a single unified transaction.
+        /// </summary>
+        [HttpPost("post-payment")]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PostPaymentWithDiscount([FromBody] PostPaymentWithDiscountDto dto)
+        {
+            // 1. التأكد من إن الداتا اللي جاية مطابقة لشروط الـ DTO
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // 2. إرسال الطلب للـ Service اللي هتهندل الـ Database Transaction
+            var result = await _folioService.PostPaymentWithDiscountAsync(dto);
+
+            // 3. لو حصل أي خطأ (زي إن مفيش شفت مفتوح أو مفيش سبب للخصم)
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+
+            // 4. لو كله تمام، هنرجع 200 OK
+            return Ok(result);
+        }
     }
 }
 
