@@ -22,8 +22,9 @@ namespace PMS.Domain.Entities
 		public string NationalId { get; set; } = string.Empty;
 
 		public string Nationality { get; set; } = string.Empty;
+        public string? PassportNumber { get; set; }
 
-		public DateTime? DateOfBirth { get; set; }
+        public DateTime? DateOfBirth { get; set; }
 
 		public LoyaltyLevel LoyaltyLevel { get; set; } = LoyaltyLevel.Bronze;
 

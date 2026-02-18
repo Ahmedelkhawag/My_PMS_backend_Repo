@@ -118,6 +118,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IFolioService, FolioService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<INightAuditService, NightAuditService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
