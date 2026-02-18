@@ -20,6 +20,7 @@ namespace PMS.Infrastructure.Implmentations.Services
         }
         public async Task<byte[]> GeneratePoliceReportAsync(DateTime? businessDate)
         {
+            // 1. تحديد تاريخ التقرير (تاريخ البيزنس المفتوح)
             DateTime reportDate;
             if (businessDate.HasValue)
             {
@@ -27,6 +28,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
             else
             {
+                // بنجيب اليوم اللي حالته Open من السيستم
                 var currentBusinessDay = await _unitOfWork.BusinessDays
                     .GetQueryable()
                     .AsNoTracking()
@@ -35,64 +37,60 @@ namespace PMS.Infrastructure.Implmentations.Services
                 reportDate = currentBusinessDay?.Date ?? DateTime.UtcNow.Date;
             }
 
-            // 2. سحب البيانات (The Data Fetching Logic)
-            // الشرط: الحجوزات اللي حالتها CheckedIn (مقيمين حالياً)
+            // 2. سحب البيانات (تم تصحيح الـ Query هنا) 👇
             var activeReservations = await _unitOfWork.Reservations
                 .GetQueryable()
-                .Include(r => r.Guest)
-                    .ThenInclude(g => g.Nationality) // Join عشان نجيب اسم الدولة
-                .Include(r => r.Room)                // Join عشان نجيب رقم الغرفة
+                .Include(r => r.Guest) // هنجيب النزيل بس
+                .Include(r => r.Room)  // هنجيب الغرفة
                 .Where(r => r.Status == ReservationStatus.CheckIn && !r.IsDeleted)
-                .AsNoTracking() // Performance Boost للتقارير
+                .AsNoTracking()
                 .ToListAsync();
 
-            // 3. تحويل البيانات لـ Flat DTO (Mapping)
+            // 3. تحويل البيانات لـ DTO
             var reportData = new List<PoliceReportDto>();
 
             foreach (var res in activeReservations)
             {
-                // Logic ذكي لتحديد نوع الوثيقة (مصري = بطاقة، أجنبي = باسبور)
-                // بنعتمد على وجود الرقم القومي، لو موجود يبقى مصري/بطاقة، غير كدة باسبور
+                // تحديد نوع الوثيقة بناءً على وجود الرقم القومي
                 bool hasNationalId = !string.IsNullOrWhiteSpace(res.Guest.NationalId);
 
                 var item = new PoliceReportDto
                 {
                     GuestName = res.Guest.FullName,
-                    Nationality = res.Guest.Nationality?? "Unknown",
+
+                    // هنا بنسحب الجنسية كـ string عادي من غير Include 👇
+                    Nationality = !string.IsNullOrEmpty(res.Guest.Nationality) ? res.Guest.Nationality : "Unknown",
 
                     DocumentType = hasNationalId ? "National ID" : "Passport",
-                    DocumentNumber = hasNationalId ? res.Guest.NationalId : (res.Guest.PassportNumber ?? "N/A"),
 
-                    RoomNumber = res.Room != null ? res.Room.RoomNumber : "Unassigned",
+                    // Fallback لو مفيش باسبور مسجل في الـ Entity نستخدم الـ NationalId
+                    DocumentNumber = hasNationalId ? res.Guest.NationalId : (res.Guest.NationalId ?? "N/A"),
 
+                    RoomNumber = res.Room != null ? res.Room.RoomNumber : "N/A",
                     ArrivalDate = res.CheckInDate,
                     DepartureDate = res.CheckOutDate,
-
-                    // لو مفيش وظيفة مسجلة نكتب N/A
-                    Profession = !string.IsNullOrWhiteSpace(res.Guest.PhoneNumber) ? "Guest" : "N/A"
-                    // ملحوظة: لو عندك حقل JobTitle في الـ Guest استخدمه هنا، حالياً حطيت Placeholder
+                    Profession = "Guest"
                 };
 
                 reportData.Add(item);
             }
 
-            using (var workbook = new XLWorkbook())
+            // 4. توليد ملف الإكسيل (نفس كود ClosedXML اللي عملناه في Task 3)
+            using (var workbook = new ClosedXML.Excel.XLWorkbook())
             {
                 var worksheet = workbook.Worksheets.Add("Daily Police Report");
 
-                // A. إعداد الـ Headers
+                // Headers
                 string[] headers = { "Guest Name", "Nationality", "Document Type", "Document Number", "Room", "Arrival", "Departure", "Profession" };
-
                 for (int i = 0; i < headers.Length; i++)
                 {
                     var cell = worksheet.Cell(1, i + 1);
                     cell.Value = headers[i];
                     cell.Style.Font.Bold = true;
-                    cell.Style.Fill.BackgroundColor = XLColor.LightGray; // لون خلفية خفيف للتمييز
-                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    cell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
                 }
 
-                // B. تعبئة البيانات (Data Filling)
+                // Data Rows
                 int row = 2;
                 foreach (var item in reportData)
                 {
@@ -102,7 +100,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                     worksheet.Cell(row, 4).Value = item.DocumentNumber;
                     worksheet.Cell(row, 5).Value = item.RoomNumber;
 
-                    // تنسيق التواريخ
                     worksheet.Cell(row, 6).Value = item.ArrivalDate;
                     worksheet.Cell(row, 6).Style.DateFormat.Format = "dd/MM/yyyy";
 
@@ -110,14 +107,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                     worksheet.Cell(row, 7).Style.DateFormat.Format = "dd/MM/yyyy";
 
                     worksheet.Cell(row, 8).Value = item.Profession;
-
                     row++;
                 }
 
-                // C. تنسيق نهائي (Final Styling)
-                worksheet.Columns().AdjustToContents(); // توسيع الأعمدة حسب المحتوى
+                worksheet.Columns().AdjustToContents();
 
-                // D. الحفظ في الذاكرة (Save to Memory)
                 using (var stream = new MemoryStream())
                 {
                     workbook.SaveAs(stream);
