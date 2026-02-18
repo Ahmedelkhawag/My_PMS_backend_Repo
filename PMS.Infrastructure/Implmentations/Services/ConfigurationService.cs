@@ -152,7 +152,9 @@ namespace PMS.Infrastructure.Implmentations.Services
 					Id = x.Id,
 					Code = x.Code,
 					Name = x.Name,
-					IsPublic = x.IsPublic
+					IsPublic = x.IsPublic,
+					RateType = (int)x.RateType,
+					RateValue = x.RateValue,
 				})
 				.ToListAsync();
 		}
@@ -207,7 +209,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var mealPlans = (await GetMealPlansAsync()).ToList();
 			var extraServices = (await GetExtraServicesAsync()).ToList();
 			var reservationStatuses = (await GetReservationStatusesAsync()).ToList();
-			var ratePlans = (await GetRatePlansAsync(null)).ToList();
+			var ratePlans = (await GetRatePlansAsync(true)).ToList();
 
 			var transactionTypesResult = await GetTransactionTypesLookupAsync();
 			if (!transactionTypesResult.IsSuccess || transactionTypesResult.Data == null)
