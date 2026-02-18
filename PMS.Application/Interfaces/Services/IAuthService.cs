@@ -23,7 +23,7 @@ namespace PMS.Application.Interfaces.Services
 
         Task<ApiResponse<string>> UpdateCurrentUserProfileAsync(UpdateProfileDto model);
 
-        Task<ApiResponse<string>> UpdateEmployeeAsync(UpdateEmployeeDto model);
+        Task<ApiResponse<string>> UpdateEmployeeAsync(string id, UpdateEmployeeDto model);
 
         Task<ApiResponse<string>> DeleteUserAsync(string userId);
 

@@ -530,9 +530,9 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-        public async Task<ResponseObjectDto<ReservationDto>> UpdateReservationAsync(UpdateReservationDto dto)
+        public async Task<ResponseObjectDto<ReservationDto>> UpdateReservationAsync(int id, UpdateReservationDto dto)
         {
-            var reservation = await GetReservationWithDetailsAsync(dto.Id);
+            var reservation = await GetReservationWithDetailsAsync(id);
             if (reservation == null) return NotFoundResponse<ReservationDto>("Reservation not found");
 
             // استخدم القيم الحالية لو الـ body ما بعتهاش قيم جديدة
@@ -564,7 +564,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (effectiveRoomId.HasValue)
             {
-                bool isRoomTaken = await CheckRoomConflictAsync(effectiveRoomId.Value, newCheckInDate, newCheckOutDate, dto.Id);
+                bool isRoomTaken = await CheckRoomConflictAsync(effectiveRoomId.Value, newCheckInDate, newCheckOutDate, id);
                 if (isRoomTaken)
                 {
                     return new ResponseObjectDto<ReservationDto>

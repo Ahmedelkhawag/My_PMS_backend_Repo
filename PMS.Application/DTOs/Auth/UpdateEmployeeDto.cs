@@ -8,9 +8,6 @@ namespace PMS.Application.DTOs.Auth
 {
     public class UpdateEmployeeDto
     {
-        [Required]
-        public string Id { get; set; } // لازم نعرف بنعدل مين
-
         public string? FullName { get; set; }
         public string? PhoneNumber { get; set; }
         public string? NationalId { get; set; }

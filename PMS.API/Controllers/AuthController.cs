@@ -184,8 +184,7 @@ namespace PMS.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(new ApiResponse<string>("Invalid Data"));
 
-            model.Id = id;
-            var result = await _authService.UpdateEmployeeAsync(model);
+            var result = await _authService.UpdateEmployeeAsync(id, model);
 
             if (!result.Succeeded)
                 return BadRequest(result);

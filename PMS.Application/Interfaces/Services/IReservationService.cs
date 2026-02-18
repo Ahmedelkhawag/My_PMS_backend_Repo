@@ -18,7 +18,7 @@ namespace PMS.Application.Interfaces.Services
 
 		Task<ResponseObjectDto<bool>> RestoreReservationAsync(int id);
 
-		Task<ResponseObjectDto<ReservationDto>> UpdateReservationAsync(UpdateReservationDto dto);
+		Task<ResponseObjectDto<ReservationDto>> UpdateReservationAsync(int id, UpdateReservationDto dto);
 		Task<ResponseObjectDto<ReservationStatsDto>> GetReservationStatsAsync();
 	}
 }

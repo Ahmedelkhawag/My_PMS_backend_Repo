@@ -575,14 +575,14 @@ namespace PMS.Infrastructure.Implmentations.Services
             return new ApiResponse<string>(data: null, "Password reset successfully. User must change password on next login.");
         }
 
-        public async Task<ApiResponse<string>> UpdateEmployeeAsync(UpdateEmployeeDto model)
+        public async Task<ApiResponse<string>> UpdateEmployeeAsync(string id, UpdateEmployeeDto model)
         {
             // 1. هات المستخدم الحالي (اللي بيعمل التعديل)
             var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var currentUser = await _userManager.FindByIdAsync(currentUserId);
 
             // 2. هات الموظف اللي عايزين نعدله
-            var userToUpdate = await _userManager.FindByIdAsync(model.Id);
+            var userToUpdate = await _userManager.FindByIdAsync(id);
 
             if (userToUpdate == null)
                 return new ApiResponse<string>("User not found.");

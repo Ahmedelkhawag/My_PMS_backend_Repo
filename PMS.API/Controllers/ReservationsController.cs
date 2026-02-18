@@ -134,10 +134,7 @@ namespace PMS.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Always use the id from route, not from body
-            dto.Id = id;
-
-            var result = await _reservationService.UpdateReservationAsync(dto);
+            var result = await _reservationService.UpdateReservationAsync(id, dto);
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
             return Ok(result);
