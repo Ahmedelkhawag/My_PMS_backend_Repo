@@ -9,6 +9,8 @@ namespace PMS.Application.DTOs.Configuration
         public int Id { get; set; }
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public int RateType { get; set; }
+        public decimal RateValue { get; set; }
         public bool IsPublic { get; set; }
     }
 }
