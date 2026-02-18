@@ -209,7 +209,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var mealPlans = (await GetMealPlansAsync()).ToList();
 			var extraServices = (await GetExtraServicesAsync()).ToList();
 			var reservationStatuses = (await GetReservationStatusesAsync()).ToList();
-			var ratePlans = (await GetRatePlansAsync(true)).ToList();
+			var ratePlans = (await GetRatePlansAsync(null)).ToList();
 
 			var transactionTypesResult = await GetTransactionTypesLookupAsync();
 			if (!transactionTypesResult.IsSuccess || transactionTypesResult.Data == null)

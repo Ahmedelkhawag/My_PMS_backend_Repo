@@ -30,6 +30,9 @@ namespace PMS.Application.DTOs.Folios
 
         [MaxLength(100)]
         public string? ReferenceNo { get; set; }
+
+        [MaxLength(500)]
+        public string? DiscountReason { get; set; }
     }
 }
 

@@ -15,6 +15,7 @@ namespace PMS.Application.DTOs.Folios
         public decimal Amount { get; set; }
         public string Description { get; set; } = string.Empty;
         public string? ReferenceNo { get; set; }
+        public string? DiscountReason { get; set; }
         public bool IsVoided { get; set; }
         public string? CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }

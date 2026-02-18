@@ -49,6 +49,9 @@ namespace PMS.Domain.Entities
 
         public string? ReferenceNo { get; set; }
 
+        [MaxLength(500)]
+        public string? DiscountReason { get; set; }
+
         public bool IsVoided { get; set; } = false;
 
         public bool IsDeleted { get; set; } = false;

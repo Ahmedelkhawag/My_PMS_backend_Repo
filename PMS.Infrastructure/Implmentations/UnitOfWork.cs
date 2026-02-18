@@ -13,7 +13,7 @@ namespace PMS.Infrastructure.Implmentations
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ApplicationDbContext _context;
-
+        private Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? _currentTransaction;
         public IBaseRepository<Country> Countries { get; private set; }
         public IBaseRepository<Status> Statuses { get; private set; }
         public IBaseRepository<EmployeeDocument> EmployeeDocuments { get; private set; }
@@ -84,6 +84,54 @@ namespace PMS.Infrastructure.Implmentations
 			// Fallback – should be rare if seeding/operations are correct.
 			return DateTime.UtcNow.Date;
 		}
+
+
+        public async Task BeginTransactionAsync()
+        {
+            if (_currentTransaction != null)
+                throw new InvalidOperationException("A transaction is already in progress.");
+
+            _currentTransaction = await _context.Database.BeginTransactionAsync();
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            try
+            {
+                await CompleteAsync();
+                if (_currentTransaction != null)
+                {
+                    await _currentTransaction.CommitAsync();
+                }
+            }
+            finally
+            {
+                if (_currentTransaction != null)
+                {
+                    await _currentTransaction.DisposeAsync();
+                    _currentTransaction = null;
+                }
+            }
+        }
+
+        public async Task RollbackTransactionAsync()
+        {
+            try
+            {
+                if (_currentTransaction != null)
+                {
+                    await _currentTransaction.RollbackAsync();
+                }
+            }
+            finally
+            {
+                if (_currentTransaction != null)
+                {
+                    await _currentTransaction.DisposeAsync();
+                    _currentTransaction = null;
+                }
+            }
+        }
 
         public void Dispose()
         {

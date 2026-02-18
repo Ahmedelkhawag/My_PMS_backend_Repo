@@ -137,6 +137,22 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return Failure<FolioTransactionDto>("Amount must be greater than zero", 400);
             }
 
+            if (dto.Type == TransactionType.CardPayment || dto.Type == TransactionType.BankTransferPayment)
+            {
+                if (string.IsNullOrWhiteSpace(dto.ReferenceNo))
+                {
+                    return Failure<FolioTransactionDto>("Reference number is required for electronic payments.", 400);
+                }
+            }
+
+            if (dto.Type == TransactionType.Discount)
+            {
+                if (string.IsNullOrWhiteSpace(dto.DiscountReason))
+                {
+                    return Failure<FolioTransactionDto>("A reason must be provided for every discount.", 400);
+                }
+            }
+
             var reservation = await _unitOfWork.Reservations.GetByIdAsync(dto.ReservationId);
             if (reservation == null)
             {
@@ -201,6 +217,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Amount = signedAmount,
                 Description = dto.Description,
                 ReferenceNo = dto.ReferenceNo,
+                DiscountReason = dto.DiscountReason,
                 IsVoided = false,
 				ShiftId = activeShiftId
             };
@@ -291,6 +308,78 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Message = "Transaction voided successfully",
                 Data = MapToTransactionDto(reversal)
             };
+        }
+
+
+        public async Task<ResponseObjectDto<bool>> PostPaymentWithDiscountAsync(PostPaymentWithDiscountDto dto)
+        {
+            // 1. نفتح الـ Database Transaction
+            await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                // 2. نسجل عملية الدفع الأساسية
+                var paymentDto = new CreateTransactionDto
+                {
+                    ReservationId = dto.ReservationId,
+                    Type = dto.PaymentType,
+                    Amount = dto.PaymentAmount,
+                    Description = dto.PaymentDescription,
+                    ReferenceNo = dto.ReferenceNo
+                };
+
+                var paymentResult = await AddTransactionAsync(paymentDto);
+                if (!paymentResult.IsSuccess)
+                {
+                    // لو الدفع فشل (مثلاً نسي يكتب رقم الفيزا)، نلغي كل حاجة
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>($"Payment failed: {paymentResult.Message}", 400);
+                }
+
+                // 3. لو فيه خصم، نسجله كعملية تانية
+                if (dto.ApplyDiscount)
+                {
+                    if (dto.DiscountAmount == null || dto.DiscountAmount <= 0)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return Failure<bool>("Discount amount must be greater than zero when apply discount is checked.", 400);
+                    }
+
+                    var discountDto = new CreateTransactionDto
+                    {
+                        ReservationId = dto.ReservationId,
+                        Type = TransactionType.Discount,
+                        Amount = dto.DiscountAmount.Value,
+                        Description = dto.DiscountDescription ?? "Discount Applied",
+                        DiscountReason = dto.DiscountReason
+                    };
+
+                    var discountResult = await AddTransactionAsync(discountDto);
+                    if (!discountResult.IsSuccess)
+                    {
+                        // لو الخصم فشل (مثلاً نسي يكتب السبب)، نلغي الدفع وكل اللي حصل
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return Failure<bool>($"Discount failed: {discountResult.Message}", 400);
+                    }
+                }
+
+                // 4. لو كله تمام، نـ Commit التغييرات للداتابيز بأمان
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = true,
+                    StatusCode = 200,
+                    Message = "Payment and optional discount processed successfully.",
+                    Data = true
+                };
+            }
+            catch (Exception ex)
+            {
+                // لو ضرب أي Error فجأة، نرجع في كلامنا فوراً
+                await _unitOfWork.RollbackTransactionAsync();
+                return Failure<bool>("An error occurred while processing the payment.", 500);
+            }
         }
 
         private static bool IsDebit(TransactionType type)

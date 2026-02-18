@@ -21,7 +21,8 @@ namespace PMS.Domain.Enums
         CashPayment = 20,
         CardPayment = 21,
         BankTransferPayment = 22,
-        AdjustmentCredit = 23
+        AdjustmentCredit = 23,
+        Discount = 24
     }
 }
 

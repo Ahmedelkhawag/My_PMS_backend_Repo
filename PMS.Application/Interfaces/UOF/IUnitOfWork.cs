@@ -36,9 +36,13 @@ namespace PMS.Application.Interfaces.UOF
 		//  SaveChanges
 		Task<int> CompleteAsync();
 
-		/// <summary>
-		/// Returns the current business (financial) date based on the open BusinessDay.
-		/// </summary>
-		Task<DateTime> GetCurrentBusinessDateAsync();
+        Task BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
+
+        /// <summary>
+        /// Returns the current business (financial) date based on the open BusinessDay.
+        /// </summary>
+        Task<DateTime> GetCurrentBusinessDateAsync();
     }
 }
