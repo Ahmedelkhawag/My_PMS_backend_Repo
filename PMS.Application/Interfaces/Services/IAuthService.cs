@@ -15,6 +15,8 @@ namespace PMS.Application.Interfaces.Services
 
         Task<AuthModel> ChangePasswordAsync(ChangePasswordDto model);
 
+        Task<ApiResponse<bool>> VerifyCurrentPasswordAsync(string userId, string password);
+
         Task<ResponseObjectDto<PagedResult<UserResponseDto>>> GetAllUsersAsync(string? search, int pageNumber, int pageSize);
 
         Task<ApiResponse<UserDetailDto>> GetUserByIdAsync(string userId);

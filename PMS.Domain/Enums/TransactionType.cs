@@ -16,13 +16,17 @@ namespace PMS.Domain.Enums
         RoomCharge = 10,
         ServiceCharge = 11,
         TaxCharge = 12,
+        TransferDebit = 13,
 
         // 20–29 : Credits (increase payments)
         CashPayment = 20,
         CardPayment = 21,
         BankTransferPayment = 22,
         AdjustmentCredit = 23,
-        Discount = 24
+        Discount = 24,
+        Refund = 25,
+        TransferCredit = 26,
+        CityLedgerPayment = 27
     }
 }
 

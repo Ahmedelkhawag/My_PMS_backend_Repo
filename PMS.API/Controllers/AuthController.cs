@@ -5,6 +5,7 @@ using PMS.Application.DTOs;
 using PMS.Application.DTOs.Auth;
 using PMS.Application.DTOs.Common;
 using PMS.Application.Interfaces.Services;
+using System.Security.Claims;
 
 namespace PMS.API.Controllers
 {
@@ -88,6 +89,28 @@ namespace PMS.API.Controllers
 
             // هنا الـ Data بـ null لأننا مش محتاجين نرجع حاجة، بس الرسالة كفاية
             return Ok(new ApiResponse<string>(data: null, message: result.Message));
+        }
+
+        [HttpPost("verify-password")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> VerifyPassword([FromBody] VerifyPasswordDto model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new ApiResponse<bool>("Invalid Data"));
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new ApiResponse<string>("User not found or not logged in."));
+
+            var result = await _authService.VerifyCurrentPasswordAsync(userId, model.Password);
+
+            if (!result.Succeeded)
+                return BadRequest(result);
+
+            return Ok(result);
         }
 
         [HttpGet("profile")]

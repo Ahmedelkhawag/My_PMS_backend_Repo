@@ -339,6 +339,19 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
+        public async Task<ApiResponse<bool>> VerifyCurrentPasswordAsync(string userId, string password)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return new ApiResponse<bool>("User not found.");
+
+            var isPasswordValid = await _userManager.CheckPasswordAsync(user, password);
+            if (!isPasswordValid)
+                return new ApiResponse<bool>("Incorrect password.");
+
+            return new ApiResponse<bool>(true, "Password verified successfully.");
+        }
+
         public async Task<ResponseObjectDto<PagedResult<UserResponseDto>>> GetAllUsersAsync(string? search, int pageNumber, int pageSize)
         {
             var response = new ResponseObjectDto<PagedResult<UserResponseDto>>();

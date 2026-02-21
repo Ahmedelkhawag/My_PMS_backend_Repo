@@ -382,6 +382,234 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
         }
 
+        public async Task<ResponseObjectDto<FolioTransactionDto>> RefundTransactionAsync(int originalTransactionId, decimal refundAmount, string reason, string userId)
+        {
+            if (refundAmount <= 0)
+            {
+                return Failure<FolioTransactionDto>("Refund amount must be greater than zero.", 400);
+            }
+
+            var originalTransaction = await _unitOfWork.FolioTransactions
+                .GetQueryable()
+                .Include(t => t.Folio)
+                .FirstOrDefaultAsync(t => t.Id == originalTransactionId);
+
+            if (originalTransaction == null)
+            {
+                return Failure<FolioTransactionDto>("Original transaction not found.", 404);
+            }
+
+            var isPayment = originalTransaction.Type == TransactionType.CashPayment ||
+                            originalTransaction.Type == TransactionType.CardPayment ||
+                            originalTransaction.Type == TransactionType.BankTransferPayment ||
+                            originalTransaction.Type == TransactionType.CityLedgerPayment;
+
+            if (!isPayment)
+            {
+                return Failure<FolioTransactionDto>("Original transaction is not a payment and cannot be refunded.", 400);
+            }
+
+            if (refundAmount > originalTransaction.Amount)
+            {
+                return Failure<FolioTransactionDto>("Refund amount cannot be greater than the original transaction amount.", 400);
+            }
+
+            var folio = originalTransaction.Folio;
+            if (folio == null)
+            {
+                return Failure<FolioTransactionDto>("Associated folio not found.", 404);
+            }
+
+            if (!folio.IsActive)
+            {
+                return Failure<FolioTransactionDto>("Cannot add refund to a closed folio.", 400);
+            }
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
+            }
+
+            var activeShift = await _unitOfWork.EmployeeShifts
+                .GetQueryable()
+                .AsNoTracking()
+                .OrderByDescending(s => s.StartedAt)
+                .FirstOrDefaultAsync(s => s.EmployeeId == userId && !s.IsClosed);
+
+            if (activeShift == null)
+            {
+                return Failure<FolioTransactionDto>("No active shift found. Please open a shift before taking refunds.", 400);
+            }
+
+            var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+
+            var refundTransaction = new FolioTransaction
+            {
+                FolioId = folio.Id,
+                Date = DateTime.UtcNow,
+                BusinessDate = currentBusinessDate,
+                Type = TransactionType.Refund,
+                Amount = -refundAmount,
+                Description = string.IsNullOrWhiteSpace(reason) ? $"Refund for transaction {originalTransactionId}" : reason,
+                ReferenceNo = originalTransaction.ReferenceNo,
+                IsVoided = false,
+                ShiftId = activeShift.Id
+            };
+
+            await _unitOfWork.FolioTransactions.AddAsync(refundTransaction);
+
+            folio.TotalPayments -= refundAmount;
+            folio.Balance = folio.TotalCharges - folio.TotalPayments;
+
+            await _unitOfWork.CompleteAsync();
+
+            return new ResponseObjectDto<FolioTransactionDto>
+            {
+                IsSuccess = true,
+                StatusCode = 201,
+                Message = "Refund processed successfully.",
+                Data = MapToTransactionDto(refundTransaction)
+            };
+        }
+
+        public async Task<ResponseObjectDto<bool>> TransferTransactionAsync(int transactionId, int targetReservationId, string userId, string reason)
+        {
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var originalTransaction = await _unitOfWork.FolioTransactions
+                    .GetQueryable()
+                    .Include(t => t.Folio)
+                    .FirstOrDefaultAsync(t => t.Id == transactionId);
+
+                if (originalTransaction == null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Transaction not found.", 404);
+                }
+
+                if (originalTransaction.IsVoided)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Transaction is already voided.", 400);
+                }
+
+                var sourceFolio = originalTransaction.Folio;
+                if (sourceFolio == null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Source folio not found.", 404);
+                }
+
+                var targetFolio = await _unitOfWork.GuestFolios
+                    .GetQueryable()
+                    .FirstOrDefaultAsync(f => f.ReservationId == targetReservationId);
+
+                if (targetFolio == null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Target folio not found.", 404);
+                }
+
+                if (!targetFolio.IsActive)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Target folio is closed.", 400);
+                }
+
+                if (sourceFolio.Id == targetFolio.Id)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Cannot transfer to the same folio.", 400);
+                }
+
+                var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+
+                // Step 3: Source Folio Logic (The Outgoing)
+                originalTransaction.IsVoided = true;
+
+                var isDebit = IsDebit(originalTransaction.Type);
+                var signedReverseAmount = -originalTransaction.Amount;
+
+                var reversalDescription = string.IsNullOrWhiteSpace(reason) 
+                    ? $"Transfer Out to Res #{targetReservationId}: {originalTransaction.Description}" 
+                    : $"Transfer Out - {reason}";
+
+                var reversal = new FolioTransaction
+                {
+                    FolioId = originalTransaction.FolioId,
+                    Date = DateTime.UtcNow,
+                    BusinessDate = currentBusinessDate,
+                    Type = originalTransaction.Type,
+                    Amount = signedReverseAmount,
+                    Description = reversalDescription,
+                    ReferenceNo = originalTransaction.ReferenceNo,
+                    IsVoided = false,
+                    ShiftId = originalTransaction.ShiftId
+                };
+
+                await _unitOfWork.FolioTransactions.AddAsync(reversal);
+
+                if (isDebit)
+                {
+                    sourceFolio.TotalCharges += signedReverseAmount;
+                }
+                else
+                {
+                    sourceFolio.TotalPayments += signedReverseAmount;
+                }
+
+                sourceFolio.Balance = sourceFolio.TotalCharges - sourceFolio.TotalPayments;
+
+                // Step 4: Target Folio Logic (The Incoming)
+                var targetType = isDebit ? TransactionType.TransferDebit : TransactionType.TransferCredit;
+                
+                var targetDescription = $"Transferred from Res #{sourceFolio.ReservationId} - {originalTransaction.Description}";
+
+                var newTransaction = new FolioTransaction
+                {
+                    FolioId = targetFolio.Id,
+                    Date = DateTime.UtcNow,
+                    BusinessDate = currentBusinessDate,
+                    Type = targetType,
+                    Amount = originalTransaction.Amount,
+                    Description = targetDescription,
+                    ReferenceNo = originalTransaction.ReferenceNo,
+                    IsVoided = false,
+                    ShiftId = originalTransaction.ShiftId
+                };
+
+                await _unitOfWork.FolioTransactions.AddAsync(newTransaction);
+
+                if (isDebit)
+                {
+                    targetFolio.TotalCharges += newTransaction.Amount;
+                }
+                else
+                {
+                    targetFolio.TotalPayments += newTransaction.Amount;
+                }
+
+                targetFolio.Balance = targetFolio.TotalCharges - targetFolio.TotalPayments;
+
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = true,
+                    StatusCode = 200,
+                    Message = "Transaction transferred successfully.",
+                    Data = true
+                };
+            }
+            catch (Exception)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return Failure<bool>("An error occurred while transferring the transaction.", 500);
+            }
+        }
+
         private static bool IsDebit(TransactionType type)
         {
             var code = (int)type;

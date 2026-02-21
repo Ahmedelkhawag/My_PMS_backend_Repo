@@ -17,6 +17,10 @@ namespace PMS.Application.Interfaces.Services
         Task<ResponseObjectDto<FolioTransactionDto>> VoidTransactionAsync(int transactionId);
 
         Task<ResponseObjectDto<bool>> PostPaymentWithDiscountAsync(PostPaymentWithDiscountDto dto);
+
+        Task<ResponseObjectDto<FolioTransactionDto>> RefundTransactionAsync(int originalTransactionId, decimal refundAmount, string reason, string userId);
+
+        Task<ResponseObjectDto<bool>> TransferTransactionAsync(int transactionId, int targetReservationId, string userId, string reason);
     }
 }
 
