@@ -135,6 +135,16 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<FolioTransactionDto>> AddTransactionAsync(CreateTransactionDto dto)
         {
+            var result = await ProcessTransactionInternalAsync(dto);
+            if (result.IsSuccess)
+            {
+                await _unitOfWork.CompleteAsync();
+            }
+            return result;
+        }
+
+        private async Task<ResponseObjectDto<FolioTransactionDto>> ProcessTransactionInternalAsync(CreateTransactionDto dto)
+        {
             if (dto.Amount <= 0)
             {
                 return Failure<FolioTransactionDto>("Amount must be greater than zero", 400);
@@ -183,46 +193,43 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return Failure<FolioTransactionDto>("Unsupported transaction type", 400);
             }
 
-			// Payment/Refund operations must be tied to an active shift.
-			// In this codebase, payments are credit transactions (20-29). Refunds are represented as negative payment amounts (e.g. void reversal).
-			int? activeShiftId = null;
-			if (IsCredit(dto.Type))
-			{
-				var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-				if (string.IsNullOrWhiteSpace(currentUserId))
-				{
-					return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
-				}
+            int? activeShiftId = null;
+            if (IsCredit(dto.Type))
+            {
+                var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
+                }
 
-				var activeShift = await _unitOfWork.EmployeeShifts
-					.GetQueryable()
-					.AsNoTracking()
-					.OrderByDescending(s => s.StartedAt)
-					.FirstOrDefaultAsync(s => s.EmployeeId == currentUserId && !s.IsClosed);
+                var activeShift = await _unitOfWork.EmployeeShifts
+                    .GetQueryable()
+                    .AsNoTracking()
+                    .OrderByDescending(s => s.StartedAt)
+                    .FirstOrDefaultAsync(s => s.EmployeeId == currentUserId && !s.IsClosed);
 
-				if (activeShift == null)
-				{
-					return Failure<FolioTransactionDto>("No active shift found. Please open a shift before taking payments/refunds.", 400);
-				}
+                if (activeShift == null)
+                {
+                    return Failure<FolioTransactionDto>("No active shift found. Please open a shift before taking payments/refunds.", 400);
+                }
 
-				activeShiftId = activeShift.Id;
-			}
+                activeShiftId = activeShift.Id;
+            }
 
-			// Use the current BusinessDate for all financial postings.
-			var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
 
             var transaction = new FolioTransaction
             {
                 FolioId = folio.Id,
                 Date = DateTime.UtcNow,
-				BusinessDate = currentBusinessDate,
+                BusinessDate = currentBusinessDate,
                 Type = dto.Type,
                 Amount = signedAmount,
                 Description = dto.Description,
                 ReferenceNo = dto.ReferenceNo,
                 DiscountReason = dto.DiscountReason,
                 IsVoided = false,
-				ShiftId = activeShiftId
+                ShiftId = activeShiftId
             };
 
             await _unitOfWork.FolioTransactions.AddAsync(transaction);
@@ -243,8 +250,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                         .SetProperty(f => f.TotalPayments, f => f.TotalPayments + signedAmount)
                         .SetProperty(f => f.Balance, f => f.Balance - signedAmount));
             }
-
-            await _unitOfWork.CompleteAsync();
 
             return new ResponseObjectDto<FolioTransactionDto>
             {
@@ -375,7 +380,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     ReferenceNo = dto.ReferenceNo
                 };
 
-                var paymentResult = await AddTransactionAsync(paymentDto);
+                var paymentResult = await ProcessTransactionInternalAsync(paymentDto);
                 if (!paymentResult.IsSuccess)
                 {
                     // لو الدفع فشل (مثلاً نسي يكتب رقم الفيزا)، نلغي كل حاجة
@@ -401,7 +406,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                         DiscountReason = dto.DiscountReason
                     };
 
-                    var discountResult = await AddTransactionAsync(discountDto);
+                    var discountResult = await ProcessTransactionInternalAsync(discountDto);
                     if (!discountResult.IsSuccess)
                     {
                         // لو الخصم فشل (مثلاً نسي يكتب السبب)، نلغي الدفع وكل اللي حصل
@@ -411,6 +416,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
 
                 // 4. لو كله تمام، نـ Commit التغييرات للداتابيز بأمان
+                await _unitOfWork.CompleteAsync();
                 await _unitOfWork.CommitTransactionAsync();
 
                 return new ResponseObjectDto<bool>
