@@ -446,6 +446,23 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return Failure<FolioTransactionDto>("Refund amount cannot be greater than the original transaction amount.", 400);
             }
 
+            // Calculate total refunded amount for the original transaction
+            var previouslyRefundedAmount = await _unitOfWork.FolioTransactions
+                .GetQueryable()
+                .Where(t => t.Type == TransactionType.Refund && 
+                            !t.IsVoided && 
+                            t.ReferenceNo != null && 
+                            t.ReferenceNo.Contains(originalTransactionId.ToString()))
+                .SumAsync(t => t.Amount);
+
+            // Note: Refund amounts are negative, so we subtract it from the previous refunds or use Math.Abs
+            var absolutePreviouslyRefundedAmount = Math.Abs(previouslyRefundedAmount);
+            
+            if (refundAmount > (originalTransaction.Amount - absolutePreviouslyRefundedAmount))
+            {
+                return Failure<FolioTransactionDto>($"Refund amount exceeds the remaining refundable amount. Remaining refundable amount: {originalTransaction.Amount - absolutePreviouslyRefundedAmount}.", 400);
+            }
+
             var folio = originalTransaction.Folio;
             if (folio == null)
             {
@@ -483,7 +500,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Type = TransactionType.Refund,
                 Amount = -refundAmount,
                 Description = string.IsNullOrWhiteSpace(reason) ? $"Refund for transaction {originalTransactionId}" : reason,
-                ReferenceNo = originalTransaction.ReferenceNo,
+                ReferenceNo = string.IsNullOrWhiteSpace(originalTransaction.ReferenceNo) 
+                                ? $"REF-{originalTransactionId}" 
+                                : $"{originalTransaction.ReferenceNo}-REF-{originalTransactionId}",
                 IsVoided = false,
                 ShiftId = activeShift.Id
             };
