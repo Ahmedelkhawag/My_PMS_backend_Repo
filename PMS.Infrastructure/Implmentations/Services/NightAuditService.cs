@@ -86,9 +86,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                     ProcessedRooms = 0
                 };
 
-                var currentBusinessDay = await ((DbSet<BusinessDay>)_unitOfWork.BusinessDays.GetQueryable())
-                    .FromSqlRaw("SELECT * FROM BusinessDays WITH (UPDLOCK, ROWLOCK) WHERE Status = {0}", (int)BusinessDayStatus.Open)
-                    .FirstOrDefaultAsync();
+                var currentBusinessDay = await _unitOfWork.BusinessDays.GetFirstOrDefaultWithRawSqlAsync(
+                                         "SELECT * FROM BusinessDays WITH (UPDLOCK, ROWLOCK) WHERE Status = {0}",
+                                         (int)BusinessDayStatus.Open);
 
                 if (currentBusinessDay == null)
                 {
@@ -118,7 +118,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 // Step D: Roll Business Date
                 response.NewBusinessDate = await RollBusinessDateAsync(currentBusinessDay, userId, currentBusinessDate);
-                
+
                 response.Message = $"Night audit completed successfully. New business date is {response.NewBusinessDate:yyyy-MM-dd}.";
 
                 await _unitOfWork.CompleteAsync();
@@ -249,7 +249,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     .ExecuteUpdateAsync(s => s
                         .SetProperty(f => f.TotalCharges, f => f.TotalCharges + chargeAmount)
                         .SetProperty(f => f.Balance, f => f.Balance + chargeAmount));
-                
+
                 processedRooms++;
             }
 

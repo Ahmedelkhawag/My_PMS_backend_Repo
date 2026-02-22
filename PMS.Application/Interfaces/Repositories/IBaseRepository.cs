@@ -19,5 +19,6 @@ namespace PMS.Application.Interfaces.Repositories
         Task<int> CountAsync();
         Task<int> CountAsync(Expression<Func<T, bool>> criteria);
 		IQueryable<T> GetQueryable();
-	}
+        Task<T> GetFirstOrDefaultWithRawSqlAsync(string sql, params object[] parameters);
+    }
 }

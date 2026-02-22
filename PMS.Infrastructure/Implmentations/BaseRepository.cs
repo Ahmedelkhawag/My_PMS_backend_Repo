@@ -95,5 +95,12 @@ namespace PMS.Infrastructure.Implmentations
 		{
 			return _context.Set<T>().AsQueryable();
 		}
-	}
+
+        public async Task<T> GetFirstOrDefaultWithRawSqlAsync(string sql, params object[] parameters)
+        {
+            return await _context.Set<T>()
+                .FromSqlRaw(sql, parameters)
+                .FirstOrDefaultAsync();
+        }
+    }
 }
