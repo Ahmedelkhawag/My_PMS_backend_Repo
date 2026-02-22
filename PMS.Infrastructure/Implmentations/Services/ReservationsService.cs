@@ -43,180 +43,193 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<ReservationDto>> CreateReservationAsync(CreateReservationDto dto)
         {
-            if (dto.MealPlanId <= 0) dto.MealPlanId = 1;
-            if (dto.MarketSegmentId <= 0) dto.MarketSegmentId = 1;
-
-            var validationResult = await ValidateReservationAsync(dto);
-            if (!validationResult.IsSuccess)
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return new ResponseObjectDto<ReservationDto>
-                {
-                    IsSuccess = false,
-                    Message = validationResult.Message,
-                    StatusCode = validationResult.StatusCode
-                };
-            }
+                if (dto.MealPlanId <= 0) dto.MealPlanId = 1;
+                if (dto.MarketSegmentId <= 0) dto.MarketSegmentId = 1;
 
-            List<ExtraService>? fetchedExtraServices = null;
-            if (dto.Services != null && dto.Services.Any())
-            {
-                var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
-                fetchedExtraServices = await _unitOfWork.ExtraServices.GetQueryable()
-                    .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
-                    .ToListAsync();
-                var foundIds = fetchedExtraServices.Select(e => e.Id).ToHashSet();
-                var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
-                if (invalidId != 0)
+                var validationResult = await ValidateReservationAsync(dto);
+                if (!validationResult.IsSuccess)
                 {
+                    await _unitOfWork.RollbackTransactionAsync();
                     return new ResponseObjectDto<ReservationDto>
                     {
                         IsSuccess = false,
-                        Message = $"Invalid Service ID: {invalidId}",
+                        Message = validationResult.Message,
+                        StatusCode = validationResult.StatusCode
+                    };
+                }
+
+                List<ExtraService>? fetchedExtraServices = null;
+                if (dto.Services != null && dto.Services.Any())
+                {
+                    var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
+                    fetchedExtraServices = await _unitOfWork.ExtraServices.GetQueryable()
+                        .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
+                        .ToListAsync();
+                    var foundIds = fetchedExtraServices.Select(e => e.Id).ToHashSet();
+                    var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
+                    if (invalidId != 0)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new ResponseObjectDto<ReservationDto>
+                        {
+                            IsSuccess = false,
+                            Message = $"Invalid Service ID: {invalidId}",
+                            StatusCode = 400
+                        };
+                    }
+                }
+                fetchedExtraServices ??= new List<ExtraService>();
+
+                var checkInDate = dto.IsWalkIn ? DateTime.UtcNow : dto.CheckInDate;
+                var nights = CalculateNights(checkInDate, dto.CheckOutDate);
+
+                // Determine base price from room type
+                var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
+                if (roomType == null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return new ResponseObjectDto<ReservationDto>
+                    {
+                        IsSuccess = false,
+                        Message = "Room type not found",
                         StatusCode = 400
                     };
                 }
-            }
-            fetchedExtraServices ??= new List<ExtraService>();
 
-            var checkInDate = dto.IsWalkIn ? DateTime.UtcNow : dto.CheckInDate;
-            var nights = CalculateNights(checkInDate, dto.CheckOutDate);
+                // Determine applicable RatePlan
+                RatePlan? selectedRatePlan = null;
 
-            // Determine base price from room type
-            var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId);
-            if (roomType == null)
-            {
-                return new ResponseObjectDto<ReservationDto>
+                if (dto.CompanyId.HasValue)
                 {
-                    IsSuccess = false,
-                    Message = "Room type not found",
-                    StatusCode = 400
-                };
-            }
+                    var company = await _unitOfWork.CompanyProfiles.GetQueryable()
+                        .Include(c => c.RatePlan)
+                        .FirstOrDefaultAsync(c => c.Id == dto.CompanyId.Value && !c.IsDeleted);
 
-            // Determine applicable RatePlan
-            RatePlan? selectedRatePlan = null;
-
-            if (dto.CompanyId.HasValue)
-            {
-                var company = await _unitOfWork.CompanyProfiles.GetQueryable()
-                    .Include(c => c.RatePlan)
-                    .FirstOrDefaultAsync(c => c.Id == dto.CompanyId.Value && !c.IsDeleted);
-
-                if (company?.RatePlanId != null)
-                {
-                    selectedRatePlan = company.RatePlan;
-                    if (selectedRatePlan == null)
+                    if (company?.RatePlanId != null)
                     {
-                        selectedRatePlan = await _unitOfWork.RatePlans.GetByIdAsync(company.RatePlanId.Value);
+                        selectedRatePlan = company.RatePlan;
+                        if (selectedRatePlan == null)
+                        {
+                            selectedRatePlan = await _unitOfWork.RatePlans.GetByIdAsync(company.RatePlanId.Value);
+                        }
                     }
                 }
+
+                if (selectedRatePlan == null && dto.RatePlanId.HasValue)
+                {
+                    selectedRatePlan = await _unitOfWork.RatePlans.GetQueryable()
+                        .FirstOrDefaultAsync(rp => rp.Id == dto.RatePlanId.Value && !rp.IsDeleted && rp.IsActive);
+                }
+
+                if (selectedRatePlan == null)
+                {
+                    selectedRatePlan = await _unitOfWork.RatePlans.GetQueryable()
+                        .FirstOrDefaultAsync(rp => rp.Id == 1 && !rp.IsDeleted && rp.IsActive);
+                }
+
+                decimal calculatedNightlyRate;
+                if (selectedRatePlan != null)
+                {
+                    calculatedNightlyRate = CalculateRate(roomType.BasePrice, selectedRatePlan);
+                }
+                else
+                {
+                    calculatedNightlyRate = dto.NightlyRate;
+                }
+
+                var effectiveNightlyRate = (!dto.IsRateOverridden || dto.NightlyRate <= 0)
+                    ? calculatedNightlyRate
+                    : dto.NightlyRate;
+
+                var financials = CalculateFinancials(effectiveNightlyRate, nights, fetchedExtraServices, dto.Services, dto.DiscountAmount);
+
+                var reservationNumber = await GenerateReservationNumberAsync();
+
+                var reservation = new Reservation
+                {
+                    ReservationNumber = reservationNumber,
+                    GuestId = dto.GuestId,
+                    RoomTypeId = dto.RoomTypeId,
+                    RoomId = dto.RoomId,
+                    CompanyId = dto.CompanyId,
+                    RatePlanId = selectedRatePlan?.Id,
+                    CheckInDate = checkInDate,
+                    CheckOutDate = dto.CheckOutDate,
+                    NightlyRate = effectiveNightlyRate,
+                    TotalAmount = financials.RoomTotal,
+                    ServicesAmount = financials.ServicesTotal,
+                    DiscountAmount = dto.DiscountAmount,
+                    TaxAmount = financials.TaxAmount,
+                    GrandTotal = financials.GrandTotal,
+                    RateCode = selectedRatePlan?.Code ?? dto.RateCode,
+                    MealPlanId = dto.MealPlanId,
+                    MarketSegmentId = dto.MarketSegmentId,
+                    BookingSourceId = dto.BookingSourceId,
+                    IsPostMaster = dto.IsPostMaster,
+                    IsGuestPay = dto.IsGuestPay,
+                    IsNoExtend = dto.IsNoExtend,
+                    IsConfidentialRate = dto.IsConfidentialRate,
+                    Status = dto.IsWalkIn ? ReservationStatus.CheckIn : ReservationStatus.Pending,
+                    Services = financials.ServiceEntities,
+                    Adults = dto.Adults,
+                    Children = dto.Children,
+                    Notes = dto.Notes,
+                    PurposeOfVisit = dto.PurposeOfVisit,
+                    ExternalReference = dto.ExternalReference,
+                    CarPlate = dto.CarPlate,
+                    IsRateOverridden = dto.IsRateOverridden || selectedRatePlan == null,
+                    LegacyRateCode = dto.RateCode
+                };
+
+                reservation.CreatedBy = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? _httpContextAccessor.HttpContext?.User?.Identity?.Name
+                    ?? "System";
+
+                // Create an empty, active folio for this reservation so that
+                // financial transactions can be tracked from day one.
+                var folio = new GuestFolio
+                {
+                    Reservation = reservation,
+                    TotalCharges = 0m,
+                    TotalPayments = 0m,
+                    Balance = 0m,
+                    IsActive = true,
+                    Currency = "EGP"
+                };
+
+                if (dto.IsWalkIn && dto.RoomId.HasValue)
+                {
+                    var roomToOccupy = await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value);
+                    if (roomToOccupy != null)
+                        roomToOccupy.RoomStatusId = RoomStatusOccupied;
+                }
+
+                await _unitOfWork.Reservations.AddAsync(reservation);
+                await _unitOfWork.GuestFolios.AddAsync(folio);
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                var guest = await _unitOfWork.Guests.GetByIdAsync(dto.GuestId);
+                var room = dto.RoomId.HasValue ? await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value) : null;
+
+                var responseDto = MapToReservationDto(reservation, guest, roomType, room);
+
+                return new ResponseObjectDto<ReservationDto>
+                {
+                    IsSuccess = true,
+                    Message = "Reservation created successfully",
+                    StatusCode = 201,
+                    Data = responseDto
+                };
             }
-
-            if (selectedRatePlan == null && dto.RatePlanId.HasValue)
+            catch (Exception)
             {
-                selectedRatePlan = await _unitOfWork.RatePlans.GetQueryable()
-                    .FirstOrDefaultAsync(rp => rp.Id == dto.RatePlanId.Value && !rp.IsDeleted && rp.IsActive);
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
             }
-
-            if (selectedRatePlan == null)
-            {
-                selectedRatePlan = await _unitOfWork.RatePlans.GetQueryable()
-                    .FirstOrDefaultAsync(rp => rp.Id == 1 && !rp.IsDeleted && rp.IsActive);
-            }
-
-            decimal calculatedNightlyRate;
-            if (selectedRatePlan != null)
-            {
-                calculatedNightlyRate = CalculateRate(roomType.BasePrice, selectedRatePlan);
-            }
-            else
-            {
-                calculatedNightlyRate = dto.NightlyRate;
-            }
-
-            var effectiveNightlyRate = (!dto.IsRateOverridden || dto.NightlyRate <= 0)
-                ? calculatedNightlyRate
-                : dto.NightlyRate;
-
-            var financials = CalculateFinancials(effectiveNightlyRate, nights, fetchedExtraServices, dto.Services, dto.DiscountAmount);
-
-            var reservationNumber = await GenerateReservationNumberAsync();
-
-            var reservation = new Reservation
-            {
-                ReservationNumber = reservationNumber,
-                GuestId = dto.GuestId,
-                RoomTypeId = dto.RoomTypeId,
-                RoomId = dto.RoomId,
-                CompanyId = dto.CompanyId,
-                RatePlanId = selectedRatePlan?.Id,
-                CheckInDate = checkInDate,
-                CheckOutDate = dto.CheckOutDate,
-                NightlyRate = effectiveNightlyRate,
-                TotalAmount = financials.RoomTotal,
-                ServicesAmount = financials.ServicesTotal,
-                DiscountAmount = dto.DiscountAmount,
-                TaxAmount = financials.TaxAmount,
-                GrandTotal = financials.GrandTotal,
-                RateCode = selectedRatePlan?.Code ?? dto.RateCode,
-                MealPlanId = dto.MealPlanId,
-                MarketSegmentId = dto.MarketSegmentId,
-                BookingSourceId = dto.BookingSourceId,
-                IsPostMaster = dto.IsPostMaster,
-                IsGuestPay = dto.IsGuestPay,
-                IsNoExtend = dto.IsNoExtend,
-                IsConfidentialRate = dto.IsConfidentialRate,
-                Status = dto.IsWalkIn ? ReservationStatus.CheckIn : ReservationStatus.Pending,
-                Services = financials.ServiceEntities,
-                Adults = dto.Adults,
-                Children = dto.Children,
-                Notes = dto.Notes,
-                PurposeOfVisit = dto.PurposeOfVisit,
-                ExternalReference = dto.ExternalReference,
-                CarPlate = dto.CarPlate,
-                IsRateOverridden = dto.IsRateOverridden || selectedRatePlan == null,
-                LegacyRateCode = dto.RateCode
-            };
-
-            reservation.CreatedBy = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? _httpContextAccessor.HttpContext?.User?.Identity?.Name
-                ?? "System";
-
-            // Create an empty, active folio for this reservation so that
-            // financial transactions can be tracked from day one.
-            var folio = new GuestFolio
-            {
-                Reservation = reservation,
-                TotalCharges = 0m,
-                TotalPayments = 0m,
-                Balance = 0m,
-                IsActive = true,
-                Currency = "EGP"
-            };
-
-            if (dto.IsWalkIn && dto.RoomId.HasValue)
-            {
-                var roomToOccupy = await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value);
-                if (roomToOccupy != null)
-                    roomToOccupy.RoomStatusId = RoomStatusOccupied;
-            }
-
-            await _unitOfWork.Reservations.AddAsync(reservation);
-            await _unitOfWork.GuestFolios.AddAsync(folio);
-            await _unitOfWork.CompleteAsync();
-
-            var guest = await _unitOfWork.Guests.GetByIdAsync(dto.GuestId);
-            var room = dto.RoomId.HasValue ? await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value) : null;
-
-            var responseDto = MapToReservationDto(reservation, guest, roomType, room);
-
-            return new ResponseObjectDto<ReservationDto>
-            {
-                IsSuccess = true,
-                Message = "Reservation created successfully",
-                StatusCode = 201,
-                Data = responseDto
-            };
         }
 
         public async Task<ResponseObjectDto<PagedResult<ReservationListDto>>> GetAllReservationsAsync(string? search, string? status, int pageNumber, int pageSize)
@@ -282,160 +295,190 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<bool>> ChangeStatusAsync(ChangeReservationStatusDto dto)
         {
-            // Load reservation with room, because we must update both atomically
-            var reservation = await _unitOfWork.Reservations.GetQueryable()
-                .Include(r => r.Room)
-                .FirstOrDefaultAsync(r => r.Id == dto.ReservationId);
-
-            if (reservation == null)
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return NotFoundResponse<bool>("Reservation not found");
-            }
+                // Load reservation with room, because we must update both atomically
+                var reservation = await _unitOfWork.Reservations.GetQueryable()
+                    .Include(r => r.Room)
+                    .FirstOrDefaultAsync(r => r.Id == dto.ReservationId);
 
-            var currentStatus = reservation.Status;
-            var newStatus = dto.NewStatus;
-
-            // 1) Validate transition according to the state machine
-            var transitionValidation = ValidateTransition(currentStatus, newStatus);
-            if (!transitionValidation.IsSuccess)
-            {
-                return transitionValidation;
-            }
-
-            // 2) Additional business validations (room presence etc.)
-            var businessValidation = ValidateStatusChange(reservation, dto);
-            if (!businessValidation.IsSuccess)
-            {
-                return businessValidation;
-            }
-
-            // 2.5) For Check-Out, ensure folio can be closed (zero balance rule)
-            if (newStatus == ReservationStatus.CheckOut)
-            {
-                var closeResult = await _folioService.CloseFolioAsync(dto.ReservationId);
-                if (!closeResult.IsSuccess)
+                if (reservation == null)
                 {
-                    return new ResponseObjectDto<bool>
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return NotFoundResponse<bool>("Reservation not found");
+                }
+
+                var currentStatus = reservation.Status;
+                var newStatus = dto.NewStatus;
+
+                // 1) Validate transition according to the state machine
+                var transitionValidation = ValidateTransition(currentStatus, newStatus);
+                if (!transitionValidation.IsSuccess)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return transitionValidation;
+                }
+
+                // 2) Additional business validations (room presence etc.)
+                var businessValidation = ValidateStatusChange(reservation, dto);
+                if (!businessValidation.IsSuccess)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return businessValidation;
+                }
+
+                // 2.5) For Check-Out, ensure folio can be closed (zero balance rule)
+                if (newStatus == ReservationStatus.CheckOut)
+                {
+                    var closeResult = await _folioService.CloseFolioAsync(dto.ReservationId);
+                    if (!closeResult.IsSuccess)
                     {
-                        IsSuccess = false,
-                        StatusCode = closeResult.StatusCode > 0 ? closeResult.StatusCode : 400,
-                        Message = closeResult.Message,
-                        Data = false
-                    };
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new ResponseObjectDto<bool>
+                        {
+                            IsSuccess = false,
+                            StatusCode = closeResult.StatusCode > 0 ? closeResult.StatusCode : 400,
+                            Message = closeResult.Message,
+                            Data = false
+                        };
+                    }
                 }
-            }
 
-            // 3) Apply side effects (Reservation + Room) in one logical unit
-            // NOTE: We don't have explicit transaction support in IUnitOfWork,
-            // so we rely on a single SaveChanges call to keep changes consistent.
+                const int ROOM_STATUS_CLEAN = 1;
+                const int ROOM_STATUS_DIRTY = 2;
+                const int ROOM_STATUS_OCCUPIED = 5; // new Occupied status
 
-            // Attach / update room assignment if provided
-            if (dto.RoomId.HasValue)
-            {
-                reservation.RoomId = dto.RoomId.Value;
-            }
-
-            // Load the room if we need to touch its status
-            Room? room = null;
-            if (reservation.RoomId.HasValue)
-            {
-                room = reservation.Room ?? await _unitOfWork.Rooms.GetByIdAsync(reservation.RoomId.Value);
-            }
-
-            const int ROOM_STATUS_CLEAN = 1;
-            const int ROOM_STATUS_DIRTY = 2;
-            const int ROOM_STATUS_OCCUPIED = 5; // new Occupied status
-
-            // A. Check-In
-            if (newStatus == ReservationStatus.CheckIn)
-            {
-                if (room == null)
+                // Detect Room Swap
+                if (dto.RoomId.HasValue && reservation.RoomId != dto.RoomId.Value)
                 {
-                    return new ResponseObjectDto<bool>
+                    // Fetch and release old room
+                    if (reservation.RoomId.HasValue)
                     {
-                        IsSuccess = false,
-                        StatusCode = 400,
-                        Message = "Cannot Check-In without a valid room."
-                    };
+                        var oldRoom = await _unitOfWork.Rooms.GetByIdAsync(reservation.RoomId.Value);
+                        if (oldRoom != null)
+                        {
+                            // Safest fallback: Mark as Dirty so Housekeeping/Maintenance inspects it
+                            oldRoom.RoomStatusId = ROOM_STATUS_DIRTY;
+                            _unitOfWork.Rooms.Update(oldRoom);
+                        }
+                    }
+                    // Assign new room
+                    reservation.RoomId = dto.RoomId.Value;
                 }
 
-                // Room must be Clean/Ready before Check-In
-                if (room.RoomStatusId != ROOM_STATUS_CLEAN)
+                // Attach / update room assignment if provided
+                if (dto.RoomId.HasValue)
                 {
-                    return new ResponseObjectDto<bool>
+                    reservation.RoomId = dto.RoomId.Value;
+                }
+
+                // Load the room if we need to touch its status
+                Room? room = null;
+                if (reservation.RoomId.HasValue)
+                {
+                    room = reservation.Room != null && reservation.Room.Id == reservation.RoomId.Value ? reservation.Room : await _unitOfWork.Rooms.GetByIdAsync(reservation.RoomId.Value);
+                }
+
+                // A. Check-In
+                if (newStatus == ReservationStatus.CheckIn)
+                {
+                    if (room == null)
                     {
-                        IsSuccess = false,
-                        StatusCode = 400,
-                        Message = "Cannot Check-In. Room is not Clean/Ready."
-                    };
-                }
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new ResponseObjectDto<bool>
+                        {
+                            IsSuccess = false,
+                            StatusCode = 400,
+                            Message = "Cannot Check-In without a valid room."
+                        };
+                    }
 
-                room.RoomStatusId = ROOM_STATUS_OCCUPIED;
-                reservation.CheckInDate = DateTime.UtcNow;
-            }
+                    // Room must be Clean/Ready before Check-In
+                    if (room.RoomStatusId != ROOM_STATUS_CLEAN)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new ResponseObjectDto<bool>
+                        {
+                            IsSuccess = false,
+                            StatusCode = 400,
+                            Message = "Cannot Check-In. Room is not Clean/Ready."
+                        };
+                    }
 
-            // B. Check-Out
-            if (newStatus == ReservationStatus.CheckOut)
-            {
-                if (room != null)
-                {
-                    // Upon Check-Out, mark the room as Dirty so housekeeping can clean it.
-                    room.RoomStatusId = ROOM_STATUS_DIRTY;
-                }
-
-                reservation.CheckOutDate = DateTime.UtcNow;
-            }
-
-            // C. Cancel or NoShow → release room to Clean
-            if (newStatus == ReservationStatus.Cancelled || newStatus == ReservationStatus.NoShow)
-            {
-                if (room != null)
-                {
-                    room.RoomStatusId = ROOM_STATUS_CLEAN;
-                }
-            }
-
-            // D. Undo Check-In (back to Confirmed)
-            if (currentStatus == ReservationStatus.CheckIn && newStatus == ReservationStatus.Confirmed)
-            {
-                if (room != null)
-                {
-                    room.RoomStatusId = ROOM_STATUS_CLEAN;
-                }
-            }
-
-            // E. Undo Check-Out (back to CheckIn)
-            if (currentStatus == ReservationStatus.CheckOut && newStatus == ReservationStatus.CheckIn)
-            {
-                if (room != null)
-                {
                     room.RoomStatusId = ROOM_STATUS_OCCUPIED;
+                    reservation.CheckInDate = DateTime.UtcNow;
                 }
+
+                // B. Check-Out
+                if (newStatus == ReservationStatus.CheckOut)
+                {
+                    if (room != null)
+                    {
+                        // Upon Check-Out, mark the room as Dirty so housekeeping can clean it.
+                        room.RoomStatusId = ROOM_STATUS_DIRTY;
+                    }
+
+                    reservation.CheckOutDate = DateTime.UtcNow;
+                }
+
+                // C. Cancel or NoShow → release room to Clean
+                if (newStatus == ReservationStatus.Cancelled || newStatus == ReservationStatus.NoShow)
+                {
+                    if (room != null)
+                    {
+                        room.RoomStatusId = ROOM_STATUS_CLEAN;
+                    }
+                }
+
+                // D. Undo Check-In (back to Confirmed)
+                if (currentStatus == ReservationStatus.CheckIn && newStatus == ReservationStatus.Confirmed)
+                {
+                    if (room != null)
+                    {
+                        room.RoomStatusId = ROOM_STATUS_CLEAN;
+                    }
+                }
+
+                // E. Undo Check-Out (back to CheckIn)
+                if (currentStatus == ReservationStatus.CheckOut && newStatus == ReservationStatus.CheckIn)
+                {
+                    if (room != null)
+                    {
+                        room.RoomStatusId = ROOM_STATUS_OCCUPIED;
+                    }
+                }
+
+                // Finally, update reservation core status and note
+                reservation.Status = newStatus;
+                if (!string.IsNullOrEmpty(dto.Note))
+                {
+                    reservation.Notes = (reservation.Notes ?? string.Empty) +
+                                        $" | Status Update: {dto.Note}";
+                }
+
+                _unitOfWork.Reservations.Update(reservation);
+                if (room != null)
+                {
+                    _unitOfWork.Rooms.Update(room);
+                }
+
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ResponseObjectDto<bool>
+                {
+                    IsSuccess = true,
+                    Message = $"Reservation status changed from {currentStatus} to {newStatus} successfully",
+                    StatusCode = 200,
+                    Data = true
+                };
             }
-
-            // Finally, update reservation core status and note
-            reservation.Status = newStatus;
-            if (!string.IsNullOrEmpty(dto.Note))
+            catch (Exception)
             {
-                reservation.Notes = (reservation.Notes ?? string.Empty) +
-                                    $" | Status Update: {dto.Note}";
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
             }
-
-            _unitOfWork.Reservations.Update(reservation);
-            if (room != null)
-            {
-                _unitOfWork.Rooms.Update(room);
-            }
-
-            await _unitOfWork.CompleteAsync();
-
-            return new ResponseObjectDto<bool>
-            {
-                IsSuccess = true,
-                Message = $"Reservation status changed from {currentStatus} to {newStatus} successfully",
-                StatusCode = 200,
-                Data = true
-            };
         }
 
         public async Task<ResponseObjectDto<ReservationDto>> GetReservationByIdAsync(int id)
@@ -532,179 +575,199 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<ReservationDto>> UpdateReservationAsync(int id, UpdateReservationDto dto)
         {
-            var reservation = await GetReservationWithDetailsAsync(id);
-            if (reservation == null) return NotFoundResponse<ReservationDto>("Reservation not found");
-
-            // استخدم القيم الحالية لو الـ body ما بعتهاش قيم جديدة
-            var newCheckInDate = dto.CheckInDate ?? reservation.CheckInDate;
-            var newCheckOutDate = dto.CheckOutDate ?? reservation.CheckOutDate;
-            var newNightlyRate = dto.NightlyRate ?? reservation.NightlyRate;
-            var newDiscountAmount = dto.DiscountAmount ?? reservation.DiscountAmount;
-            var effectiveRoomId = dto.RoomId ?? reservation.RoomId;
-
-            if (reservation.IsNoExtend && newCheckOutDate.Date > reservation.CheckOutDate.Date)
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return new ResponseObjectDto<ReservationDto>
+                var reservation = await GetReservationWithDetailsAsync(id);
+                if (reservation == null)
                 {
-                    IsSuccess = false,
-                    Message = "Cannot extend stay. Reservation is marked as No-Extend.",
-                    StatusCode = 400
-                };
-            }
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return NotFoundResponse<ReservationDto>("Reservation not found");
+                }
 
-            if (newCheckOutDate.Date <= newCheckInDate.Date)
-            {
-                return new ResponseObjectDto<ReservationDto>
-                {
-                    IsSuccess = false,
-                    Message = "Check-out date must be after check-in date",
-                    StatusCode = 400
-                };
-            }
+                // استخدم القيم الحالية لو الـ body ما بعتهاش قيم جديدة
+                var newCheckInDate = dto.CheckInDate ?? reservation.CheckInDate;
+                var newCheckOutDate = dto.CheckOutDate ?? reservation.CheckOutDate;
+                var newNightlyRate = dto.NightlyRate ?? reservation.NightlyRate;
+                var newDiscountAmount = dto.DiscountAmount ?? reservation.DiscountAmount;
+                var effectiveRoomId = dto.RoomId ?? reservation.RoomId;
 
-            if (effectiveRoomId.HasValue)
-            {
-                bool isRoomTaken = await CheckRoomConflictAsync(effectiveRoomId.Value, newCheckInDate, newCheckOutDate, id);
-                if (isRoomTaken)
+                if (reservation.IsNoExtend && newCheckOutDate.Date > reservation.CheckOutDate.Date)
                 {
+                    await _unitOfWork.RollbackTransactionAsync();
                     return new ResponseObjectDto<ReservationDto>
                     {
                         IsSuccess = false,
-                        Message = "Selected room is already booked for the chosen dates",
-                        StatusCode = 409
+                        Message = "Cannot extend stay. Reservation is marked as No-Extend.",
+                        StatusCode = 400
                     };
                 }
-            }
 
-            var nights = CalculateNights(newCheckInDate, newCheckOutDate);
-
-            decimal roomTotal;
-            decimal servicesTotal;
-            decimal taxAmount;
-            decimal grandTotal;
-            List<ReservationService> newServiceEntities = null;
-
-            if (dto.Services != null)
-            {
-                // المستخدم عايز يغير الخدمات (أو يحذفها لو بعت ليست فاضية)
-                List<ExtraService> updateFetchedExtraServices;
-                if (dto.Services.Any())
+                if (newCheckOutDate.Date <= newCheckInDate.Date)
                 {
-                    var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
-                    var fetched = await _unitOfWork.ExtraServices.GetQueryable()
-                        .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
-                        .ToListAsync();
-                    var foundIds = fetched.Select(e => e.Id).ToHashSet();
-                    var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
-                    if (invalidId != 0)
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return new ResponseObjectDto<ReservationDto>
                     {
+                        IsSuccess = false,
+                        Message = "Check-out date must be after check-in date",
+                        StatusCode = 400
+                    };
+                }
+
+                if (effectiveRoomId.HasValue)
+                {
+                    bool isRoomTaken = await CheckRoomConflictAsync(effectiveRoomId.Value, newCheckInDate, newCheckOutDate, id);
+                    if (isRoomTaken)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
                         return new ResponseObjectDto<ReservationDto>
                         {
                             IsSuccess = false,
-                            Message = $"Invalid Service ID: {invalidId}",
-                            StatusCode = 400
+                            Message = "Selected room is already booked for the chosen dates",
+                            StatusCode = 409
                         };
                     }
-                    updateFetchedExtraServices = fetched;
-                }
-                else
-                {
-                    // ليست فاضية = امسح كل الخدمات
-                    updateFetchedExtraServices = new List<ExtraService>();
                 }
 
-                var financials = CalculateFinancials(newNightlyRate, nights, updateFetchedExtraServices, dto.Services, newDiscountAmount);
-                roomTotal = financials.RoomTotal;
-                servicesTotal = financials.ServicesTotal;
-                taxAmount = financials.TaxAmount;
-                grandTotal = financials.GrandTotal;
-                newServiceEntities = financials.ServiceEntities;
-            }
-            else
-            {
-                // المستخدم ما بعتش Services -> احتفظ بالخدمات الحالية لكن حدّث الإجماليات حسب عدد الليالي والسعر الجديد
-                var activeServices = reservation.Services?.Where(s => !s.IsDeleted).ToList() ?? new List<ReservationService>();
-                foreach (var service in activeServices)
+                var nights = CalculateNights(newCheckInDate, newCheckOutDate);
+
+                decimal roomTotal;
+                decimal servicesTotal;
+                decimal taxAmount;
+                decimal grandTotal;
+                List<ReservationService> newServiceEntities = null;
+
+                if (dto.Services != null)
                 {
-                    if (service.IsPerDay)
+                    // المستخدم عايز يغير الخدمات (أو يحذفها لو بعت ليست فاضية)
+                    List<ExtraService> updateFetchedExtraServices;
+                    if (dto.Services.Any())
                     {
-                        service.TotalServicePrice = service.Price * service.Quantity * nights;
+                        var requestedIds = dto.Services.Select(s => s.ExtraServiceId).Distinct().ToList();
+                        var fetched = await _unitOfWork.ExtraServices.GetQueryable()
+                            .Where(s => requestedIds.Contains(s.Id) && s.IsActive)
+                            .ToListAsync();
+                        var foundIds = fetched.Select(e => e.Id).ToHashSet();
+                        var invalidId = requestedIds.FirstOrDefault(id => !foundIds.Contains(id));
+                        if (invalidId != 0)
+                        {
+                            await _unitOfWork.RollbackTransactionAsync();
+                            return new ResponseObjectDto<ReservationDto>
+                            {
+                                IsSuccess = false,
+                                Message = $"Invalid Service ID: {invalidId}",
+                                StatusCode = 400
+                            };
+                        }
+                        updateFetchedExtraServices = fetched;
                     }
                     else
                     {
-                        service.TotalServicePrice = service.Price * service.Quantity;
+                        // ليست فاضية = امسح كل الخدمات
+                        updateFetchedExtraServices = new List<ExtraService>();
                     }
+
+                    var financials = CalculateFinancials(newNightlyRate, nights, updateFetchedExtraServices, dto.Services, newDiscountAmount);
+                    roomTotal = financials.RoomTotal;
+                    servicesTotal = financials.ServicesTotal;
+                    taxAmount = financials.TaxAmount;
+                    grandTotal = financials.GrandTotal;
+                    newServiceEntities = financials.ServiceEntities;
                 }
-
-                servicesTotal = activeServices.Sum(s => s.TotalServicePrice);
-                roomTotal = newNightlyRate * nights;
-
-                var subTotal = (roomTotal + servicesTotal) - newDiscountAmount;
-                if (subTotal < 0) subTotal = 0;
-
-                var taxPercentage = _configuration.GetValue<decimal?>(TaxPercentageConfigKey) ?? DefaultTaxPercentage;
-                taxAmount = subTotal * taxPercentage;
-                grandTotal = subTotal + taxAmount;
-            }
-
-            // Update Fields (فقط الحاجات اللي اتبعتت أو القيم المحسوبة)
-            reservation.GuestId = dto.GuestId ?? reservation.GuestId;
-            reservation.RoomTypeId = dto.RoomTypeId ?? reservation.RoomTypeId;
-            reservation.RoomId = effectiveRoomId;
-            reservation.CheckInDate = newCheckInDate;
-            reservation.CheckOutDate = newCheckOutDate;
-            reservation.NightlyRate = newNightlyRate;
-            reservation.TotalAmount = roomTotal;
-            reservation.ServicesAmount = servicesTotal;
-            reservation.DiscountAmount = newDiscountAmount;
-            reservation.TaxAmount = taxAmount;
-            reservation.GrandTotal = grandTotal;
-
-            if (dto.RateCode != null)
-            {
-                reservation.RateCode = string.IsNullOrWhiteSpace(dto.RateCode) ? "Standard" : dto.RateCode;
-            }
-
-            reservation.MealPlanId = dto.MealPlanId ?? reservation.MealPlanId;
-            reservation.BookingSourceId = dto.BookingSourceId ?? reservation.BookingSourceId;
-            reservation.MarketSegmentId = dto.MarketSegmentId ?? reservation.MarketSegmentId;
-            reservation.PurposeOfVisit = dto.PurposeOfVisit ?? reservation.PurposeOfVisit;
-            reservation.Notes = dto.Notes ?? reservation.Notes;
-            reservation.ExternalReference = dto.ExternalReference ?? reservation.ExternalReference;
-            reservation.CarPlate = dto.CarPlate ?? reservation.CarPlate;
-            reservation.Adults = dto.Adults ?? reservation.Adults;
-            reservation.Children = dto.Children ?? reservation.Children;
-            reservation.CompanyId = dto.CompanyId ?? reservation.CompanyId;
-
-            if (dto.IsConfidentialRate.HasValue)
-                reservation.IsConfidentialRate = dto.IsConfidentialRate.Value;
-            if (dto.IsNoExtend.HasValue)
-                reservation.IsNoExtend = dto.IsNoExtend.Value;
-            if (dto.IsPostMaster.HasValue)
-                reservation.IsPostMaster = dto.IsPostMaster.Value;
-            if (dto.IsGuestPay.HasValue)
-                reservation.IsGuestPay = dto.IsGuestPay.Value;
-
-            if (dto.Services != null)
-            {
-                // استبدل قائمة الخدمات فقط لو المستخدم بعت Services
-                if (reservation.Services != null)
+                else
                 {
-                    reservation.Services.Clear();
+                    // المستخدم ما بعتش Services -> احتفظ بالخدمات الحالية لكن حدّث الإجماليات حسب عدد الليالي والسعر الجديد
+                    var activeServices = reservation.Services?.Where(s => !s.IsDeleted).ToList() ?? new List<ReservationService>();
+                    foreach (var service in activeServices)
+                    {
+                        if (service.IsPerDay)
+                        {
+                            service.TotalServicePrice = service.Price * service.Quantity * nights;
+                        }
+                        else
+                        {
+                            service.TotalServicePrice = service.Price * service.Quantity;
+                        }
+                    }
+
+                    servicesTotal = activeServices.Sum(s => s.TotalServicePrice);
+                    roomTotal = newNightlyRate * nights;
+
+                    var subTotal = (roomTotal + servicesTotal) - newDiscountAmount;
+                    if (subTotal < 0) subTotal = 0;
+
+                    var taxPercentage = _configuration.GetValue<decimal?>(TaxPercentageConfigKey) ?? DefaultTaxPercentage;
+                    taxAmount = subTotal * taxPercentage;
+                    grandTotal = subTotal + taxAmount;
                 }
-                reservation.Services = newServiceEntities ?? new List<ReservationService>();
+
+                // Update Fields (فقط الحاجات اللي اتبعتت أو القيم المحسوبة)
+                reservation.GuestId = dto.GuestId ?? reservation.GuestId;
+                reservation.RoomTypeId = dto.RoomTypeId ?? reservation.RoomTypeId;
+                reservation.RoomId = effectiveRoomId;
+                reservation.CheckInDate = newCheckInDate;
+                reservation.CheckOutDate = newCheckOutDate;
+                reservation.NightlyRate = newNightlyRate;
+                reservation.TotalAmount = roomTotal;
+                reservation.ServicesAmount = servicesTotal;
+                reservation.DiscountAmount = newDiscountAmount;
+                reservation.TaxAmount = taxAmount;
+                reservation.GrandTotal = grandTotal;
+
+                if (dto.RateCode != null)
+                {
+                    reservation.RateCode = string.IsNullOrWhiteSpace(dto.RateCode) ? "Standard" : dto.RateCode;
+                }
+
+                reservation.MealPlanId = dto.MealPlanId ?? reservation.MealPlanId;
+                reservation.BookingSourceId = dto.BookingSourceId ?? reservation.BookingSourceId;
+                reservation.MarketSegmentId = dto.MarketSegmentId ?? reservation.MarketSegmentId;
+                reservation.PurposeOfVisit = dto.PurposeOfVisit ?? reservation.PurposeOfVisit;
+                reservation.Notes = dto.Notes ?? reservation.Notes;
+                reservation.ExternalReference = dto.ExternalReference ?? reservation.ExternalReference;
+                reservation.CarPlate = dto.CarPlate ?? reservation.CarPlate;
+                reservation.Adults = dto.Adults ?? reservation.Adults;
+                reservation.Children = dto.Children ?? reservation.Children;
+                reservation.CompanyId = dto.CompanyId ?? reservation.CompanyId;
+
+                if (dto.IsConfidentialRate.HasValue)
+                    reservation.IsConfidentialRate = dto.IsConfidentialRate.Value;
+                if (dto.IsNoExtend.HasValue)
+                    reservation.IsNoExtend = dto.IsNoExtend.Value;
+                if (dto.IsPostMaster.HasValue)
+                    reservation.IsPostMaster = dto.IsPostMaster.Value;
+                if (dto.IsGuestPay.HasValue)
+                    reservation.IsGuestPay = dto.IsGuestPay.Value;
+
+                if (dto.Services != null)
+                {
+                    // استبدل قائمة الخدمات فقط لو المستخدم بعت Services
+                    if (reservation.Services != null && reservation.Services.Any())
+                    {
+                        // Explicitly delete old services from the database to avoid orphaned records
+                        _unitOfWork.ReservationServices.DeleteRange(reservation.Services);
+                        reservation.Services.Clear(); // Only clears the in-memory collection
+                    }
+                    reservation.Services = newServiceEntities ?? new List<ReservationService>();
+                }
+
+                _unitOfWork.Reservations.Update(reservation);
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ResponseObjectDto<ReservationDto>
+                {
+                    IsSuccess = true,
+                    Message = "Reservation updated successfully",
+                    StatusCode = 200,
+                    Data = MapToReservationDto(reservation, reservation.Guest, reservation.RoomType, reservation.Room)
+                };
             }
-
-            _unitOfWork.Reservations.Update(reservation);
-            await _unitOfWork.CompleteAsync();
-
-            return new ResponseObjectDto<ReservationDto>
+            catch (Exception)
             {
-                IsSuccess = true,
-                Message = "Reservation updated successfully",
-                StatusCode = 200,
-                Data = MapToReservationDto(reservation, reservation.Guest, reservation.RoomType, reservation.Room)
-            };
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
 		public async Task<ResponseObjectDto<ReservationStatsDto>> GetReservationStatsAsync()
 		{
@@ -851,19 +914,23 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         private async Task<bool> CheckRoomConflictAsync(int roomId, DateTimeOffset checkIn, DateTimeOffset checkOut, int? excludeReservationId = null)
         {
-            var query = _unitOfWork.Reservations.GetQueryable()
-                .Where(r => r.RoomId == roomId &&
-                            !r.IsDeleted &&
-                            r.Status != ReservationStatus.Cancelled &&
-                            r.CheckInDate < checkOut &&
-                            r.CheckOutDate > checkIn);
+            var sql = @"SELECT TOP 1 * FROM Reservations WITH (UPDLOCK, ROWLOCK) 
+                        WHERE RoomId = {0} AND IsDeleted = 0 
+                        AND Status NOT IN ({1}, {2}) 
+                        AND CheckInDate < {3} AND CheckOutDate > {4}";
+
+            var parameters = new List<object> {
+                roomId, (int)ReservationStatus.Cancelled, (int)ReservationStatus.NoShow, checkOut, checkIn
+            };
 
             if (excludeReservationId.HasValue)
             {
-                query = query.Where(r => r.Id != excludeReservationId.Value);
+                sql += " AND Id != {5}";
+                parameters.Add(excludeReservationId.Value);
             }
 
-            return await query.AnyAsync();
+            var conflict = await _unitOfWork.Reservations.GetFirstOrDefaultWithRawSqlAsync(sql, parameters.ToArray());
+            return conflict != null;
         }
 
         private int CalculateNights(DateTimeOffset checkIn, DateTimeOffset checkOut)
@@ -945,16 +1012,21 @@ namespace PMS.Infrastructure.Implmentations.Services
         private async Task<string> GenerateReservationNumberAsync()
         {
             var today = DateTime.UtcNow.Date;
-            var lastReservationNumber = await _unitOfWork.Reservations.GetQueryable()
-                .Where(r => r.CreatedAt >= today && r.CreatedAt < today.AddDays(1))
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => r.ReservationNumber)
-                .FirstOrDefaultAsync();
+            var startOfDay = today;
+            var endOfDay = today.AddDays(1);
+
+            // Fetch the latest reservation number for today using raw SQL with UPDLOCK to prevent race conditions
+            var sql = @"SELECT TOP 1 * FROM Reservations WITH (UPDLOCK, ROWLOCK) 
+                        WHERE CreatedAt >= {0} AND CreatedAt < {1} 
+                        ORDER BY CreatedAt DESC";
+            
+            var parameters = new object[] { startOfDay, endOfDay };
+            var latestReservation = await _unitOfWork.Reservations.GetFirstOrDefaultWithRawSqlAsync(sql, parameters);
 
             var lastSequence = 0;
-            if (!string.IsNullOrWhiteSpace(lastReservationNumber))
+            if (latestReservation != null && !string.IsNullOrWhiteSpace(latestReservation.ReservationNumber))
             {
-                var parts = lastReservationNumber.Split('-');
+                var parts = latestReservation.ReservationNumber.Split('-');
                 if (parts.Length == 3 && int.TryParse(parts[2], out var parsedSeq))
                 {
                     lastSequence = parsedSeq;
