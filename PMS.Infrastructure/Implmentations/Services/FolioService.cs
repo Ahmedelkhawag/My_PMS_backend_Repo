@@ -574,6 +574,24 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return Failure<bool>("Cannot transfer to the same folio.", 400);
                 }
 
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Unauthorized: cannot determine current user.", 401);
+                }
+
+                var activeShift = await _unitOfWork.EmployeeShifts
+                    .GetQueryable()
+                    .AsNoTracking()
+                    .OrderByDescending(s => s.StartedAt)
+                    .FirstOrDefaultAsync(s => s.EmployeeId == userId && !s.IsClosed);
+
+                if (activeShift == null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("No active shift found. Please open a shift before transferring a transaction.", 400);
+                }
+
                 var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
 
                 // Step 3: Source Folio Logic (The Outgoing)
@@ -596,7 +614,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Description = reversalDescription,
                     ReferenceNo = originalTransaction.ReferenceNo,
                     IsVoided = false,
-                    ShiftId = originalTransaction.ShiftId
+                    ShiftId = activeShift.Id
                 };
 
                 await _unitOfWork.FolioTransactions.AddAsync(reversal);
@@ -627,7 +645,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Description = targetDescription,
                     ReferenceNo = originalTransaction.ReferenceNo,
                     IsVoided = false,
-                    ShiftId = originalTransaction.ShiftId
+                    ShiftId = activeShift.Id
                 };
 
                 await _unitOfWork.FolioTransactions.AddAsync(newTransaction);
