@@ -10,6 +10,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace PMS.Infrastructure.Implmentations.Services
 {
@@ -17,11 +18,13 @@ namespace PMS.Infrastructure.Implmentations.Services
     {
         private readonly IUnitOfWork _unitOfWork;
 		private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<FolioService> _logger;
 
-        public FolioService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor)
+        public FolioService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<FolioService> logger)
         {
             _unitOfWork = unitOfWork;
 			_httpContextAccessor = httpContextAccessor;
+            _logger = logger;
         }
 
         public async Task<ResponseObjectDto<GuestFolioSummaryDto>> GetFolioSummaryAsync(int reservationId)
@@ -422,7 +425,8 @@ namespace PMS.Infrastructure.Implmentations.Services
             {
                 // لو ضرب أي Error فجأة، نرجع في كلامنا فوراً
                 await _unitOfWork.RollbackTransactionAsync();
-                return Failure<bool>("An error occurred while processing the payment.", 500);
+                _logger.LogError(ex, "A critical error occurred while processing payment and optional discount for reservation {ReservationId}.", dto.ReservationId);
+                return Failure<bool>("An internal error occurred while processing the transaction. Please try again or contact support.", 500);
             }
         }
 
@@ -699,10 +703,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Data = true
                 };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
-                return Failure<bool>("An error occurred while transferring the transaction.", 500);
+                _logger.LogError(ex, "A critical error occurred while transferring transaction {TransactionId} to reservation {TargetReservationId}.", transactionId, targetReservationId);
+                return Failure<bool>("An internal error occurred while processing the transaction. Please try again or contact support.", 500);
             }
         }
 
