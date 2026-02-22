@@ -40,8 +40,8 @@ namespace PMS.Domain.Entities
 		public ICollection<ReservationService> Services { get; set; } = new List<ReservationService>();
 
 	
-		public DateTime CheckInDate { get; set; }
-		public DateTime CheckOutDate { get; set; }
+		public DateTimeOffset CheckInDate { get; set; }
+		public DateTimeOffset CheckOutDate { get; set; }
 
 		
 		[Column(TypeName = "decimal(18,2)")]

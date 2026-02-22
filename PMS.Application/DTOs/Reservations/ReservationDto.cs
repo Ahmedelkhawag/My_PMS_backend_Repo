@@ -30,8 +30,8 @@ namespace PMS.Application.DTOs.Reservations
 		public string? RatePlanName { get; set; }
 
 		// 3. التواريخ
-		public DateTime CheckInDate { get; set; }
-		public DateTime CheckOutDate { get; set; }
+		public DateTimeOffset CheckInDate { get; set; }
+		public DateTimeOffset CheckOutDate { get; set; }
 		public int Nights { get; set; }
 
 		// 4. تفاصيل البيزنس (مهمة للعرض) 🆕

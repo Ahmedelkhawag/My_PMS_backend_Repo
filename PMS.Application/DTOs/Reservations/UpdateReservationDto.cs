@@ -17,8 +17,8 @@ namespace PMS.Application.DTOs.Reservations
 		public int? RatePlanId { get; set; }
 
 		// التواريخ (لو اتغيرت هيتغير السعر) - nullable لتحديث جزئي
-		public DateTime? CheckInDate { get; set; }
-		public DateTime? CheckOutDate { get; set; }
+		public DateTimeOffset? CheckInDate { get; set; }
+		public DateTimeOffset? CheckOutDate { get; set; }
 
 		// الماليات
 		public decimal? NightlyRate { get; set; }

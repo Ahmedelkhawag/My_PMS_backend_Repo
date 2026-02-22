@@ -849,7 +849,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             return new ResponseObjectDto<bool> { IsSuccess = true, StatusCode = 200 };
         }
 
-        private async Task<bool> CheckRoomConflictAsync(int roomId, DateTime checkIn, DateTime checkOut, int? excludeReservationId = null)
+        private async Task<bool> CheckRoomConflictAsync(int roomId, DateTimeOffset checkIn, DateTimeOffset checkOut, int? excludeReservationId = null)
         {
             var query = _unitOfWork.Reservations.GetQueryable()
                 .Where(r => r.RoomId == roomId &&
@@ -866,7 +866,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             return await query.AnyAsync();
         }
 
-        private int CalculateNights(DateTime checkIn, DateTime checkOut)
+        private int CalculateNights(DateTimeOffset checkIn, DateTimeOffset checkOut)
         {
             var nights = (checkOut.Date - checkIn.Date).Days;
             return nights <= 0 ? 1 : nights;

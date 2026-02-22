@@ -24,10 +24,10 @@ namespace PMS.Application.DTOs.Reservations
 		// 2. التواريخ
 		// ==========================
 		[Required]
-		public DateTime CheckInDate { get; set; }
+		public DateTimeOffset CheckInDate { get; set; }
 
 		[Required]
-		public DateTime CheckOutDate { get; set; }
+		public DateTimeOffset CheckOutDate { get; set; }
 
 		// ==========================
 		// 3. التفاصيل المالية (من صورة image_ee8e28)

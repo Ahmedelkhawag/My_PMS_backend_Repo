@@ -67,8 +67,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                     DocumentNumber = hasNationalId ? res.Guest.NationalId : (res.Guest.NationalId ?? "N/A"),
 
                     RoomNumber = res.Room != null ? res.Room.RoomNumber : "N/A",
-                    ArrivalDate = res.CheckInDate,
-                    DepartureDate = res.CheckOutDate,
+                    ArrivalDate = res.CheckInDate.DateTime,
+                    DepartureDate = res.CheckOutDate.DateTime,
                     Profession = "Guest"
                 };
 

@@ -174,6 +174,13 @@ namespace PMS.Infrastructure.Context
 				new ExtraService { Id = 5, Name = "Laundry (غسيل)", Price = 75, IsPerDay = false }
 			);
 
+			// Reservation configuration
+			builder.Entity<Reservation>(entity =>
+			{
+				entity.Property(r => r.CheckInDate).HasColumnType("datetimeoffset");
+				entity.Property(r => r.CheckOutDate).HasColumnType("datetimeoffset");
+			});
+
 			// Rate Plans configuration
 			builder.Entity<RatePlan>(entity =>
 			{
