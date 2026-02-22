@@ -16,16 +16,13 @@ namespace PMS.Infrastructure.Implmentations.Services
     public class NightAuditService : INightAuditService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly ApplicationDbContext _dbContext;
         private readonly ILogger<NightAuditService> _logger;
 
         public NightAuditService(
             IUnitOfWork unitOfWork,
-            ApplicationDbContext dbContext,
             ILogger<NightAuditService> logger)
         {
             _unitOfWork = unitOfWork;
-            _dbContext = dbContext;
             _logger = logger;
         }
 
@@ -77,7 +74,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             _logger.LogInformation("Starting night audit for BusinessDate={Date} by User={UserId}, Force={Force}",
                 currentBusinessDate, userId, force);
 
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -89,14 +86,14 @@ namespace PMS.Infrastructure.Implmentations.Services
                     ProcessedRooms = 0
                 };
 
-                var currentBusinessDay = await _unitOfWork.BusinessDays
-                    .GetQueryable()
-                    .FirstOrDefaultAsync(b => b.Status == BusinessDayStatus.Open);
+                var currentBusinessDay = await ((DbSet<BusinessDay>)_unitOfWork.BusinessDays.GetQueryable())
+                    .FromSqlRaw("SELECT * FROM BusinessDays WITH (UPDLOCK, ROWLOCK) WHERE Status = {0}", (int)BusinessDayStatus.Open)
+                    .FirstOrDefaultAsync();
 
                 if (currentBusinessDay == null)
                 {
                     _logger.LogWarning("Night audit aborted: no open BusinessDay found.");
-                    await transaction.RollbackAsync();
+                    await _unitOfWork.RollbackTransactionAsync();
                     return new ApiResponse<AuditResponseDto>("No open BusinessDay found to run night audit.");
                 }
 
@@ -109,13 +106,23 @@ namespace PMS.Infrastructure.Implmentations.Services
                 // Step C: Handle No-Shows (Optimized)
                 response.NoShowsMarked = await HandleNoShowsAsync(currentBusinessDate);
 
+                // Step C.5: Force close all open employee shifts
+                var openShiftsClosed = await _unitOfWork.EmployeeShifts
+                    .GetQueryable()
+                    .Where(s => !s.IsClosed)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(x => x.IsClosed, true)
+                        .SetProperty(x => x.EndedAt, DateTime.UtcNow));
+
+                _logger.LogInformation("Force-closed {Count} open employee shifts for Night Audit.", openShiftsClosed);
+
                 // Step D: Roll Business Date
                 response.NewBusinessDate = await RollBusinessDateAsync(currentBusinessDay, userId, currentBusinessDate);
                 
                 response.Message = $"Night audit completed successfully. New business date is {response.NewBusinessDate:yyyy-MM-dd}.";
 
                 await _unitOfWork.CompleteAsync();
-                await transaction.CommitAsync();
+                await _unitOfWork.CommitTransactionAsync();
 
                 _logger.LogInformation("Night audit completed successfully for BusinessDate={OldDate}. NewBusinessDate={NewDate}, ProcessedRooms={ProcessedRooms}, NoShows={NoShows}.",
                     currentBusinessDate, response.NewBusinessDate, response.ProcessedRooms, response.NoShowsMarked);
@@ -125,13 +132,13 @@ namespace PMS.Infrastructure.Implmentations.Services
             catch (NightAuditValidationException ex)
             {
                 _logger.LogWarning(ex.Message);
-                await transaction.RollbackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
                 return new ApiResponse<AuditResponseDto>(ex.Message);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Night audit failed for BusinessDate={Date}. Rolling back transaction.", currentBusinessDate);
-                await transaction.RollbackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
                 return new ApiResponse<AuditResponseDto>($"Night audit failed: {ex.Message}");
             }
         }
@@ -237,10 +244,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 await _unitOfWork.FolioTransactions.AddAsync(transactionEntity);
 
-                folio.TotalCharges += chargeAmount;
-                folio.Balance = folio.TotalCharges - folio.TotalPayments;
-
-                _unitOfWork.GuestFolios.Update(folio);
+                await _unitOfWork.GuestFolios.GetQueryable()
+                    .Where(f => f.Id == folio.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(f => f.TotalCharges, f => f.TotalCharges + chargeAmount)
+                        .SetProperty(f => f.Balance, f => f.Balance + chargeAmount));
+                
                 processedRooms++;
             }
 
