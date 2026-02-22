@@ -269,6 +269,37 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return Failure<FolioTransactionDto>("Associated folio not found", 404);
             }
 
+            if (!folio.IsActive)
+            {
+                return Failure<FolioTransactionDto>("Cannot void a transaction on a closed folio.", 400);
+            }
+
+            int? activeShiftId = transaction.ShiftId;
+
+            if (IsCredit(transaction.Type))
+            {
+                var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
+                }
+
+                var activeShift = await _unitOfWork.EmployeeShifts
+                    .GetQueryable()
+                    .AsNoTracking()
+                    .OrderByDescending(s => s.StartedAt)
+                    .FirstOrDefaultAsync(s => s.EmployeeId == currentUserId && !s.IsClosed);
+
+                if (activeShift == null)
+                {
+                    return Failure<FolioTransactionDto>("No active shift found. Please open a shift before voiding a transaction.", 400);
+                }
+
+                activeShiftId = activeShift.Id;
+            }
+
+            var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+
             transaction.IsVoided = true;
 
             var isDebit = IsDebit(transaction.Type);
@@ -278,12 +309,13 @@ namespace PMS.Infrastructure.Implmentations.Services
             {
                 FolioId = transaction.FolioId,
                 Date = DateTime.UtcNow,
+                BusinessDate = currentBusinessDate,
                 Type = transaction.Type,
                 Amount = signedReverseAmount,
                 Description = $"VOID: {transaction.Description}",
                 ReferenceNo = transaction.ReferenceNo,
                 IsVoided = false,
-				ShiftId = transaction.ShiftId
+                ShiftId = activeShiftId
             };
 
             await _unitOfWork.FolioTransactions.AddAsync(reversal);
