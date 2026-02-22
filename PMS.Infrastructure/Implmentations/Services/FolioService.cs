@@ -346,7 +346,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Amount = signedReverseAmount,
                     Description = $"VOID: {transaction.Description}",
                     ReferenceNo = transaction.ReferenceNo,
-                    IsVoided = false,
+                    IsVoided = true,
                     ShiftId = activeShiftId
                 };
 
@@ -383,7 +383,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             {
                 await _unitOfWork.RollbackTransactionAsync();
 
-                // يفضل جداً تعمل Log للـ Exception هنا عشان تعرف سبب المشكلة
+               
                 _logger.LogError(ex, "A critical error occurred while voiding transaction {TransactionId}.", transactionId);
 
                 return Failure<FolioTransactionDto>("An internal error occurred while processing the transaction.", 500);
