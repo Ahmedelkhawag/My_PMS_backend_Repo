@@ -54,7 +54,18 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<FolioDetailsDto>> GetFolioDetailsAsync(int reservationId)
         {
-            var reservation = await _unitOfWork.Reservations.GetByIdAsync(reservationId);
+            var reservation = await _unitOfWork.Reservations.GetQueryable()
+                .Include(r => r.Guest)
+                .Include(r => r.RoomType)
+                .Include(r => r.Room)
+                .Include(r => r.Company)
+                .Include(r => r.RatePlan)
+                .Include(r => r.BookingSource)
+                .Include(r => r.MealPlan)
+                .Include(r => r.MarketSegment)
+                .Include(r => r.Services)
+                .FirstOrDefaultAsync(r => r.Id == reservationId);
+
             if (reservation == null)
             {
                 return Failure<FolioDetailsDto>("Reservation not found", 404);
@@ -76,6 +87,59 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Select(MapToTransactionDto)
                 .ToList();
 
+            var reservationDto = new PMS.Application.DTOs.Reservations.ReservationDto
+            {
+                Id = reservation.Id,
+                ReservationNumber = reservation.ReservationNumber,
+                GuestId = reservation.GuestId,
+                GuestName = reservation.Guest?.FullName,
+                GuestPhone = reservation.Guest?.PhoneNumber,
+                GuestEmail = reservation.Guest?.Email,
+                GuestNationalId = reservation.Guest?.NationalId,
+                RoomTypeId = reservation.RoomTypeId,
+                RoomTypeName = reservation.RoomType?.Name,
+                RoomId = reservation.RoomId,
+                RoomNumber = reservation.Room?.RoomNumber,
+                CompanyId = reservation.CompanyId,
+                CompanyName = reservation.Company?.Name,
+                RatePlanId = reservation.RatePlanId,
+                RatePlanName = reservation.RatePlan?.Name,
+                CheckInDate = reservation.CheckInDate,
+                CheckOutDate = reservation.CheckOutDate,
+                Nights = (reservation.CheckOutDate - reservation.CheckInDate).Days > 0 ? (reservation.CheckOutDate - reservation.CheckInDate).Days : 1,
+                RateCode = reservation.RateCode,
+                MealPlan = reservation.MealPlan?.Name,
+                Source = reservation.BookingSource?.Name,
+                BookingSourceId = reservation.BookingSourceId,
+                MarketSegmentId = reservation.MarketSegmentId,
+                MealPlanId = reservation.MealPlanId,
+                NightlyRate = reservation.NightlyRate,
+                TotalAmount = reservation.TotalAmount,
+                ServicesAmount = reservation.ServicesAmount,
+                DiscountAmount = reservation.DiscountAmount,
+                TaxAmount = reservation.TaxAmount,
+                GrandTotal = reservation.GrandTotal,
+                IsNoExtend = reservation.IsNoExtend,
+                IsConfidentialRate = reservation.IsConfidentialRate,
+                Status = reservation.Status.ToString(),
+                Notes = reservation.Notes,
+                ExternalReference = reservation.ExternalReference,
+                CarPlate = reservation.CarPlate,
+                PurposeOfVisit = reservation.PurposeOfVisit,
+                MarketSegment = reservation.MarketSegment?.Name,
+                Services = reservation.Services?.Select(s => new PMS.Application.DTOs.Reservations.ReservationServiceDto
+                {
+                    ServiceName = s.ServiceName,
+                    Price = s.Price,
+                    Quantity = s.Quantity,
+                    IsPerDay = s.IsPerDay,
+                    Total = s.TotalServicePrice,
+                    ExtraServiceId = null
+                }).ToList() ?? new List<PMS.Application.DTOs.Reservations.ReservationServiceDto>()
+            };
+
+            var expectedRemainingBalance = reservation.GrandTotal - folio.TotalPayments;
+
             var details = new FolioDetailsDto
             {
                 ReservationId = folio.ReservationId,
@@ -83,8 +147,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                 TotalCharges = folio.TotalCharges,
                 TotalPayments = folio.TotalPayments,
                 Balance = folio.Balance,
+                ExpectedRemainingBalance = expectedRemainingBalance,
                 IsActive = folio.IsActive,
                 Currency = folio.Currency,
+                ReservationDetails = reservationDto,
                 Transactions = orderedTransactions
             };
 
@@ -681,7 +747,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Amount = signedReverseAmount,
                     Description = reversalDescription,
                     ReferenceNo = originalTransaction.ReferenceNo,
-                    IsVoided = false,
+                    IsVoided = true,
                     ShiftId = activeShift.Id
                 };
 
@@ -718,7 +784,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Amount = originalTransaction.Amount,
                     Description = targetDescription,
                     ReferenceNo = originalTransaction.ReferenceNo,
-                    IsVoided = false,
+                    IsVoided = true,
                     ShiftId = activeShift.Id
                 };
 
