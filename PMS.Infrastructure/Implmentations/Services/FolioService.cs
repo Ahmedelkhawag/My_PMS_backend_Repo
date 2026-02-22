@@ -370,7 +370,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
 
                 await _unitOfWork.CompleteAsync();
-
+                await _unitOfWork.CommitTransactionAsync();
                 return new ResponseObjectDto<FolioTransactionDto>
                 {
                     IsSuccess = true,
@@ -467,115 +467,129 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<FolioTransactionDto>> RefundTransactionAsync(int originalTransactionId, decimal refundAmount, string reason, string userId)
         {
-            if (refundAmount <= 0)
+            await _unitOfWork.BeginTransactionAsync(); // 1. فتحنا الترانزاكشن
+            try
             {
-                return Failure<FolioTransactionDto>("Refund amount must be greater than zero.", 400);
+                if (refundAmount <= 0)
+                {
+                    return Failure<FolioTransactionDto>("Refund amount must be greater than zero.", 400);
+                }
+
+                var originalTransaction = await _unitOfWork.FolioTransactions
+                    .GetQueryable()
+                    .Include(t => t.Folio)
+                    .FirstOrDefaultAsync(t => t.Id == originalTransactionId);
+
+                if (originalTransaction == null)
+                {
+                    return Failure<FolioTransactionDto>("Original transaction not found.", 404);
+                }
+
+                var isPayment = originalTransaction.Type == TransactionType.CashPayment ||
+                                originalTransaction.Type == TransactionType.CardPayment ||
+                                originalTransaction.Type == TransactionType.BankTransferPayment ||
+                                originalTransaction.Type == TransactionType.CityLedgerPayment;
+
+                if (!isPayment)
+                {
+                    return Failure<FolioTransactionDto>("Original transaction is not a payment and cannot be refunded.", 400);
+                }
+
+                if (refundAmount > originalTransaction.Amount)
+                {
+                    return Failure<FolioTransactionDto>("Refund amount cannot be greater than the original transaction amount.", 400);
+                }
+
+                // Calculate total refunded amount for the original transaction
+                var previouslyRefundedAmount = await _unitOfWork.FolioTransactions
+                    .GetQueryable()
+                    .Where(t => t.Type == TransactionType.Refund &&
+                                !t.IsVoided &&
+                                t.ReferenceNo != null &&
+                                t.ReferenceNo.Contains(originalTransactionId.ToString()))
+                    .SumAsync(t => t.Amount);
+
+                // Note: Refund amounts are negative, so we subtract it from the previous refunds or use Math.Abs
+                var absolutePreviouslyRefundedAmount = Math.Abs(previouslyRefundedAmount);
+
+                if (refundAmount > (originalTransaction.Amount - absolutePreviouslyRefundedAmount))
+                {
+                    return Failure<FolioTransactionDto>($"Refund amount exceeds the remaining refundable amount. Remaining refundable amount: {originalTransaction.Amount - absolutePreviouslyRefundedAmount}.", 400);
+                }
+
+                var folio = originalTransaction.Folio;
+                if (folio == null)
+                {
+                    return Failure<FolioTransactionDto>("Associated folio not found.", 404);
+                }
+
+                if (!folio.IsActive)
+                {
+                    return Failure<FolioTransactionDto>("Cannot add refund to a closed folio.", 400);
+                }
+
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
+                }
+
+                var activeShift = await _unitOfWork.EmployeeShifts
+                    .GetQueryable()
+                    .AsNoTracking()
+                    .OrderByDescending(s => s.StartedAt)
+                    .FirstOrDefaultAsync(s => s.EmployeeId == userId && !s.IsClosed);
+
+                if (activeShift == null)
+                {
+                    return Failure<FolioTransactionDto>("No active shift found. Please open a shift before taking refunds.", 400);
+                }
+
+                var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+
+                var refundTransaction = new FolioTransaction
+                {
+                    FolioId = folio.Id,
+                    Date = DateTime.UtcNow,
+                    BusinessDate = currentBusinessDate,
+                    Type = TransactionType.Refund,
+                    Amount = -refundAmount,
+                    Description = string.IsNullOrWhiteSpace(reason) ? $"Refund for transaction {originalTransactionId}" : reason,
+                    ReferenceNo = string.IsNullOrWhiteSpace(originalTransaction.ReferenceNo)
+                                    ? $"REF-{originalTransactionId}"
+                                    : $"{originalTransaction.ReferenceNo}-REF-{originalTransactionId}",
+                    IsVoided = false,
+                    ShiftId = activeShift.Id
+                };
+
+                await _unitOfWork.FolioTransactions.AddAsync(refundTransaction);
+
+                await _unitOfWork.GuestFolios.GetQueryable()
+                    .Where(f => f.Id == folio.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(f => f.TotalPayments, f => f.TotalPayments - refundAmount)
+                        .SetProperty(f => f.Balance, f => f.Balance + refundAmount));
+
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ResponseObjectDto<FolioTransactionDto>
+                {
+                    IsSuccess = true,
+                    StatusCode = 201,
+                    Message = "Refund processed successfully.",
+                    Data = MapToTransactionDto(refundTransaction)
+                };
             }
-
-            var originalTransaction = await _unitOfWork.FolioTransactions
-                .GetQueryable()
-                .Include(t => t.Folio)
-                .FirstOrDefaultAsync(t => t.Id == originalTransactionId);
-
-            if (originalTransaction == null)
+            catch (Exception ex)
             {
-                return Failure<FolioTransactionDto>("Original transaction not found.", 404);
+
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "A critical error occurred while processing refund for original transaction {OriginalTransactionId}.", originalTransactionId);
+                return Failure<FolioTransactionDto>("An internal error occurred while processing the refund. Please try again or contact support.", 500);
             }
-
-            var isPayment = originalTransaction.Type == TransactionType.CashPayment ||
-                            originalTransaction.Type == TransactionType.CardPayment ||
-                            originalTransaction.Type == TransactionType.BankTransferPayment ||
-                            originalTransaction.Type == TransactionType.CityLedgerPayment;
-
-            if (!isPayment)
-            {
-                return Failure<FolioTransactionDto>("Original transaction is not a payment and cannot be refunded.", 400);
-            }
-
-            if (refundAmount > originalTransaction.Amount)
-            {
-                return Failure<FolioTransactionDto>("Refund amount cannot be greater than the original transaction amount.", 400);
-            }
-
-            // Calculate total refunded amount for the original transaction
-            var previouslyRefundedAmount = await _unitOfWork.FolioTransactions
-                .GetQueryable()
-                .Where(t => t.Type == TransactionType.Refund &&
-                            !t.IsVoided &&
-                            t.ReferenceNo != null &&
-                            t.ReferenceNo.Contains(originalTransactionId.ToString()))
-                .SumAsync(t => t.Amount);
-
-            // Note: Refund amounts are negative, so we subtract it from the previous refunds or use Math.Abs
-            var absolutePreviouslyRefundedAmount = Math.Abs(previouslyRefundedAmount);
-
-            if (refundAmount > (originalTransaction.Amount - absolutePreviouslyRefundedAmount))
-            {
-                return Failure<FolioTransactionDto>($"Refund amount exceeds the remaining refundable amount. Remaining refundable amount: {originalTransaction.Amount - absolutePreviouslyRefundedAmount}.", 400);
-            }
-
-            var folio = originalTransaction.Folio;
-            if (folio == null)
-            {
-                return Failure<FolioTransactionDto>("Associated folio not found.", 404);
-            }
-
-            if (!folio.IsActive)
-            {
-                return Failure<FolioTransactionDto>("Cannot add refund to a closed folio.", 400);
-            }
-
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
-            }
-
-            var activeShift = await _unitOfWork.EmployeeShifts
-                .GetQueryable()
-                .AsNoTracking()
-                .OrderByDescending(s => s.StartedAt)
-                .FirstOrDefaultAsync(s => s.EmployeeId == userId && !s.IsClosed);
-
-            if (activeShift == null)
-            {
-                return Failure<FolioTransactionDto>("No active shift found. Please open a shift before taking refunds.", 400);
-            }
-
-            var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
-
-            var refundTransaction = new FolioTransaction
-            {
-                FolioId = folio.Id,
-                Date = DateTime.UtcNow,
-                BusinessDate = currentBusinessDate,
-                Type = TransactionType.Refund,
-                Amount = -refundAmount,
-                Description = string.IsNullOrWhiteSpace(reason) ? $"Refund for transaction {originalTransactionId}" : reason,
-                ReferenceNo = string.IsNullOrWhiteSpace(originalTransaction.ReferenceNo)
-                                ? $"REF-{originalTransactionId}"
-                                : $"{originalTransaction.ReferenceNo}-REF-{originalTransactionId}",
-                IsVoided = false,
-                ShiftId = activeShift.Id
-            };
-
-            await _unitOfWork.FolioTransactions.AddAsync(refundTransaction);
-
-            await _unitOfWork.GuestFolios.GetQueryable()
-                .Where(f => f.Id == folio.Id)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(f => f.TotalPayments, f => f.TotalPayments - refundAmount)
-                    .SetProperty(f => f.Balance, f => f.Balance + refundAmount));
-
-            await _unitOfWork.CompleteAsync();
-
-            return new ResponseObjectDto<FolioTransactionDto>
-            {
-                IsSuccess = true,
-                StatusCode = 201,
-                Message = "Refund processed successfully.",
-                Data = MapToTransactionDto(refundTransaction)
-            };
         }
+           
+       
 
         public async Task<ResponseObjectDto<bool>> TransferTransactionAsync(int transactionId, int targetReservationId, string userId, string reason)
         {
