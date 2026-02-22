@@ -226,14 +226,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (isDebit)
             {
-                folio.TotalCharges += signedAmount;
+                await _unitOfWork.GuestFolios.GetQueryable()
+                    .Where(f => f.Id == folio.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(f => f.TotalCharges, f => f.TotalCharges + signedAmount)
+                        .SetProperty(f => f.Balance, f => f.Balance + signedAmount));
             }
             else
             {
-                folio.TotalPayments += signedAmount;
+                await _unitOfWork.GuestFolios.GetQueryable()
+                    .Where(f => f.Id == folio.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(f => f.TotalPayments, f => f.TotalPayments + signedAmount)
+                        .SetProperty(f => f.Balance, f => f.Balance - signedAmount));
             }
-
-            folio.Balance = folio.TotalCharges - folio.TotalPayments;
 
             await _unitOfWork.CompleteAsync();
 
@@ -322,14 +328,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (isDebit)
             {
-                folio.TotalCharges += signedReverseAmount;
+                await _unitOfWork.GuestFolios.GetQueryable()
+                    .Where(f => f.Id == folio.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(f => f.TotalCharges, f => f.TotalCharges + signedReverseAmount)
+                        .SetProperty(f => f.Balance, f => f.Balance + signedReverseAmount));
             }
             else
             {
-                folio.TotalPayments += signedReverseAmount;
+                await _unitOfWork.GuestFolios.GetQueryable()
+                    .Where(f => f.Id == folio.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(f => f.TotalPayments, f => f.TotalPayments + signedReverseAmount)
+                        .SetProperty(f => f.Balance, f => f.Balance - signedReverseAmount));
             }
-
-            folio.Balance = folio.TotalCharges - folio.TotalPayments;
 
             await _unitOfWork.CompleteAsync();
 
@@ -509,8 +521,11 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             await _unitOfWork.FolioTransactions.AddAsync(refundTransaction);
 
-            folio.TotalPayments -= refundAmount;
-            folio.Balance = folio.TotalCharges - folio.TotalPayments;
+            await _unitOfWork.GuestFolios.GetQueryable()
+                .Where(f => f.Id == folio.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(f => f.TotalPayments, f => f.TotalPayments - refundAmount)
+                    .SetProperty(f => f.Balance, f => f.Balance + refundAmount));
 
             await _unitOfWork.CompleteAsync();
 
@@ -621,14 +636,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 if (isDebit)
                 {
-                    sourceFolio.TotalCharges += signedReverseAmount;
+                    await _unitOfWork.GuestFolios.GetQueryable()
+                        .Where(f => f.Id == sourceFolio.Id)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(f => f.TotalCharges, f => f.TotalCharges + signedReverseAmount)
+                            .SetProperty(f => f.Balance, f => f.Balance + signedReverseAmount));
                 }
                 else
                 {
-                    sourceFolio.TotalPayments += signedReverseAmount;
+                    await _unitOfWork.GuestFolios.GetQueryable()
+                        .Where(f => f.Id == sourceFolio.Id)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(f => f.TotalPayments, f => f.TotalPayments + signedReverseAmount)
+                            .SetProperty(f => f.Balance, f => f.Balance - signedReverseAmount));
                 }
-
-                sourceFolio.Balance = sourceFolio.TotalCharges - sourceFolio.TotalPayments;
 
                 // Step 4: Target Folio Logic (The Incoming)
                 var targetType = isDebit ? TransactionType.TransferDebit : TransactionType.TransferCredit;
@@ -652,14 +673,20 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 if (isDebit)
                 {
-                    targetFolio.TotalCharges += newTransaction.Amount;
+                    await _unitOfWork.GuestFolios.GetQueryable()
+                        .Where(f => f.Id == targetFolio.Id)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(f => f.TotalCharges, f => f.TotalCharges + newTransaction.Amount)
+                            .SetProperty(f => f.Balance, f => f.Balance + newTransaction.Amount));
                 }
                 else
                 {
-                    targetFolio.TotalPayments += newTransaction.Amount;
+                    await _unitOfWork.GuestFolios.GetQueryable()
+                        .Where(f => f.Id == targetFolio.Id)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(f => f.TotalPayments, f => f.TotalPayments + newTransaction.Amount)
+                            .SetProperty(f => f.Balance, f => f.Balance - newTransaction.Amount));
                 }
-
-                targetFolio.Balance = targetFolio.TotalCharges - targetFolio.TotalPayments;
 
                 await _unitOfWork.CompleteAsync();
                 await _unitOfWork.CommitTransactionAsync();
