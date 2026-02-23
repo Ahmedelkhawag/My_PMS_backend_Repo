@@ -55,6 +55,7 @@ namespace PMS.Infrastructure.Implmentations.Services
         public async Task<ResponseObjectDto<FolioDetailsDto>> GetFolioDetailsAsync(int reservationId)
         {
             var reservation = await _unitOfWork.Reservations.GetQueryable()
+                .AsNoTracking()
                 .Include(r => r.Guest)
                 .Include(r => r.RoomType)
                 .Include(r => r.Room)
@@ -73,6 +74,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             var folio = await _unitOfWork.GuestFolios
                 .GetQueryable()
+                .AsNoTracking()
                 .Include(f => f.Transactions)
                 .FirstOrDefaultAsync(f => f.ReservationId == reservationId);
 
@@ -224,7 +226,22 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
         }
 
+        public async Task<ResponseObjectDto<FolioTransactionDto>> AddTransactionWithoutCommitAsync(CreateTransactionDto dto)
+        {
+            try
+            {
+                var result = await ProcessTransactionInternalAsync(dto);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding transaction without commit for reservation {ReservationId}", dto.ReservationId);
+                return Failure<FolioTransactionDto>("An error occurred while adding the transaction.", 500);
+            }
+        }
+
         private async Task<ResponseObjectDto<FolioTransactionDto>> ProcessTransactionInternalAsync(CreateTransactionDto dto)
+
         {
             if (dto.Amount <= 0)
             {
@@ -322,6 +339,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                     .ExecuteUpdateAsync(s => s
                         .SetProperty(f => f.TotalCharges, f => f.TotalCharges + signedAmount)
                         .SetProperty(f => f.Balance, f => f.Balance + signedAmount));
+                
+                folio.TotalCharges += signedAmount;
+                folio.Balance += signedAmount;
             }
             else
             {
@@ -330,6 +350,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                     .ExecuteUpdateAsync(s => s
                         .SetProperty(f => f.TotalPayments, f => f.TotalPayments + signedAmount)
                         .SetProperty(f => f.Balance, f => f.Balance - signedAmount));
+
+                folio.TotalPayments += signedAmount;
+                folio.Balance -= signedAmount;
             }
 
             return new ResponseObjectDto<FolioTransactionDto>
@@ -347,28 +370,34 @@ namespace PMS.Infrastructure.Implmentations.Services
             try
             {
                 var transaction = await _unitOfWork.FolioTransactions
-               .GetQueryable()
-               .Include(t => t.Folio)
-               .FirstOrDefaultAsync(t => t.Id == transactionId);
+                    .GetQueryable()
+                    .Include(t => t.Folio)
+                    .FirstOrDefaultAsync(t => t.Id == transactionId);
 
                 if (transaction == null)
                 {
+                    await _unitOfWork.RollbackTransactionAsync();
                     return Failure<FolioTransactionDto>("Transaction not found", 404);
                 }
 
-                if (transaction.IsVoided)
+                if (transaction.Description != null && transaction.Description.StartsWith("VOID:"))
                 {
-                    return Failure<FolioTransactionDto>("Transaction is already voided", 400);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<FolioTransactionDto>("Cannot void a system-generated reversal transaction.", 400);
                 }
+
+                // شيلنا الـ if (transaction.IsVoided) من هنا عشان هنعملها بشكل آمن تحت
 
                 var folio = transaction.Folio;
                 if (folio == null)
                 {
+                    await _unitOfWork.RollbackTransactionAsync();
                     return Failure<FolioTransactionDto>("Associated folio not found", 404);
                 }
 
                 if (!folio.IsActive)
                 {
+                    await _unitOfWork.RollbackTransactionAsync();
                     return Failure<FolioTransactionDto>("Cannot void a transaction on a closed folio.", 400);
                 }
 
@@ -379,6 +408,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
                     if (string.IsNullOrWhiteSpace(currentUserId))
                     {
+                        await _unitOfWork.RollbackTransactionAsync();
                         return Failure<FolioTransactionDto>("Unauthorized: cannot determine current user.", 401);
                     }
 
@@ -390,6 +420,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                     if (activeShift == null)
                     {
+                        await _unitOfWork.RollbackTransactionAsync();
                         return Failure<FolioTransactionDto>("No active shift found. Please open a shift before voiding a transaction.", 400);
                     }
 
@@ -398,7 +429,19 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
 
-                transaction.IsVoided = true;
+                // 🚨 التعديل السحري: Voiding + Locking (عشان نمنع الـ Race Condition)
+                var rowsAffected = await _unitOfWork.FolioTransactions.GetQueryable()
+                    .Where(t => t.Id == transactionId && !t.IsVoided)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsVoided, true));
+
+                if (rowsAffected == 0)
+                {
+                    // لو رجعت صفر يبقى الحركة دي اتلغت أو اتنقلت في نفس اللحظة من ريكويست تاني
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<FolioTransactionDto>("Transaction is already voided or processed by another request.", 409);
+                }
+
+                // شيلنا السطر القديم بتاع: transaction.IsVoided = true;
 
                 var isDebit = IsDebit(transaction.Type);
                 var signedReverseAmount = -transaction.Amount;
@@ -412,12 +455,13 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Amount = signedReverseAmount,
                     Description = $"VOID: {transaction.Description}",
                     ReferenceNo = transaction.ReferenceNo,
-                    IsVoided = true,
+                    IsVoided = false, // ✅ الكارثة اتصلحت: الحركة دي لازم تفضل عايشة
                     ShiftId = activeShiftId
                 };
 
                 await _unitOfWork.FolioTransactions.AddAsync(reversal);
 
+                // ... بقيت الكود بتاع الـ ExecuteUpdateAsync للـ Folio زي ما هو بالظبط ...
                 if (isDebit)
                 {
                     await _unitOfWork.GuestFolios.GetQueryable()
@@ -437,6 +481,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 await _unitOfWork.CompleteAsync();
                 await _unitOfWork.CommitTransactionAsync();
+
                 return new ResponseObjectDto<FolioTransactionDto>
                 {
                     IsSuccess = true,
@@ -448,15 +493,10 @@ namespace PMS.Infrastructure.Implmentations.Services
             catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
-
-               
-                _logger.LogError(ex, "A critical error occurred while voiding transaction {TransactionId}.", transactionId);
-
+                // ... (اللوج هنا زي ما كان)
                 return Failure<FolioTransactionDto>("An internal error occurred while processing the transaction.", 500);
             }
-
         }
-
 
         public async Task<ResponseObjectDto<bool>> PostPaymentWithDiscountAsync(PostPaymentWithDiscountDto dto)
         {
@@ -673,6 +713,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return Failure<bool>("Transaction not found.", 404);
                 }
 
+                if (originalTransaction.Description != null && originalTransaction.Description.StartsWith("Transfer Out"))
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Cannot void a transfer transaction directly. Reverse the transfer instead.", 400);
+                }
+
                 if (originalTransaction.IsVoided)
                 {
                     await _unitOfWork.RollbackTransactionAsync();
@@ -729,7 +775,17 @@ namespace PMS.Infrastructure.Implmentations.Services
                 var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
 
                 // Step 3: Source Folio Logic (The Outgoing)
-                originalTransaction.IsVoided = true;
+                var rowsAffected = await _unitOfWork.FolioTransactions.GetQueryable()
+                                  .Where(t => t.Id == transactionId && !t.IsVoided)
+                                  .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsVoided, true));
+
+                if (rowsAffected == 0)
+                {
+                    // لو مفيش صفوف اتعدلت، يبقى الترانزاكشن دي اتلغت أو اتنقلت في نفس اللحظة من ريكويست تاني
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<bool>("Transaction is already transferred or voided by another process.", 409); // 409 Conflict
+                }
+                // originalTransaction.IsVoided = true;
 
                 var isDebit = IsDebit(originalTransaction.Type);
                 var signedReverseAmount = -originalTransaction.Amount;
@@ -747,7 +803,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Amount = signedReverseAmount,
                     Description = reversalDescription,
                     ReferenceNo = originalTransaction.ReferenceNo,
-                    IsVoided = true,
+                    IsVoided = false,
                     ShiftId = activeShift.Id
                 };
 
@@ -784,7 +840,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Amount = originalTransaction.Amount,
                     Description = targetDescription,
                     ReferenceNo = originalTransaction.ReferenceNo,
-                    IsVoided = true,
+                    IsVoided = false,
                     ShiftId = activeShift.Id
                 };
 

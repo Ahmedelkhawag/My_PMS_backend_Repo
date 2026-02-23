@@ -26,13 +26,11 @@ namespace PMS.API.Controllers
         /// </summary>
         [HttpPost("transaction")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AddTransaction([FromBody] CreateTransactionDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ResponseObjectDto<string>.Failure("بيانات المعاملة غير صحيحة", 400));
 
             var result = await _folioService.AddTransactionAsync(dto);
 
@@ -42,14 +40,9 @@ namespace PMS.API.Controllers
             return StatusCode(StatusCodes.Status201Created, result);
         }
 
-        /// <summary>
-        /// Voids an existing folio transaction by creating a reversal entry.
-        /// </summary>
         [HttpPost("transactions/{id}/void")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> VoidTransaction(int id)
         {
             var result = await _folioService.VoidTransactionAsync(id);
@@ -60,32 +53,21 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Returns the full folio details and transaction ledger for the given reservation.
-        /// </summary>
         [HttpGet("{reservationId}")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetFolioByReservation(int reservationId)
         {
             var result = await _folioService.GetFolioDetailsAsync(reservationId);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 404, result);
 
             return Ok(result);
         }
 
-        /// <summary>
-        /// Returns a lightweight summary of the folio for the given reservation.
-        /// </summary>
         [HttpGet("{reservationId}/summary")]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetFolioSummary(int reservationId)
         {
             var result = await _folioService.GetFolioSummaryAsync(reservationId);
@@ -96,50 +78,34 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-
-
-        /// <summary>
-        /// Processes a payment and an optional discount in a single unified transaction.
-        /// </summary>
         [HttpPost("post-payment")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PostPaymentWithDiscount([FromBody] PostPaymentWithDiscountDto dto)
         {
-            // 1. التأكد من إن الداتا اللي جاية مطابقة لشروط الـ DTO
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ResponseObjectDto<string>.Failure("بيانات الدفع والخصم غير مكتملة", 400));
 
-            // 2. إرسال الطلب للـ Service اللي هتهندل الـ Database Transaction
             var result = await _folioService.PostPaymentWithDiscountAsync(dto);
 
-            // 3. لو حصل أي خطأ (زي إن مفيش شفت مفتوح أو مفيش سبب للخصم)
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
-            // 4. لو كله تمام، هنرجع 200 OK
             return Ok(result);
         }
 
-        /// <summary>
-        /// Refunds a transaction.
-        /// </summary>
         [HttpPost("transactions/{id}/refund")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> RefundTransaction(int id, [FromBody] RefundTransactionDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ResponseObjectDto<string>.Failure("بيانات الاسترجاع غير صحيحة", 400));
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId))
-                return Unauthorized("User cannot be identified.");
+                return Unauthorized(ResponseObjectDto<string>.Failure("لم يتم التعرف على المستخدم", 401));
 
             var result = await _folioService.RefundTransactionAsync(id, dto.Amount, dto.Reason, userId);
 
@@ -149,22 +115,17 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Transfers a transaction to another reservation's folio.
-        /// </summary>
         [HttpPost("transactions/{id}/transfer")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> TransferTransaction(int id, [FromBody] TransferTransactionDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ResponseObjectDto<string>.Failure("بيانات التحويل غير صحيحة", 400));
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId))
-                return Unauthorized("User cannot be identified.");
+                return Unauthorized(ResponseObjectDto<string>.Failure("لم يتم التعرف على المستخدم", 401));
 
             var result = await _folioService.TransferTransactionAsync(id, dto.TargetReservationId, userId, dto.Reason);
 

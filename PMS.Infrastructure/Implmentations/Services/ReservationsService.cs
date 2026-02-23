@@ -276,7 +276,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     RatePlanName = r.RatePlan != null ? r.RatePlan.Name : null,
                     CheckInDate = r.CheckInDate.ToString("yyyy-MM-dd"),
                     CheckOutDate = r.CheckOutDate.ToString("yyyy-MM-dd"),
-                    Nights = (r.CheckOutDate - r.CheckInDate).Days,
+                    Nights = (r.CheckOutDate - r.CheckInDate).Days <= 0 ? 1 : (r.CheckOutDate - r.CheckInDate).Days,
                     GrandTotal = r.GrandTotal,
 					Status = r.Status.ToString(),
 					StatusColor = GetStatusColor(r.Status),
@@ -326,6 +326,44 @@ namespace PMS.Infrastructure.Implmentations.Services
                 {
                     await _unitOfWork.RollbackTransactionAsync();
                     return businessValidation;
+                }
+
+                // 2.1) Post Penalty Fee if provided
+                if (dto.FeeAmount > 0)
+                {
+                    TransactionType? feeType = null;
+                    if (newStatus == ReservationStatus.Cancelled)
+                    {
+                        feeType = TransactionType.CancellationFee;
+                    }
+                    else if (newStatus == ReservationStatus.CheckOut)
+                    {
+                        feeType = TransactionType.EarlyDepartureFee;
+                    }
+
+                    if (feeType.HasValue)
+                    {
+                        var feeDto = new PMS.Application.DTOs.Folios.CreateTransactionDto
+                        {
+                            ReservationId = reservation.Id,
+                            Amount = dto.FeeAmount.Value,
+                            Type = feeType.Value,
+                            Description = string.IsNullOrWhiteSpace(dto.FeeReason) ? feeType.ToString() : dto.FeeReason
+                        };
+
+                        var feeResult = await _folioService.AddTransactionWithoutCommitAsync(feeDto);
+                        if (!feeResult.IsSuccess)
+                        {
+                            await _unitOfWork.RollbackTransactionAsync();
+                            return new ResponseObjectDto<bool>
+                            {
+                                IsSuccess = false,
+                                StatusCode = feeResult.StatusCode > 0 ? feeResult.StatusCode : 400,
+                                Message = $"Failed to post penalty fee: {feeResult.Message}",
+                                Data = false
+                            };
+                        }
+                    }
                 }
 
                 // 2.5) For Check-Out, ensure folio can be closed (zero balance rule)

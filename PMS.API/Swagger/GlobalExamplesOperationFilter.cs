@@ -14,114 +14,71 @@ namespace PMS.API.Swagger
 
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            if (operation == null)
-            {
-                return;
-            }
+            if (operation == null) return;
 
-            // Use ApiExplorer to discover actual CLR response types per status code.
             foreach (var supported in context.ApiDescription.SupportedResponseTypes)
             {
                 var statusCode = supported.StatusCode.ToString();
                 var statusCodeInt = supported.StatusCode;
 
-                if (!operation.Responses.TryGetValue(statusCode, out var response))
-                {
-                    continue;
-                }
+                if (!operation.Responses.TryGetValue(statusCode, out var response)) continue;
 
-                if (!response.Content.TryGetValue("application/json", out var mediaType))
+                // التعديل الجوهري: هنلف على كل أنواع الـ Content (json, text/plain, etc)
+                foreach (var content in response.Content)
                 {
-                    continue;
-                }
+                    var mediaType = content.Value;
 
-                // Don't overwrite explicitly provided examples.
-                if (mediaType.Example != null)
-                {
-                    continue;
-                }
+                    // لو فيه مثال يدوي محطوط، مش هنلمسه
+                    if (mediaType.Example != null) continue;
 
-                var clrType = supported.Type ?? supported.ModelMetadata?.ModelType;
-                if (clrType == null)
-                {
-                    continue;
-                }
+                    var clrType = supported.Type ?? supported.ModelMetadata?.ModelType;
+                    if (clrType == null) continue;
 
-                // Critical: only 2xx gets success example. Default response and any non-2xx get error example.
-                var useErrorExample = supported.IsDefaultResponse || !IsSuccessStatusCode(statusCodeInt);
+                    var useErrorExample = supported.IsDefaultResponse || !IsSuccessStatusCode(statusCodeInt);
 
-                // If response is ApiResponse<T>, generate consistent success/error example.
-                if (IsGenericTypeDefinition(clrType, typeof(ApiResponse<>), out var apiArg))
-                {
-                    if (useErrorExample)
+                    // نركز فقط على الـ ResponseObjectDto لتوحيد السيستم
+                    if (IsGenericTypeDefinition(clrType, typeof(ResponseObjectDto<>), out var responseDtoArg))
+                    {
+                        if (useErrorExample)
+                        {
+                            var message = GetDefaultMessageForStatusCode(statusCodeInt);
+                            var code = statusCodeInt > 0 ? statusCodeInt : 400;
+                            mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(code, message);
+                        }
+                        else
+                        {
+                            var dataExample = SwaggerExampleFactory.CreateExample(responseDtoArg);
+                            mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoSuccessExample(dataExample, statusCodeInt, "Operation successful");
+                        }
+                    }
+                    // لو paged result
+                    else if (IsGenericTypeDefinition(clrType, typeof(PagedResult<>), out var pageArg))
+                    {
+                        if (useErrorExample)
+                        {
+                            var message = GetDefaultMessageForStatusCode(statusCodeInt);
+                            mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(statusCodeInt > 0 ? statusCodeInt : 400, message);
+                        }
+                        else
+                        {
+                            var elementExample = SwaggerExampleFactory.CreateExample(pageArg);
+                            mediaType.Example = SwaggerExampleFactory.CreatePagedResultExample(elementExample);
+                        }
+                    }
+                    // أي نوع تاني وفي حالة فشل، اجبره يظهر شكل الـ Error بتاعنا
+                    else if (useErrorExample)
                     {
                         var message = GetDefaultMessageForStatusCode(statusCodeInt);
-                        mediaType.Example = SwaggerExampleFactory.CreateApiResponseErrorExample(message);
+                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(statusCodeInt > 0 ? statusCodeInt : 400, message);
                     }
-                    else
-                    {
-                        var dataExample = SwaggerExampleFactory.CreateExample(apiArg);
-                        mediaType.Example = SwaggerExampleFactory.CreateApiResponseSuccessExample(dataExample);
-                    }
-
-                    continue;
-                }
-
-                // If response is ResponseObjectDto<T>, generate success or error example.
-                if (IsGenericTypeDefinition(clrType, typeof(ResponseObjectDto<>), out var responseDtoArg))
-                {
-                    if (useErrorExample)
-                    {
-                        var message = GetDefaultMessageForStatusCode(statusCodeInt);
-                        var code = statusCodeInt > 0 ? statusCodeInt : 400;
-                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(code, message);
-                    }
-                    else
-                    {
-                        var dataExample = SwaggerExampleFactory.CreateExample(responseDtoArg);
-                        var code = statusCodeInt;
-                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoSuccessExample(dataExample, code, "Operation successful");
-                    }
-
-                    continue;
-                }
-
-                // If response is PagedResult<T>: only 2xx gets paged example; 4xx/5xx must show error.
-                if (IsGenericTypeDefinition(clrType, typeof(PagedResult<>), out var pageArg))
-                {
-                    if (useErrorExample)
-                    {
-                        var message = GetDefaultMessageForStatusCode(statusCodeInt);
-                        var code = statusCodeInt > 0 ? statusCodeInt : 400;
-                        mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(code, message);
-                    }
-                    else
-                    {
-                        var elementExample = SwaggerExampleFactory.CreateExample(pageArg);
-                        mediaType.Example = SwaggerExampleFactory.CreatePagedResultExample(elementExample);
-                    }
-                    continue;
-                }
-
-                // Other types: for 4xx/5xx (or 0) never show a success-looking body — use error example.
-                if (useErrorExample)
-                {
-                    var message = GetDefaultMessageForStatusCode(statusCodeInt);
-                    var code = statusCodeInt > 0 ? statusCodeInt : 400;
-                    mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoErrorExample(code, message);
-                }
-                else
-                {
-                    mediaType.Example = SwaggerExampleFactory.CreateExample(clrType);
                 }
             }
 
-            // Ensure common error responses exist and have examples.
+            // نضمن إن الإيرورز المشهورة ليها أمثلة في السواجر
             EnsureErrorResponseWithExample(operation, 400, "Bad Request");
             EnsureErrorResponseWithExample(operation, 401, "Unauthorized");
             EnsureErrorResponseWithExample(operation, 403, "Forbidden");
             EnsureErrorResponseWithExample(operation, 404, "Not Found");
-            EnsureErrorResponseWithExample(operation, 409, "Conflict");
             EnsureErrorResponseWithExample(operation, 500, "Internal Server Error");
         }
 

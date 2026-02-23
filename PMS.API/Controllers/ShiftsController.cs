@@ -21,111 +21,93 @@ namespace PMS.API.Controllers
 			_shiftService = shiftService;
 		}
 
-		/// <summary>
-		/// Opens a new shift for the current logged-in user.
-		/// The user can only have one active (not closed) shift at a time.
-		/// </summary>
-		[HttpPost("open")]
-		[Authorize]
-		[ProducesResponseType(typeof(ApiResponse<ShiftDto>), StatusCodes.Status200OK)]
-		[ProducesResponseType(typeof(ApiResponse<ShiftDto>), StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(typeof(ApiResponse<ShiftDto>), StatusCodes.Status401Unauthorized)]
-		public async Task<IActionResult> OpenShift([FromBody] OpenShiftDto dto)
-		{
-			if (!ModelState.IsValid)
-			{
-				return BadRequest(new ApiResponse<ShiftDto>("Invalid request."));
-			}
+        /// <summary>
+        /// فتح وردية جديدة للمستخدم الحالي.
+        /// </summary>
+        [HttpPost("open")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<ShiftDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> OpenShift([FromBody] OpenShiftDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ResponseObjectDto<string>.Failure("بيانات فتح الوردية غير صحيحة.", 400));
 
-			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrWhiteSpace(userId))
-			{
-				return Unauthorized(new ApiResponse<ShiftDto>("Unauthorized: cannot determine current user."));
-			}
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized(ResponseObjectDto<string>.Failure("لم يتم التعرف على المستخدم الحالي.", 401));
 
-			var result = await _shiftService.OpenShiftAsync(userId, dto);
-			if (!result.Succeeded)
-			{
-				return BadRequest(result);
-			}
+            // بنفترض إن السيرفيس اتعدلت وبقت ترجع ResponseObjectDto
+            var result = await _shiftService.OpenShiftAsync(userId, dto);
 
-			return Ok(result);
-		}
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
-		/// <summary>
-		/// Returns the current shift report for the logged-in user.
-		/// </summary>
-		[HttpGet("current")]
-		[Authorize]
-		[ProducesResponseType(typeof(ApiResponse<ShiftReportDto>), StatusCodes.Status200OK)]
-		[ProducesResponseType(typeof(ApiResponse<ShiftReportDto>), StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(typeof(ApiResponse<ShiftReportDto>), StatusCodes.Status401Unauthorized)]
-		public async Task<IActionResult> GetCurrentShiftReport()
-		{
-			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrWhiteSpace(userId))
-			{
-				return Unauthorized(new ApiResponse<ShiftReportDto>("Unauthorized: cannot determine current user."));
-			}
+            return Ok(result);
+        }
 
-			var result = await _shiftService.GetCurrentShiftStatusAsync(userId);
-			if (!result.Succeeded)
-			{
-				return BadRequest(result);
-			}
+        /// <summary>
+        /// الحصول على تقرير الوردية الحالية للمستخدم.
+        /// </summary>
+        [HttpGet("current")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<ShiftReportDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetCurrentShiftReport()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized(ResponseObjectDto<string>.Failure("لم يتم التعرف على المستخدم الحالي.", 401));
 
-			return Ok(result);
-		}
+            var result = await _shiftService.GetCurrentShiftStatusAsync(userId);
 
-		/// <summary>
-		/// Closes the current active shift for the logged-in user.
-		/// </summary>
-		[HttpPost("close")]
-		[Authorize]
-		[ProducesResponseType(typeof(ApiResponse<ShiftDto>), StatusCodes.Status200OK)]
-		[ProducesResponseType(typeof(ApiResponse<ShiftDto>), StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(typeof(ApiResponse<ShiftDto>), StatusCodes.Status401Unauthorized)]
-		public async Task<IActionResult> CloseShift([FromBody] CloseShiftDto dto)
-		{
-			if (!ModelState.IsValid)
-			{
-				return BadRequest(new ApiResponse<ShiftDto>("Invalid request."));
-			}
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
 
-			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrWhiteSpace(userId))
-			{
-				return Unauthorized(new ApiResponse<ShiftDto>("Unauthorized: cannot determine current user."));
-			}
+            return Ok(result);
+        }
 
-			var result = await _shiftService.CloseShiftAsync(userId, dto);
-			if (!result.Succeeded)
-			{
-				return BadRequest(result);
-			}
+        /// <summary>
+        /// إغلاق الوردية الحالية المفتوحة للمستخدم.
+        /// </summary>
+        [HttpPost("close")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<ShiftDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CloseShift([FromBody] CloseShiftDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ResponseObjectDto<string>.Failure("بيانات إغلاق الوردية غير صحيحة.", 400));
 
-			return Ok(result);
-		}
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized(ResponseObjectDto<string>.Failure("لم يتم التعرف على المستخدم الحالي.", 401));
 
-		/// <summary>
-		/// Returns shift history. Admin only.
-		/// </summary>
-		[HttpGet("history")]
-		[Authorize(Roles = $"{Roles.HotelManager},{Roles.SuperAdmin}")]
-		[ProducesResponseType(typeof(ApiResponse<IEnumerable<ShiftDto>>), StatusCodes.Status200OK)]
-		[ProducesResponseType(typeof(ApiResponse<IEnumerable<ShiftDto>>), StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(typeof(ApiResponse<IEnumerable<ShiftDto>>), StatusCodes.Status401Unauthorized)]
-		[ProducesResponseType(typeof(ApiResponse<IEnumerable<ShiftDto>>), StatusCodes.Status403Forbidden)]
-		public async Task<IActionResult> GetShiftHistory([FromQuery] UserFilterDto filter)
-		{
-			var result = await _shiftService.GetShiftHistoryAsync(filter);
-			if (!result.Succeeded)
-			{
-				return BadRequest(result);
-			}
+            var result = await _shiftService.CloseShiftAsync(userId, dto);
 
-			return Ok(result);
-		}
-	}
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// عرض تاريخ الورديات (للمديرين فقط).
+        /// </summary>
+        [HttpGet("history")]
+        [Authorize(Roles = $"{Roles.HotelManager},{Roles.SuperAdmin}")]
+        [ProducesResponseType(typeof(ResponseObjectDto<IEnumerable<ShiftDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetShiftHistory([FromQuery] UserFilterDto filter)
+        {
+            var result = await _shiftService.GetShiftHistoryAsync(filter);
+
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+
+            return Ok(result);
+        }
+    }
 }
 

@@ -21,5 +21,9 @@ namespace PMS.Application.DTOs.Reservations
 		public int? RoomId { get; set; }
 
 		public string? Note { get; set; } // سبب الإلغاء مثلاً
+
+		public decimal? FeeAmount { get; set; }
+
+		public string? FeeReason { get; set; }
 	}
 }

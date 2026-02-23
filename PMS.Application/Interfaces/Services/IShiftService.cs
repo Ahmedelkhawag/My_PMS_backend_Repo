@@ -6,10 +6,10 @@ namespace PMS.Application.Interfaces.Services
 {
 	public interface IShiftService
 	{
-		Task<ApiResponse<ShiftDto>> OpenShiftAsync(string userId, OpenShiftDto dto);
-		Task<ApiResponse<ShiftDto>> CloseShiftAsync(string userId, CloseShiftDto dto);
-		Task<ApiResponse<ShiftReportDto>> GetCurrentShiftStatusAsync(string userId);
-		Task<ApiResponse<IEnumerable<ShiftDto>>> GetShiftHistoryAsync(UserFilterDto filter);
-	}
+        Task<ResponseObjectDto<ShiftDto>> OpenShiftAsync(string userId, OpenShiftDto dto);
+        Task<ResponseObjectDto<ShiftDto>> CloseShiftAsync(string userId, CloseShiftDto dto);
+        Task<ResponseObjectDto<ShiftReportDto>> GetCurrentShiftStatusAsync(string userId);
+        Task<ResponseObjectDto<IEnumerable<ShiftDto>>> GetShiftHistoryAsync(UserFilterDto filter);
+    }
 }
 

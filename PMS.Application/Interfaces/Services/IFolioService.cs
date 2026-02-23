@@ -14,6 +14,8 @@ namespace PMS.Application.Interfaces.Services
 
         Task<ResponseObjectDto<FolioTransactionDto>> AddTransactionAsync(CreateTransactionDto dto);
 
+        Task<ResponseObjectDto<FolioTransactionDto>> AddTransactionWithoutCommitAsync(CreateTransactionDto dto);
+
         Task<ResponseObjectDto<FolioTransactionDto>> VoidTransactionAsync(int transactionId);
 
         Task<ResponseObjectDto<bool>> PostPaymentWithDiscountAsync(PostPaymentWithDiscountDto dto);

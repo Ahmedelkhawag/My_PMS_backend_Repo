@@ -17,6 +17,8 @@ namespace PMS.Domain.Enums
         ServiceCharge = 11,
         TaxCharge = 12,
         TransferDebit = 13,
+        CancellationFee = 14,
+        EarlyDepartureFee = 15,
 
         // 20–29 : Credits (increase payments)
         CashPayment = 20,

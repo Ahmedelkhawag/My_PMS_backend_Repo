@@ -18,16 +18,15 @@ namespace PMS.API.Controllers
         {
             _guestService = guestService;
         }
-
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create([FromBody] CreateGuestDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ResponseObjectDto<string>.Failure("بيانات الضيف غير صالحة", 400));
 
             var result = await _guestService.AddGuestAsync(dto);
 
@@ -40,45 +39,46 @@ namespace PMS.API.Controllers
         [HttpGet]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<GuestDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
             var result = await _guestService.GetAllGuestsAsync(search, pageNumber, pageSize);
+
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+
             return Ok(result);
         }
 
-		[HttpGet("{id}")]
-		[Authorize]
-		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status200OK)]
-		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status401Unauthorized)]
-		[ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status404NotFound)]
-		public async Task<IActionResult> GetById(int id)
-		{
-			var result = await _guestService.GetGuestByIdAsync(id);
-			if (!result.IsSuccess)
-				return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
-			return Ok(result);
-		}
+        [HttpGet("{id}")]
+        [Authorize]
+        [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var result = await _guestService.GetGuestByIdAsync(id);
+
+            if (!result.IsSuccess)
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 404, result);
+
+            return Ok(result);
+        }
 
         [HttpPut("{id}")]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateGuestDto dto)
         {
+            // وحدنا شكل الرد في الـ Manual Validation
             if (dto == null)
-                return BadRequest("يجب إرسال حقل واحد على الأقل للتحديث");
+                return BadRequest(ResponseObjectDto<string>.Failure("يجب إرسال حقل واحد على الأقل للتحديث", 400));
 
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ResponseObjectDto<string>.Failure("البيانات المبعوتة غير صالحة", 400));
 
             var result = await _guestService.UpdateGuestAsync(id, dto);
 
@@ -91,15 +91,13 @@ namespace PMS.API.Controllers
         [HttpDelete("{id}")]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _guestService.DeleteGuestAsync(id);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 404, result);
 
             return Ok(result);
         }
@@ -107,15 +105,13 @@ namespace PMS.API.Controllers
         [HttpPut("{id}/restore")]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Restore(int id)
         {
             var result = await _guestService.RestoreGuestAsync(id);
 
             if (!result.IsSuccess)
-                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 404, result);
 
             return Ok(result);
         }
@@ -123,15 +119,16 @@ namespace PMS.API.Controllers
         [HttpGet("summary")]
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestStatsDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetSummary()
         {
             var result = await _guestService.GetGuestStatsAsync();
+
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
+
             return Ok(result);
         }
-
         //[HttpGet("search")]
         //public async Task<IActionResult> Search([FromQuery] string term)
         //{
