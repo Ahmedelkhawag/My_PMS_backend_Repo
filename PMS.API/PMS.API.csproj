@@ -11,6 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.17" />
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.17" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
       <PrivateAssets>all</PrivateAssets>
@@ -29,10 +31,8 @@
 
   <!-- Copy XML docs from class libraries so Swagger can read DTOs/enums descriptions -->
   <ItemGroup>
-    <None Include="..\PMS.Application\bin\$(Configuration)\$(TargetFramework)\PMS.Application.xml"
-          CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\PMS.Domain\bin\$(Configuration)\$(TargetFramework)\PMS.Domain.xml"
-          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\PMS.Application\bin\$(Configuration)\$(TargetFramework)\PMS.Application.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\PMS.Domain\bin\$(Configuration)\$(TargetFramework)\PMS.Domain.xml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -119,6 +120,14 @@ builder.Services.AddScoped<IFolioService, FolioService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+
+// Hangfire – SQL Server storage (reuses the same connection string)
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHangfireServer();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -188,6 +197,20 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+app.UseHangfireDashboard("/hangfire");
+
+RecurringJob.AddOrUpdate<IShiftService>(
+    "auto-close-expired-shifts",
+    service => service.AutoCloseExpiredShiftsAsync(),
+    "*/30 * * * *");
+
+var egyptTz = TimeZoneInfo.FindSystemTimeZoneById("Egypt Standard Time");
+RecurringJob.AddOrUpdate<INightAuditService>(
+    "auto-night-audit",
+    service => service.RunAutoNightAuditAsync(),
+    "0 2 * * *",
+    new RecurringJobOptions { TimeZone = egyptTz });
 
 app.MapControllers();
 

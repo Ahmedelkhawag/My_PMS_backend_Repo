@@ -17,6 +17,13 @@ namespace PMS.Application.Interfaces.Services
         /// <param name="userId">The user initiating the audit.</param>
         /// <param name="force">Whether to force closing even if validations fail.</param>
         Task<ApiResponse<AuditResponseDto>> RunNightAuditAsync(string userId, bool force);
+
+        /// <summary>
+        /// System-triggered wrapper: runs the night audit automatically at 2:00 AM.
+        /// Calls RunNightAuditAsync with userId="SYSTEM_AUTO" and force=true.
+        /// Throws on failure so Hangfire records the job as "Failed".
+        /// </summary>
+        Task RunAutoNightAuditAsync();
     }
 }
 

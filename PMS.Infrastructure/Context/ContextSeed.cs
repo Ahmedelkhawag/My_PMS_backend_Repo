@@ -13,6 +13,27 @@ namespace PMS.Infrastructure.Context
     {
         public static async Task SeedEssentialsAsync(UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager, ApplicationDbContext context)
         {
+
+            const string SystemUserId = "b74ddd14-6340-4840-95c2-db12554843e5"; // Fixed GUID
+            var systemUser = await userManager.FindByIdAsync(SystemUserId);
+
+            if (systemUser == null)
+            {
+                systemUser = new AppUser
+                {
+                    Id = SystemUserId, // بنثبت الـ Id عشان نستخدمه في الكود
+                    UserName = "system_auto",
+                    Email = "system@pms.com",
+                    FullName = "System Automator",
+                    Nationality = "System",
+                    NationalId = "00000000000000",
+                    EmailConfirmed = true,
+                    StatusID = await context.Statuses.Where(s => s.Name == "Active").Select(s => s.StatusID).FirstOrDefaultAsync()
+                };
+                await userManager.CreateAsync(systemUser, "System@Password123"); // باسورد معقد بس مش هنستخدمه
+            }
+
+
             // 1. زراعة الـ Statuses
             if (!await context.Statuses.AnyAsync())
             {

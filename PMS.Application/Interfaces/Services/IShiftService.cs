@@ -10,6 +10,6 @@ namespace PMS.Application.Interfaces.Services
         Task<ResponseObjectDto<ShiftDto>> CloseShiftAsync(string userId, CloseShiftDto dto);
         Task<ResponseObjectDto<ShiftReportDto>> GetCurrentShiftStatusAsync(string userId);
         Task<ResponseObjectDto<IEnumerable<ShiftDto>>> GetShiftHistoryAsync(UserFilterDto filter);
+        Task AutoCloseExpiredShiftsAsync();
     }
 }
-

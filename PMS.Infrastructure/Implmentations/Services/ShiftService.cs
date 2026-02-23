@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PMS.Application.DTOs;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Shifts;
@@ -16,10 +17,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 	public class ShiftService : IShiftService
 	{
 		private readonly IUnitOfWork _unitOfWork;
+		private readonly ILogger<ShiftService> _logger;
 
-		public ShiftService(IUnitOfWork unitOfWork)
+		public ShiftService(IUnitOfWork unitOfWork, ILogger<ShiftService> logger)
 		{
 			_unitOfWork = unitOfWork;
+			_logger = logger;
 		}
 
         public async Task<ResponseObjectDto<ShiftDto>> OpenShiftAsync(string userId, OpenShiftDto dto)
@@ -153,6 +156,41 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             var dtos = shifts.Select(MapToShiftDto).ToList();
             return ResponseObjectDto<IEnumerable<ShiftDto>>.Success(dtos, "تم جلب تاريخ الورديات بنجاح.");
+        }
+
+        public async Task AutoCloseExpiredShiftsAsync()
+        {
+            var cutoff = DateTime.UtcNow.AddHours(-12);
+
+            var expiredShifts = await _unitOfWork.EmployeeShifts
+                .GetQueryable()
+                .Where(s => !s.IsClosed && s.StartedAt <= cutoff)
+                .ToListAsync();
+
+            if (expiredShifts.Count == 0)
+            {
+                _logger.LogInformation("AutoCloseExpiredShifts: No expired shifts found.");
+                return;
+            }
+
+            foreach (var shift in expiredShifts)
+            {
+                var report = await BuildShiftReportAsync(shift.Id, shift.StartedAt);
+                var netCash = report.NetCash;
+
+                shift.SystemCalculatedCash = netCash;
+                shift.ActualCashHanded = netCash;
+                shift.Difference = 0m;
+                shift.IsClosed = true;
+                shift.EndedAt = DateTime.UtcNow;
+                shift.Notes = "System Auto-Closure: Shift exceeded 12 hours limit.";
+
+                _unitOfWork.EmployeeShifts.Update(shift);
+            }
+
+            await _unitOfWork.CompleteAsync();
+
+            _logger.LogInformation("AutoCloseExpiredShifts: {Count} shift(s) auto-closed.", expiredShifts.Count);
         }
 
         // الدوال المساعدة (BuildShiftReportAsync و MapToShiftDto) بتفضل زي ما هي لإنها داخلية

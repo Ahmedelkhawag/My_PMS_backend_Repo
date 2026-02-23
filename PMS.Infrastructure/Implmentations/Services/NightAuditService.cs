@@ -26,6 +26,25 @@ namespace PMS.Infrastructure.Implmentations.Services
             _logger = logger;
         }
 
+        public async Task RunAutoNightAuditAsync()
+        {
+            _logger.LogInformation("RunAutoNightAuditAsync: System-triggered night audit starting.");
+            const string SystemUserId = "b74ddd14-6340-4840-95c2-db12554843e5";
+
+            var result = await RunNightAuditAsync(SystemUserId, force: true);
+
+            if (!result.Succeeded)
+            {
+                var errorMsg = $"RunAutoNightAuditAsync: Night audit failed — {result.Message}";
+                _logger.LogError(errorMsg);
+                throw new InvalidOperationException(errorMsg);
+            }
+
+            _logger.LogInformation(
+                "RunAutoNightAuditAsync: Night audit completed successfully. {Message}",
+                result.Message);
+        }
+
         public async Task<ApiResponse<AuditStatusDto>> GetCurrentStatusAsync()
         {
             var dto = new AuditStatusDto();
