@@ -54,124 +54,6 @@ namespace PMS.Infrastructure.Implmentations.Services
             _mapper = mapper;
         }
 
-        #region Old imp
-        //public async Task<AuthModel> RegisterEmployeeAsync(RegisterEmployeeDto model)
-        //{
-        //    // 1. التأكد إن مفيش حد بنفس البيانات دي
-        //    if (await _userManager.FindByEmailAsync(model.Email) is not null)
-        //        return new AuthModel { Message = "Email is already registered!" };
-
-        //    if (await _userManager.FindByNameAsync(model.Username) is not null)
-        //        return new AuthModel { Message = "Username is already taken!" };
-
-        //    // 2. استخراج HotelId من الأدمن الحالي (Logged-in User)
-        //    // بنجيب الـ ID بتاع الادمن من التوكن
-        //    //var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        //    //if (string.IsNullOrEmpty(currentUserId))
-        //    //    return new AuthModel { Message = "Unauthorized: Cannot determine admin user." };
-
-        //    //// بنروح الداتابيز نجيب بيانات الادمن ده عشان نعرف هو تبع فندق ايه
-        //    //  var adminUser = await _userManager.FindByIdAsync(currentUserId);
-        //    //if (adminUser == null || adminUser.HotelId == null)
-        //    //{
-        //    //    // ملحوظة: لو السوبر ادمن هو اللي بيسجل، وهو مش مربوط بفندق، ممكن نعديها أو نطلب HotelId
-        //    //    // هنا هنفترض إن "اللي بيسجل" لازم يكون مدير فندق أو السوبر ادمن بيختار فندق
-        //    //    // حسب طلبك: Extract from Admin's token. 
-        //    //    // لو الادمن ملوش فندق، دي مشكلة بيزنس لازم تقررها، بس مبدئياً هنرجع ايرور
-        //    //    return new AuthModel { Message = "Current admin is not assigned to a Hotel." };
-        //    //}
-
-        //    // 3. رفع الصورة الشخصية (Profile Image)
-        //    string? profileImgPath = null;
-        //    if (model.ProfileImage != null)
-        //    {
-        //        profileImgPath = await SaveFileAsync(model.ProfileImage, "profile-images");
-        //    }
-
-        //    // 4. تجهيز بيانات الموظف
-        //    var user = new AppUser
-        //    {
-        //        UserName = model.Username,
-        //        Email = model.Email,
-        //        FullName = model.FullName,
-        //        PhoneNumber = model.PhoneNumber,
-        //        WorkNumber = model.WorkNumber,
-        //        NationalId = model.NationalId,
-        //        Nationality = model.Nationality,
-        //        Gender = Enum.TryParse<PMS.Domain.Enums.Gender>(model.Gender, true, out var parsedGender) ? parsedGender : null,
-        //        DateOfBirth = model.BirthdayDate,
-        //        ProfileImagePath = profileImgPath,
-        //        //HotelId = adminUser.HotelId, // ربطناه بنفس فندق الادمن
-        //        IsActive = model.IsActive,
-        //        ChangePasswordApprove = model.ChangePasswordApprove
-        //    };
-
-        //    // 5. حفظ الموظف في الداتابيز
-        //    var result = await _userManager.CreateAsync(user, model.Password);
-        //    if (!result.Succeeded)
-        //    {
-        //        var errors = string.Empty;
-        //        foreach (var error in result.Errors)
-        //            errors += $"{error.Description},";
-        //        return new AuthModel { Message = errors };
-        //    }
-
-        //    // 6. تعيين الرول (Role)
-        //    if (!await _roleManager.RoleExistsAsync(model.Role))
-        //    {
-        //        return new AuthModel { Message = "Invalid Role selected." };
-        //    }
-
-        //    // ب) حماية إضافية: ممنوع حد يسجل موظف ويديله رول SuperAdmin من هنا
-        //    // (الـ SuperAdmin بيتعمل بطريقة خاصة أو Seed بس)
-        //    if (model.Role == "SuperAdmin")
-        //    {
-        //        return new AuthModel { Message = "Cannot assign SuperAdmin role to an employee." };
-        //    }
-
-        //    // ج) لو كله تمام، ضيفه للرول
-        //    await _userManager.AddToRoleAsync(user, model.Role);
-
-
-        //    // 7. رفع وحفظ المستندات (Documents)
-        //    if (model.EmployeeDocs != null && model.EmployeeDocs.Count > 0)
-        //    {
-        //        foreach (var file in model.EmployeeDocs)
-        //        {
-        //            // 1. نرفع الملف وناخد المسار
-        //            var docPath = await SaveFileAsync(file, "employee-docs");
-
-        //            // 2. نجهز الأوبجكت
-        //            var newDoc = new EmployeeDocument
-        //            {
-        //                FileName = file.FileName,
-        //                FileType = Path.GetExtension(file.FileName),
-        //                FilePath = docPath,
-        //                AppUserId = user.Id
-        //            };
-
-        //            // 3. نضيفه للـ UOW (من غير ما نعمل Save لسه)
-        //            await _unitOfWork.EmployeeDocuments.AddAsync(newDoc);
-        //        }
-
-        //        // 4. Save مرة واحدة بس في الآخر لكل الملفات (Performance Top 🚀)
-        //        await _unitOfWork.CompleteAsync();
-        //    }
-
-        //    // 8. إرجاع النتيجة
-        //    // مش محتاجين نرجع توكن، لأننا مش بنعمل لوجين للموظف، إحنا بس بنسجله
-        //    return new AuthModel
-        //    {
-        //        IsAuthenticated = true,
-        //        Message = "Employee registered successfully",
-        //        Email = user.Email,
-        //        Username = user.UserName,
-        //        Roles = new List<string> { model.Role }
-        //    };
-        //}
-        #endregion
-
-
         public async Task<AuthModel> RegisterEmployeeAsync(RegisterEmployeeDto model)
         {
             if (await _userManager.FindByEmailAsync(model.Email) is not null)
@@ -179,7 +61,6 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (await _userManager.FindByNameAsync(model.Username) is not null)
                 return new AuthModel { Message = "Username is already taken!" };
-
 
             if (!await _roleManager.RoleExistsAsync(model.Role))
             {
@@ -223,7 +104,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new AuthModel { Message = errors };
             }
 
-
             var roleResult = await _userManager.AddToRoleAsync(user, model.Role);
 
             if (!roleResult.Succeeded)
@@ -232,7 +112,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new AuthModel { Message = "Failed to assign role to user." };
             }
 
-            // 7. رفع وحفظ المستندات (Documents)
             if (model.EmployeeDocs != null && model.EmployeeDocs.Count > 0)
             {
                 foreach (var file in model.EmployeeDocs)
@@ -253,7 +132,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 await _unitOfWork.CompleteAsync();
             }
 
-            // 8. إرجاع النتيجة
             return new AuthModel
             {
                 IsAuthenticated = true,
@@ -264,28 +142,24 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-
         public async Task<AuthModel> LoginAsync(LoginDto model)
         {
             var user = await _userManager.Users
            .Include(u => u.Status)
            .SingleOrDefaultAsync(u => u.UserName == model.UserName);
 
-         
             if (user is null || !await _userManager.CheckPasswordAsync(user, model.Password))
                 return new AuthModel { Message = "Invalid Username or Password!" };
 
             if (!user.IsActive)
                 return new AuthModel { Message = "User is Disabled!" };
 
-            // 5. إنشاء التوكن
             var token = await CreateJwtToken(user);
             var refreshToken = GenerateRefreshToken();
             refreshToken.AppUserId = user.Id;
             await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
             await _unitOfWork.CompleteAsync();
 
-            // 6. إرجاع النتيجة
             return new AuthModel
             {
                 IsAuthenticated = true,
@@ -304,17 +178,15 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<AuthModel> ChangePasswordAsync(ChangePasswordDto model)
         {
-            // 1. نجيب الـ User ID من التوكن للشخص اللي عامل لوجين حالياً
+
             var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return new AuthModel { Message = "User not found or not logged in." };
 
-            // 2. نجيب اليوزر من الداتابيز
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
                 return new AuthModel { Message = "User not found." };
 
-            // 3. تغيير الباسورد (Identity بتقوم بالواجب: بتتأكد من القديم وتهاش الجديد)
             var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
 
             if (!result.Succeeded)
@@ -326,10 +198,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new AuthModel { Message = errors };
             }
 
-            // 4. (مهم جداً) تحديث الفلاج عشان ميتطلبش منه تغيير باسوورد تاني
             user.ChangePasswordApprove = false;
 
-            // حفظ التعديل (بتاع الفلاج) في الداتابيز
             await _userManager.UpdateAsync(user);
 
             return new AuthModel
@@ -359,10 +229,8 @@ namespace PMS.Infrastructure.Implmentations.Services
         {
             var response = new ResponseObjectDto<PagedResult<UserResponseDto>>();
 
-            // 1. Build queryable
             var query = _userManager.Users.AsQueryable();
 
-            // 2. Apply search filter if provided
             if (!string.IsNullOrEmpty(search))
             {
                 var searchLower = search.ToLower();
@@ -374,14 +242,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 );
             }
 
-            // 3. Count total records before pagination
             var totalCount = await query.CountAsync();
 
-            // 4. Validate pagination parameters
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize <= 0) pageSize = 10;
 
-            // 5. Apply pagination
             var skip = (pageNumber - 1) * pageSize;
             var users = await query
                 .OrderByDescending(u => u.Id)
@@ -389,12 +254,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            // 6. Convert to DTOs
             var responseList = new List<UserResponseDto>();
 
             foreach (var user in users)
             {
-                // Get roles for each user (required by UserManager API)
+
                 var roles = await _userManager.GetRolesAsync(user);
 
                 var userDto = _mapper.Map<UserResponseDto>(user);
@@ -402,7 +266,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 responseList.Add(userDto);
             }
 
-            // 7. Create paged result
             var pagedResult = new PagedResult<UserResponseDto>(responseList, totalCount, pageNumber, pageSize);
 
             response.IsSuccess = true;
@@ -415,28 +278,18 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ApiResponse<UserDetailDto>> GetUserByIdAsync(string userId)
         {
-            // 1. هات المستخدم الحالي (اللي بيطلب البيانات)
+
             var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var currentUser = await _userManager.FindByIdAsync(currentUserId);
 
-            // 2. هات المستخدم المطلوب (Target User) مع بياناته الإضافية (مثل المستندات)
             var targetUser = await _userManager.Users
                 .Include(u => u.Status)
-                .Include(u => u.EmployeeDocs) // Assuming relation name is EmployeeDocs
+                .Include(u => u.EmployeeDocs)
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
-            // 3. التحقق من الوجود
             if (targetUser == null)
                 return new ApiResponse<UserDetailDto>("User not found.");
 
-            // 4. التحقق من صلاحية الفندق (Security Check 👮‍♂️)
-            // لو الطالب مدير فندق، والمطلوب في فندق تاني -> ارفض
-            //if (currentUser.HotelId != null && targetUser.HotelId != currentUser.HotelId)
-            //{
-            //    return new ApiResponse<UserDetailDto>("Access Denied: You cannot view users from other hotels.");
-            //}
-
-            // 5. تحويل البيانات لـ DTO
             var roles = await _userManager.GetRolesAsync(targetUser);
 
             var userDetail = _mapper.Map<UserDetailDto>(targetUser);
@@ -541,24 +394,15 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ApiResponse<string>> UpdateEmployeeAsync(string id, UpdateEmployeeDto model)
         {
-            // 1. هات المستخدم الحالي (اللي بيعمل التعديل)
+
             var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var currentUser = await _userManager.FindByIdAsync(currentUserId);
 
-            // 2. هات الموظف اللي عايزين نعدله
             var userToUpdate = await _userManager.FindByIdAsync(id);
 
             if (userToUpdate == null)
                 return new ApiResponse<string>("User not found.");
 
-            // 3. Security Check 👮‍♂️: ممنوع تعديل موظف خارج فندقك
-            // (إلا لو أنت SuperAdmin والـ HotelId بتاعك null)
-            //if (currentUser.HotelId != null && userToUpdate.HotelId != currentUser.HotelId)
-            //{
-            //    return new ApiResponse<string>("Access Denied: You cannot update users from other hotels.");
-            //}
-
-            // 4. تحديث البيانات النصية (لو مبعوتة بقيمة)
             if (!string.IsNullOrEmpty(model.FullName)) userToUpdate.FullName = model.FullName;
             if (!string.IsNullOrEmpty(model.PhoneNumber)) userToUpdate.PhoneNumber = model.PhoneNumber;
             if (!string.IsNullOrEmpty(model.NationalId)) userToUpdate.NationalId = model.NationalId;
@@ -567,39 +411,35 @@ namespace PMS.Infrastructure.Implmentations.Services
             if (model.DateOfBirth.HasValue) userToUpdate.DateOfBirth = model.DateOfBirth.Value;
             if (model.IsActive.HasValue) userToUpdate.IsActive = model.IsActive.Value;
 
-            // 5. تحديث الصورة الشخصية 🖼️
             if (model.ProfileImage != null)
             {
-                // أ) لو فيه صورة قديمة، ممكن نمسحها (اختياري)
+
                 if (!string.IsNullOrEmpty(userToUpdate.ProfileImagePath))
                 {
-                    // كود مسح الملف القديم (ممكن نعمله دالة مساعدة)
+
                     var oldPath = Path.Combine(_webHostEnvironment.WebRootPath, userToUpdate.ProfileImagePath.TrimStart('/'));
                     if (File.Exists(oldPath)) File.Delete(oldPath);
                 }
 
-                // ب) رفع الصورة الجديدة
                 userToUpdate.ProfileImagePath = await SaveFileAsync(model.ProfileImage, "profile-images");
             }
 
-            // 6. حفظ التعديلات الأساسية في الداتابيز
             var updateResult = await _userManager.UpdateAsync(userToUpdate);
             if (!updateResult.Succeeded)
                 return new ApiResponse<string>(updateResult.Errors.Select(e => e.Description).ToList(), "Failed to update user.");
 
-            // 7. تحديث الرول (Role) لو مبعوتة وتغيرت 🎭
             if (!string.IsNullOrEmpty(model.Role))
             {
-                // نتأكد إن الرول موجودة وصالحة
+
                 if (await _roleManager.RoleExistsAsync(model.Role))
                 {
                     var currentRoles = await _userManager.GetRolesAsync(userToUpdate);
-                    // لو الرول الجديدة غير اللي معاه دلوقتي
+
                     if (!currentRoles.Contains(model.Role))
                     {
-                        // شيل كل الرولات القديمة
+
                         await _userManager.RemoveFromRolesAsync(userToUpdate, currentRoles);
-                        // ضيف الجديدة
+
                         await _userManager.AddToRoleAsync(userToUpdate, model.Role);
                     }
                 }
@@ -613,55 +453,41 @@ namespace PMS.Infrastructure.Implmentations.Services
             {
                 foreach (var file in model.EmployeeDocs)
                 {
-                    // 1. نرفع الملف وناخد المسار
+
                     var docPath = await SaveFileAsync(file, "employee-docs");
 
-                    // 2. نجهز الأوبجكت
                     var newDoc = new EmployeeDocument
                     {
                         FileName = file.FileName,
                         FileType = Path.GetExtension(file.FileName),
                         FilePath = docPath,
-                        // 👇 هنا التريكاية: بنربطه باليوزر اللي بنعدله
+
                         AppUserId = userToUpdate.Id
                     };
 
-                    // 3. نضيفه للـ UOW
                     await _unitOfWork.EmployeeDocuments.AddAsync(newDoc);
                 }
 
-                // 4. حفظ التغييرات في جدول المستندات
                 await _unitOfWork.CompleteAsync();
             }
-
-
 
             return new ApiResponse<string>(data: null, "User updated successfully");
         }
 
-
         public async Task<ApiResponse<string>> DeleteUserAsync(string userId)
         {
-            // 1. مين اللي بيعمل الحذف؟
+
             var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var currentUser = await _userManager.FindByIdAsync(currentUserId);
 
-            // 2. مين اللي هيتحذف؟
             var userToDelete = await _userManager.FindByIdAsync(userId);
 
             if (userToDelete == null)
                 return new ApiResponse<string>("User not found.");
 
-            // 3. Security Check 👮‍♂️: ممنوع تحذف حد من فندق تاني
-            //if (currentUser.HotelId != null && userToDelete.HotelId != currentUser.HotelId)
-            //{
-            //    return new ApiResponse<string>("Access Denied: You cannot delete users from other hotels.");
-            //}
-
             userToDelete.IsDeleted = true;
             userToDelete.DeletedAt = DateTime.UtcNow;
-            userToDelete.DeletedBy = currentUserId; // بنسجل مين اللي مسحه
-
+            userToDelete.DeletedBy = currentUserId; 
 
             var result = await _userManager.UpdateAsync(userToDelete);
 
@@ -673,37 +499,24 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ApiResponse<string>> RestoreUserAsync(string userId)
         {
-            // 1. مين اللي بيعمل الاسترجاع؟
+
             var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var currentUser = await _userManager.FindByIdAsync(currentUserId);
 
-            // 2. البحث عن اليوزر الممسوح (لازم IgnoreQueryFilters ⚠️)
             var userToRestore = await _userManager.Users
-                .IgnoreQueryFilters() // دي أهم حتة، عشان يشوف الممسوحين
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             if (userToRestore == null)
                 return new ApiResponse<string>("User not found or not deleted.");
 
-            // لو هو أصلاً مش ممسوح، ملوش لازمة نكمل
             if (!userToRestore.IsDeleted)
                 return new ApiResponse<string>("User is not deleted.");
 
-            // 3. Security Check 👮‍♂️
-            //if (currentUser.HotelId != null && userToRestore.HotelId != currentUser.HotelId)
-            //{
-            //    return new ApiResponse<string>("Access Denied: You cannot restore users from other hotels.");
-            //}
-
-            // 4. تصفير فلاجات الحذف (Restore)
             userToRestore.IsDeleted = false;
             userToRestore.DeletedAt = null;
             userToRestore.DeletedBy = null;
 
-            // (اختياري) لو كنت خليته Inactive، ممكن ترجعه Active هنا أو تسيبه للمدير يفعله
-            // userToRestore.IsActive = true;
-
-            // 5. حفظ التعديل
             var result = await _userManager.UpdateAsync(userToRestore);
 
             if (!result.Succeeded)
@@ -712,13 +525,11 @@ namespace PMS.Infrastructure.Implmentations.Services
             return new ApiResponse<string>(data: null, "User restored successfully");
         }
 
-
         public async Task<PagedResult<UserResponseDto>> GetAllUsersAsyncWithPagination(UserFilterDto filter)
         {
-            // 1. تجهيز الكويري الأساسية
+
             var query = _userManager.Users.AsQueryable();
 
-            // 2. 🔍 فلتر البحث (Search)
             if (!string.IsNullOrEmpty(filter.Search))
             {
                 var s = filter.Search.ToLower();
@@ -730,7 +541,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 );
             }
 
-            // 3. 🟢 فلتر الحالة (IsActive) باستخدام قيمة منطقية
             if (filter.IsActive.HasValue)
             {
                 if (filter.IsActive.Value)
@@ -743,10 +553,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
             }
 
-            // 4. 🎭 فلتر الرول (Role) - التريكاية هنا
             if (!string.IsNullOrEmpty(filter.Role))
             {
-                // أ) نجيب الـ ID بتاع الرول اللي اسمه مبعوت (مثلاً "HR")
+
                 var roleId = await _context.Roles
                     .Where(r => r.Name == filter.Role)
                     .Select(r => r.Id)
@@ -754,32 +563,27 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 if (roleId != null)
                 {
-                    // ب) نجيب أرقام الموظفين اللي معاهم الرول ده (Subquery)
-                    // ملاحظة: بنستخدم Set<IdentityUserRole> لأن الجدول ده مخفي غالباً في الـ Context
-                    var userIdsInRole = _context.UserRoles // أو _context.Set<IdentityUserRole>() لو دي ضربت معاك
+
+                    var userIdsInRole = _context.UserRoles
                         .Where(ur => ur.RoleId == roleId)
                         .Select(ur => ur.UserId);
 
-                    // ج) نفلتر الكويري الأساسية عشان تجيب بس الموظفين دول
                     query = query.Where(u => userIdsInRole.Contains(u.Id));
                 }
                 else
                 {
-                    // لو الرول مش موجود أصلاً، نرجع لستة فاضية بدل ما نضرب إيرور
+
                     query = query.Where(u => false);
                 }
             }
 
-            // 5. حساب العدد الكلي (بعد تطبيق الفلاتر) 🔢
             var totalCount = await query.CountAsync();
 
-            // 6. Pagination (القص) ✂️
             var pagedUsers = await query
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .ToListAsync();
 
-            // 7. التحويل لـ DTO
             var responseList = new List<UserResponseDto>();
             foreach (var user in pagedUsers)
             {
@@ -837,7 +641,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return authModel;
             }
 
-
             storedRefreshToken.RevokedOn = DateTime.UtcNow;
 
             var newRefreshToken = GenerateRefreshToken();
@@ -862,7 +665,6 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-
         public async Task<bool> RevokeTokenAsync(string token)
         {
             var refreshToken = await _context.RefreshTokens
@@ -871,7 +673,6 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (refreshToken == null)
                 return false;
-
 
             if (!refreshToken.IsActive)
                 return true;
@@ -917,18 +718,18 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<List<string>> GetRolesAsync()
         {
-            // بنجيب كل الرولات من الداتابيز
+
             var roles = await _roleManager.Roles
-                // فلتر اختياري: مش عايزين نرجع "SuperAdmin" في الليسته عشان محدش يختاره بالغلط
+
                 .Where(r => r.Name != "SuperAdmin")
-                .Select(r => r.Name) // بناخد الاسم بس
+                .Select(r => r.Name)
                 .ToListAsync();
 
             return roles;
         }
         private async Task<string> SaveFileAsync(IFormFile file, string folderName)
         {
-            // لو WebRootPath بنل، بنستخدم المسار الحالي للمشروع + wwwroot
+
             string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
 
             var uploadsFolder = Path.Combine(webRootPath, "uploads", folderName);
