@@ -1,20 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
 using PMS.Domain.Enums;
 
 namespace PMS.Application.DTOs.Configuration
 {
-    public class RatePlanDto
+    public record RatePlanDto
     {
-        public int Id { get; set; }
-        public string Code { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public RateType RateType { get; set; }
-        public decimal RateValue { get; set; }
-        public bool IsPublic { get; set; }
-        public bool IsActive { get; set; }
+        public int Id { get; init; }
+        public string Code { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public string? Description { get; init; }
+        public RateType RateType { get; init; }
+        public decimal RateValue { get; init; }
+        public bool IsPublic { get; init; }
+        public bool IsActive { get; init; }
     }
 }
-

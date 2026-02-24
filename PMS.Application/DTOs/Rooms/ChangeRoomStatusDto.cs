@@ -2,11 +2,10 @@ using PMS.Domain.Enums;
 
 namespace PMS.Application.DTOs.Rooms
 {
-    public class ChangeRoomStatusDto
+    public record ChangeRoomStatusDto
     {
-        public RoomStatusType StatusType { get; set; }
-        public int StatusId { get; set; }
-        public string? Notes { get; set; }
+        public RoomStatusType StatusType { get; init; }
+        public int StatusId { get; init; }
+        public string? Notes { get; init; }
     }
 }
-

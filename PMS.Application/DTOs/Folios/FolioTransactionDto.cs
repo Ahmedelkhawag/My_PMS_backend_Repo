@@ -6,19 +6,18 @@ namespace PMS.Application.DTOs.Folios
     /// <summary>
     /// Lightweight projection of a folio transaction for API responses.
     /// </summary>
-    public class FolioTransactionDto
+    public record FolioTransactionDto
     {
-        public int Id { get; set; }
-        public int FolioId { get; set; }
-        public DateTime Date { get; set; }
-        public TransactionType Type { get; set; }
-        public decimal Amount { get; set; }
-        public string Description { get; set; } = string.Empty;
-        public string? ReferenceNo { get; set; }
-        public string? DiscountReason { get; set; }
-        public bool IsVoided { get; set; }
-        public string? CreatedBy { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public int Id { get; init; }
+        public int FolioId { get; init; }
+        public DateTime Date { get; init; }
+        public TransactionType Type { get; init; }
+        public decimal Amount { get; init; }
+        public string Description { get; init; } = string.Empty;
+        public string? ReferenceNo { get; init; }
+        public string? DiscountReason { get; init; }
+        public bool IsVoided { get; init; }
+        public string? CreatedBy { get; init; }
+        public DateTime CreatedAt { get; init; }
     }
 }
-

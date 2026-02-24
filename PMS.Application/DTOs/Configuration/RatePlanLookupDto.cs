@@ -1,17 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace PMS.Application.DTOs.Configuration
 {
-    public class RatePlanLookupDto
+    public record RatePlanLookupDto
     {
-        public int Id { get; set; }
-        public string Code { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public int RateType { get; set; }
-        public decimal RateValue { get; set; }
-        public bool IsPublic { get; set; }
+        public int Id { get; init; }
+        public string Code { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public int RateType { get; init; }
+        public decimal RateValue { get; init; }
+        public bool IsPublic { get; init; }
     }
 }
-

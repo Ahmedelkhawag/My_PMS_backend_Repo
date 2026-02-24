@@ -1,19 +1,16 @@
-using System;
-
 namespace PMS.Application.DTOs.Folios
 {
     /// <summary>
     /// Summary view of a guest folio used for header/balance displays.
     /// </summary>
-    public class GuestFolioSummaryDto
+    public record GuestFolioSummaryDto
     {
-        public int ReservationId { get; set; }
-        public int FolioId { get; set; }
-        public decimal TotalCharges { get; set; }
-        public decimal TotalPayments { get; set; }
-        public decimal Balance { get; set; }
-        public bool IsActive { get; set; }
-        public string Currency { get; set; } = "EGP";
+        public int ReservationId { get; init; }
+        public int FolioId { get; init; }
+        public decimal TotalCharges { get; init; }
+        public decimal TotalPayments { get; init; }
+        public decimal Balance { get; init; }
+        public bool IsActive { get; init; }
+        public string Currency { get; init; } = "EGP";
     }
 }
-

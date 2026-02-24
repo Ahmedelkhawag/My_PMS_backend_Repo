@@ -1,39 +1,36 @@
-using System;
-
 namespace PMS.Application.DTOs.Dashboard
 {
-    public class DashboardSummaryDto
+    public record DashboardSummaryDto
     {
-        public RoomStatsDto RoomStats { get; set; } = new RoomStatsDto();
-        public ReservationStatsDto ReservationStats { get; set; } = new ReservationStatsDto();
-        public GuestStatsDto GuestStats { get; set; } = new GuestStatsDto();
-        public decimal CurrentReceivables { get; set; }
+        public RoomStatsDto RoomStats { get; init; } = new();
+        public ReservationStatsDto ReservationStats { get; init; } = new();
+        public GuestStatsDto GuestStats { get; init; } = new();
+        public decimal CurrentReceivables { get; init; }
     }
 
-    public class RoomStatsDto
+    public record RoomStatsDto
     {
-        public int TotalRooms { get; set; }
-        public int AvailableRooms { get; set; }
-        public int OccupiedRooms { get; set; }
-        public int DirtyRooms { get; set; }
-        public int OutOfService { get; set; }
-        public decimal OccupancyPercentage { get; set; }
+        public int TotalRooms { get; init; }
+        public int AvailableRooms { get; init; }
+        public int OccupiedRooms { get; init; }
+        public int DirtyRooms { get; init; }
+        public int OutOfService { get; init; }
+        public decimal OccupancyPercentage { get; init; }
     }
 
-    public class ReservationStatsDto
+    public record ReservationStatsDto
     {
-        public int TotalReservations { get; set; }
-        public int CreatedToday { get; set; }
-        public int ArrivalsToday { get; set; }
-        public int DeparturesToday { get; set; }
-        public int ActiveInHouse { get; set; }
-        public int PendingConfirmations { get; set; }
+        public int TotalReservations { get; init; }
+        public int CreatedToday { get; init; }
+        public int ArrivalsToday { get; init; }
+        public int DeparturesToday { get; init; }
+        public int ActiveInHouse { get; init; }
+        public int PendingConfirmations { get; init; }
     }
 
-    public class GuestStatsDto
+    public record GuestStatsDto
     {
-        public int TotalGuests { get; set; }
-        public int NewGuestsThisMonth { get; set; }
+        public int TotalGuests { get; init; }
+        public int NewGuestsThisMonth { get; init; }
     }
 }
-

@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace PMS.Application.DTOs
 {
-    public class LoginDto
+    public record LoginDto
     {
         [Required]
-        public string UserName { get; set; }
-        [Required]
-        public string Password { get; set; }
+        public string UserName { get; init; } = string.Empty;
 
-        //[Required]
-        //public int HotelId { get; set; }
+        [Required]
+        public string Password { get; init; } = string.Empty;
     }
 }

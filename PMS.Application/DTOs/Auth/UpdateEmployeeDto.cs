@@ -2,28 +2,20 @@ using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace PMS.Application.DTOs.Auth
 {
-    public class UpdateEmployeeDto
+    public record UpdateEmployeeDto
     {
-        public string? FullName { get; set; }
-        public string? PhoneNumber { get; set; }
-        public string? NationalId { get; set; }
-        public string? WorkNumber { get; set; }
-        public string? Nationality { get; set; }
-        public DateTime? DateOfBirth { get; set; }
-
-        // لو بعت صورة، هنغير القديمة. لو مبعتش، هنسيب القديمة.
-        public IFormFile? ProfileImage { get; set; }
-
-        // لو عايز يغير الرول (للمديرين فقط)
-        public string? Role { get; set; }
-
-        // التحكم في حالة المستخدم: true = Active, false = Inactive/Suspended
-        public bool? IsActive { get; set; }
-
-        public List<IFormFile>? EmployeeDocs { get; set; }
+        public string? FullName { get; init; }
+        public string? PhoneNumber { get; init; }
+        public string? NationalId { get; init; }
+        public string? WorkNumber { get; init; }
+        public string? Nationality { get; init; }
+        public DateTime? DateOfBirth { get; init; }
+        public IFormFile? ProfileImage { get; init; }
+        public string? Role { get; init; }
+        public bool? IsActive { get; init; }
+        public List<IFormFile>? EmployeeDocs { get; init; }
     }
 }

@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace PMS.Application.DTOs.Configuration
+﻿namespace PMS.Application.DTOs.Configuration
 {
-    public class RoomStatusLookupDto:LookupDto
+    public record RoomStatusLookupDto : LookupDto
     {
-		public string Color { get; set; }
-	}
+        public string Color { get; init; } = string.Empty;
+    }
 }

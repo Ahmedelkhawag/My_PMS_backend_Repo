@@ -1,81 +1,55 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace PMS.Application.DTOs.Reservations
 {
-    public class CreateReservationDto
+    public record CreateReservationDto
     {
-		[Required(ErrorMessage = "النزيل مطلوب")]
-		public int GuestId { get; set; }
+        [Required(ErrorMessage = "النزيل مطلوب")]
+        public int GuestId { get; init; }
 
-		[Required(ErrorMessage = "نوع الغرفة مطلوب")]
-		public int RoomTypeId { get; set; }
+        [Required(ErrorMessage = "نوع الغرفة مطلوب")]
+        public int RoomTypeId { get; init; }
 
-		// ممكن يكون null لو حجز "Waiting List" أو لسه مخصصناش غرفة
-		public int? RoomId { get; set; }
+        public int? RoomId { get; init; }
+        public int? CompanyId { get; init; }
+        public int? RatePlanId { get; init; }
 
-		public int? CompanyId { get; set; }
+        [Required]
+        public DateTimeOffset CheckInDate { get; init; }
 
-		public int? RatePlanId { get; set; }
+        [Required]
+        public DateTimeOffset CheckOutDate { get; init; }
 
-		// ==========================
-		// 2. التواريخ
-		// ==========================
-		[Required]
-		public DateTimeOffset CheckInDate { get; set; }
+        [Required(ErrorMessage = "سعر الليلة مطلوب")]
+        public decimal NightlyRate { get; init; }
 
-		[Required]
-		public DateTimeOffset CheckOutDate { get; set; }
+        public string RateCode { get; init; } = "Standard";
 
-		// ==========================
-		// 3. التفاصيل المالية (من صورة image_ee8e28)
-		// ==========================
-		[Required(ErrorMessage = "سعر الليلة مطلوب")]
-		public decimal NightlyRate { get; set; } // السعر المتفق عليه
+        /// <summary>Allows overriding the calculated rate from the selected Rate Plan.</summary>
+        public bool IsRateOverridden { get; init; }
 
-		public string RateCode { get; set; } = "Standard"; // كود السعر
+        [Required(ErrorMessage = "خطة الوجبات مطلوبة")]
+        public int MealPlanId { get; set; }
 
-		/// <summary>
-		/// Allows overriding the calculated rate from the selected Rate Plan.
-		/// </summary>
-		public bool IsRateOverridden { get; set; } = false;
-		[Required(ErrorMessage = "خطة الوجبات مطلوبة")]
-		public int MealPlanId { get; set; }
+        public bool IsPostMaster { get; init; }
+        public bool IsGuestPay { get; init; }
+        public bool IsNoExtend { get; init; }
+        public bool IsConfidentialRate { get; init; }
+        public bool IsWalkIn { get; init; }
 
-		// خيارات الفوترة (Checkboxes)
-		public bool IsPostMaster { get; set; }
-		public bool IsGuestPay { get; set; }
-		public bool IsNoExtend { get; set; }
-		public bool IsConfidentialRate { get; set; } = false;
+        public List<CreateReservationServiceDto>? Services { get; init; }
 
-		// Walk-in: immediate check-in and room occupancy
-		public bool IsWalkIn { get; set; } = false;
+        public int Adults { get; init; } = 1;
+        public int Children { get; init; }
+        public string? Notes { get; init; }
 
-		// ==========================
-		// 4. الخدمات الإضافية (القائمة)
-		// ==========================
-		// هنا بنستقبل قائمة من الخدمات اللي عرفناها فوق
-		public List<CreateReservationServiceDto>? Services { get; set; }
-
-		// ==========================
-		// 5. أخرى
-		// ==========================
-		public int Adults { get; set; } = 1;
-		public int Children { get; set; } = 0;
-		public string? Notes { get; set; }
-
-		public decimal DiscountAmount { get; set; } = 0;
-		public string? PurposeOfVisit { get; set; }
-
-		// مصدر الحجز (Lookup على جدول BookingSources)
-		public int BookingSourceId { get; set; }
-
-		// 👇 التعديل هنا: MarketSegment بقت ID
-		public int MarketSegmentId { get; set; }
-
-		public string? ExternalReference { get; set; }
-		public string? CarPlate { get; set; }
-	}
+        public decimal DiscountAmount { get; init; }
+        public string? PurposeOfVisit { get; init; }
+        public int BookingSourceId { get; init; }
+        public int MarketSegmentId { get; set; }
+        public string? ExternalReference { get; init; }
+        public string? CarPlate { get; init; }
+    }
 }

@@ -5,19 +5,18 @@ namespace PMS.Application.DTOs.Configuration
     /// <summary>
     /// Aggregated application lookups used by the frontend to bootstrap dropdowns.
     /// </summary>
-    public class AppLookupsDto
+    public record AppLookupsDto
     {
-        public List<LookupDto> RoomTypes { get; set; } = new List<LookupDto>();
-        public List<BookingSourceLookupDto> BookingSources { get; set; } = new List<BookingSourceLookupDto>();
-        public List<LookupDto> MarketSegments { get; set; } = new List<LookupDto>();
-        public List<MealPlanLookupDto> MealPlans { get; set; } = new List<MealPlanLookupDto>();
-        public List<ExtraServiceLookupDto> ExtraServices { get; set; } = new List<ExtraServiceLookupDto>();
-        public List<EnumLookupDto> HkStatuses { get; set; } = new List<EnumLookupDto>();
-        public List<EnumLookupDto> FoStatuses { get; set; } = new List<EnumLookupDto>();
-        public List<EnumLookupDto> BedTypes { get; set; } = new List<EnumLookupDto>();
-        public List<EnumLookupDto> TransactionTypes { get; set; } = new List<EnumLookupDto>();
-		public List<LookupDto> ReservationStatuses { get; set; } = new List<LookupDto>();
-		public List<RatePlanLookupDto> RatePlans { get; set; } = new List<RatePlanLookupDto>();
+        public List<LookupDto> RoomTypes { get; init; } = new();
+        public List<BookingSourceLookupDto> BookingSources { get; init; } = new();
+        public List<LookupDto> MarketSegments { get; init; } = new();
+        public List<MealPlanLookupDto> MealPlans { get; init; } = new();
+        public List<ExtraServiceLookupDto> ExtraServices { get; init; } = new();
+        public List<EnumLookupDto> HkStatuses { get; init; } = new();
+        public List<EnumLookupDto> FoStatuses { get; init; } = new();
+        public List<EnumLookupDto> BedTypes { get; init; } = new();
+        public List<EnumLookupDto> TransactionTypes { get; init; } = new();
+        public List<LookupDto> ReservationStatuses { get; init; } = new();
+        public List<RatePlanLookupDto> RatePlans { get; init; } = new();
     }
 }
-

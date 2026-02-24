@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace PMS.Application.DTOs.Auth
 {
-    public class UserDetailDto : UserResponseDto
+    public record UserDetailDto : UserResponseDto
     {
-        public string NationalId { get; set; }
-        public string WorkNumber { get; set; }
-        public string Nationality { get; set; }
-        public string Gender { get; set; }
-        public DateTime? DateOfBirth { get; set; }
-        public string ProfileImagePath { get; set; }
-
-        // قائمة بمسارات المستندات اللي رفعها
-        public List<string> DocumentPaths { get; set; }
+        public string? NationalId { get; init; }
+        public string? WorkNumber { get; init; }
+        public string? Nationality { get; init; }
+        public string? Gender { get; init; }
+        public DateTime? DateOfBirth { get; init; }
+        public string? ProfileImagePath { get; init; }
+        public List<string> DocumentPaths { get; set; } = new();
     }
 }

@@ -1,67 +1,66 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using PMS.Application.DTOs.Common;
 
 namespace PMS.Application.DTOs.Reservations
 {
-    public class ReservationDto : BaseAuditableDto
+    public record ReservationDto : BaseAuditableDto
     {
-		public int Id { get; set; }
-		public string ReservationNumber { get; set; }
+        public int Id { get; init; }
+        public string ReservationNumber { get; init; } = string.Empty;
 
-		// 1. بيانات النزيل (تفصيلية) 🆕
-		public int GuestId { get; set; }
-		public string GuestName { get; set; }
-		public string GuestPhone { get; set; }  // إضافة
-		public string? GuestEmail { get; set; } // إضافة
-		public string? GuestNationalId { get; set; } // إضافة
+        // Guest
+        public int GuestId { get; init; }
+        public string GuestName { get; init; } = string.Empty;
+        public string GuestPhone { get; init; } = string.Empty;
+        public string? GuestEmail { get; init; }
+        public string? GuestNationalId { get; init; }
 
-		// 2. بيانات الغرفة
-		public int RoomTypeId { get; set; }
-		public string RoomTypeName { get; set; }
-		public int? RoomId { get; set; }
-		public string? RoomNumber { get; set; }
+        // Room
+        public int RoomTypeId { get; init; }
+        public string RoomTypeName { get; init; } = string.Empty;
+        public int? RoomId { get; init; }
+        public string? RoomNumber { get; init; }
 
-		public int? CompanyId { get; set; }
-		public string? CompanyName { get; set; }
+        public int? CompanyId { get; init; }
+        public string? CompanyName { get; init; }
 
-		public int? RatePlanId { get; set; }
-		public string? RatePlanName { get; set; }
+        public int? RatePlanId { get; init; }
+        public string? RatePlanName { get; init; }
 
-		// 3. التواريخ
-		public DateTimeOffset CheckInDate { get; set; }
-		public DateTimeOffset CheckOutDate { get; set; }
-		public int Nights { get; set; }
+        // Dates
+        public DateTimeOffset CheckInDate { get; init; }
+        public DateTimeOffset CheckOutDate { get; init; }
+        public int Nights { get; init; }
 
-		// 4. تفاصيل البيزنس (مهمة للعرض) 🆕
-		public string RateCode { get; set; }  // إضافة (Standard, Corporate)
-		public string MealPlan { get; set; }  // إضافة (Breakfast..)
-		public string Source { get; set; }    // إضافة (Booking.com..)
-		public int BookingSourceId { get; set; }
-		public int MarketSegmentId { get; set; }
-		public int MealPlanId { get; set; }
+        // Business
+        public string RateCode { get; set; } = string.Empty;  // mutable: overwritten to CONFIDENTIAL by AfterMap
+        public string MealPlan { get; init; } = string.Empty;
+        public string Source { get; init; } = string.Empty;
+        public int BookingSourceId { get; init; }
+        public int MarketSegmentId { get; init; }
+        public int MealPlanId { get; init; }
 
-		// 5. الماليات
-		public decimal NightlyRate { get; set; }
-		public decimal TotalAmount { get; set; }
-		public decimal ServicesAmount { get; set; }
-		public decimal DiscountAmount { get; set; }
-		public decimal TaxAmount { get; set; }
-		public decimal GrandTotal { get; set; }
+        // Financials — mutable so AfterMap can zero them for confidential rates
+        public decimal NightlyRate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public decimal ServicesAmount { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal TaxAmount { get; set; }
+        public decimal GrandTotal { get; set; }
 
-		public bool IsNoExtend { get; set; }
-		public bool IsConfidentialRate { get; set; }
+        public bool IsNoExtend { get; init; }
+        public bool IsConfidentialRate { get; init; }
 
-		public string Status { get; set; }
-		public string? Notes { get; set; }
+        public string Status { get; init; } = string.Empty;
+        public string? Notes { get; init; }
 
-		public string? ExternalReference { get; set; }
-		public string? CarPlate { get; set; }
-		public string? PurposeOfVisit { get; set; }
-		public string? MarketSegment { get; set; }
+        public string? ExternalReference { get; init; }
+        public string? CarPlate { get; init; }
+        public string? PurposeOfVisit { get; init; }
+        public string? MarketSegment { get; init; }
 
-		// 6. الخدمات
-		public List<ReservationServiceDto> Services { get; set; }
-	}
+        // Services
+        public List<ReservationServiceDto> Services { get; init; } = new();
+    }
 }

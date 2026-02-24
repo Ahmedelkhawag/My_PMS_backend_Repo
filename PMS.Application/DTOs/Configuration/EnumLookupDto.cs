@@ -2,17 +2,17 @@ using System.Collections.Generic;
 
 namespace PMS.Application.DTOs.Configuration
 {
-    public class EnumLookupDto
+    public record EnumLookupDto
     {
-        public int Value { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string ColorCode { get; set; } = string.Empty; // Hex format
+        public int Value { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string ColorCode { get; init; } = string.Empty;
     }
 
-    public class StatusConfigurationDto
+    public record StatusConfigurationDto
     {
-        public List<EnumLookupDto> HkStatuses { get; set; } = new List<EnumLookupDto>();
-        public List<EnumLookupDto> FoStatuses { get; set; } = new List<EnumLookupDto>();
-        public List<EnumLookupDto> BedTypes { get; set; } = new List<EnumLookupDto>();
+        public List<EnumLookupDto> HkStatuses { get; init; } = new();
+        public List<EnumLookupDto> FoStatuses { get; init; } = new();
+        public List<EnumLookupDto> BedTypes { get; init; } = new();
     }
 }

@@ -6,27 +6,26 @@ namespace PMS.Application.DTOs.Folios
     /// <summary>
     /// Detailed view of a guest folio including header summary and full transaction ledger.
     /// </summary>
-    public class FolioDetailsDto
+    public record FolioDetailsDto
     {
-        public int ReservationId { get; set; }
-        public int FolioId { get; set; }
-        public decimal TotalCharges { get; set; }
-        public decimal TotalPayments { get; set; }
-        public decimal Balance { get; set; }
-        
+        public int ReservationId { get; init; }
+        public int FolioId { get; init; }
+        public decimal TotalCharges { get; init; }
+        public decimal TotalPayments { get; init; }
+        public decimal Balance { get; init; }
+
         // The current actual balance based on posted transactions
-        public decimal CurrentBalance => Balance; 
+        public decimal CurrentBalance => Balance;
 
         // The expected remaining balance until check-out
-        public decimal ExpectedRemainingBalance { get; set; }
+        public decimal ExpectedRemainingBalance { get; init; }
 
-        public bool IsActive { get; set; }
-        public string Currency { get; set; } = "EGP";
+        public bool IsActive { get; init; }
+        public string Currency { get; init; } = "EGP";
 
         // Full reservation details
-        public ReservationDto ReservationDetails { get; set; }
+        public ReservationDto? ReservationDetails { get; init; }
 
-        public List<FolioTransactionDto> Transactions { get; set; } = new List<FolioTransactionDto>();
+        public List<FolioTransactionDto> Transactions { get; init; } = new();
     }
 }
-

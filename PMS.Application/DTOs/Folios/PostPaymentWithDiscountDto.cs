@@ -1,39 +1,34 @@
 ﻿using PMS.Domain.Enums;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace PMS.Application.DTOs.Folios
 {
-    public class PostPaymentWithDiscountDto
+    public record PostPaymentWithDiscountDto
     {
         [Required]
-        public int ReservationId { get; set; }
+        public int ReservationId { get; init; }
 
-        // 👇 1. بيانات الدفع 👇
         [Required]
-        public TransactionType PaymentType { get; set; }
+        public TransactionType PaymentType { get; init; }
 
         [Range(0.01, double.MaxValue, ErrorMessage = "Payment amount must be greater than zero.")]
-        public decimal PaymentAmount { get; set; }
+        public decimal PaymentAmount { get; init; }
 
         [Required]
         [MaxLength(500)]
-        public string PaymentDescription { get; set; } = string.Empty;
+        public string PaymentDescription { get; init; } = string.Empty;
 
         [MaxLength(100)]
-        public string? ReferenceNo { get; set; }
+        public string? ReferenceNo { get; init; }
 
-        // 👇 2. بيانات الخصم (اختيارية) 👇
-        public bool ApplyDiscount { get; set; }
+        public bool ApplyDiscount { get; init; }
 
-        public decimal? DiscountAmount { get; set; }
-
-        [MaxLength(500)]
-        public string? DiscountDescription { get; set; }
+        public decimal? DiscountAmount { get; init; }
 
         [MaxLength(500)]
-        public string? DiscountReason { get; set; }
+        public string? DiscountDescription { get; init; }
+
+        [MaxLength(500)]
+        public string? DiscountReason { get; init; }
     }
 }

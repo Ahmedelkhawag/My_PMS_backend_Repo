@@ -1,5 +1,4 @@
 using PMS.Domain.Enums;
-using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace PMS.Application.DTOs.Folios
@@ -9,30 +8,29 @@ namespace PMS.Application.DTOs.Folios
     /// Amount must always be positive; the business logic will apply
     /// the correct sign based on the transaction type (debit/credit).
     /// </summary>
-    public class CreateTransactionDto
+    public record CreateTransactionDto
     {
         [Required]
-        public int ReservationId { get; set; }
+        public int ReservationId { get; init; }
 
         [Required]
-        public TransactionType Type { get; set; }
+        public TransactionType Type { get; init; }
 
         /// <summary>
         /// Positive transaction amount. The service layer will decide
         /// whether it increases charges or payments based on Type.
         /// </summary>
         [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than zero.")]
-        public decimal Amount { get; set; }
+        public decimal Amount { get; init; }
 
         [Required]
         [MaxLength(500)]
-        public string Description { get; set; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
 
         [MaxLength(100)]
-        public string? ReferenceNo { get; set; }
+        public string? ReferenceNo { get; init; }
 
         [MaxLength(500)]
-        public string? DiscountReason { get; set; }
+        public string? DiscountReason { get; init; }
     }
 }
-

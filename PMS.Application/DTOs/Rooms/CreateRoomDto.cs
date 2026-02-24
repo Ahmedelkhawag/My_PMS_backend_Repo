@@ -1,23 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace PMS.Application.DTOs.Rooms
 {
-    public class CreateRoomDto
+    public record CreateRoomDto
     {
-        [Required(ErrorMessage = "رقم الغرفة مطلوب")]
-        public string RoomNumber { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Room number is required.")]
+        public string RoomNumber { get; init; } = string.Empty;
 
-        [Required(ErrorMessage = "رقم الطابق مطلوب")]
-        [Range(1, 100, ErrorMessage = "رقم الطابق غير صحيح")]
-        public int FloorNumber { get; set; }
+        [Required(ErrorMessage = "Floor number is required.")]
+        [Range(1, 100, ErrorMessage = "Floor number must be valid.")]
+        public int FloorNumber { get; init; }
 
-        [Required(ErrorMessage = "نوع الغرفة مطلوب")]
-        public int RoomTypeId { get; set; }
+        [Required(ErrorMessage = "Room type is required.")]
+        public int RoomTypeId { get; init; }
 
-        public string? Notes { get; set; }
-
+        public string? Notes { get; init; }
     }
 }

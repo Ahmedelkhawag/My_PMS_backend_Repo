@@ -1,14 +1,15 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace PMS.Application.DTOs.Rooms
 {
-    public class RoomMaintenanceDto
+    public record RoomMaintenanceDto
     {
         [Required(ErrorMessage = "Maintenance reason is required.")]
-        public string Reason { get; set; } = string.Empty;
+        public string Reason { get; init; } = string.Empty;
 
-        public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
-        public string? Remarks { get; set; }
+        public DateTime? StartDate { get; init; }
+        public DateTime? EndDate { get; init; }
+        public string? Remarks { get; init; }
     }
 }

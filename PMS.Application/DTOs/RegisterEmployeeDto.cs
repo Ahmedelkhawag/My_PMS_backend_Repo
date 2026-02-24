@@ -2,55 +2,52 @@ using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace PMS.Application.DTOs
 {
-    public class RegisterEmployeeDto
+    public record RegisterEmployeeDto
     {
         [Required]
-        public string FullName { get; set; }
+        public string FullName { get; init; } = string.Empty;
 
         [Required]
-        public string Username { get; set; }
+        public string Username { get; init; } = string.Empty;
 
         [Required]
         [EmailAddress]
-        public string Email { get; set; }
+        public string Email { get; init; } = string.Empty;
 
         [Required]
-        public string PhoneNumber { get; set; }
+        public string PhoneNumber { get; init; } = string.Empty;
 
-        public string? WorkNumber { get; set; } // اختياري
-        
+        public string? WorkNumber { get; init; }
+
         [Required]
-        public string Password { get; set; }
+        public string Password { get; init; } = string.Empty;
 
         [Required]
         [Compare("Password", ErrorMessage = "Passwords do not match")]
-        public string ConfirmPassword { get; set; }
+        public string ConfirmPassword { get; init; } = string.Empty;
 
         [Required]
         [StringLength(10, MinimumLength = 10, ErrorMessage = "National ID must be 10 digits")]
-        public string NationalId { get; set; } // التزمنا بطلبك (10 أرقام)
+        public string NationalId { get; init; } = string.Empty;
 
         [Required]
-        public string Nationality { get; set; }
+        public string Nationality { get; init; } = string.Empty;
 
-        public string? Gender { get; set; } // اختياري
+        public string? Gender { get; init; }
 
         [Required]
-        public string Role { get; set; } // RECEPTIONIST, ACCOUNTANT, etc.
+        public string Role { get; init; } = string.Empty;
 
-        public DateTime? BirthdayDate { get; set; }
+        public DateTime? BirthdayDate { get; init; }
 
-        // --- التعامل مع الملفات ---
+        public IFormFile? ProfileImage { get; init; }
 
-        public IFormFile? ProfileImage { get; set; } // صورة شخصية واحدة
+        public List<IFormFile>? EmployeeDocs { get; init; }
 
-        public List<IFormFile>? EmployeeDocs { get; set; } // لستة ملفات (فيش، شهادات، إلخ)
-
-        public bool IsActive { get; set; } = false;
-        public bool ChangePasswordApprove { get; set; } = true;
+        public bool IsActive { get; init; } = false;
+        public bool ChangePasswordApprove { get; init; } = true;
     }
 }

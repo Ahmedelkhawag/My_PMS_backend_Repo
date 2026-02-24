@@ -1,33 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace PMS.Application.DTOs.Reservations
 {
-    public class ReservationListDto
+    public record ReservationListDto
     {
-		public int Id { get; set; }
-		public string ReservationNumber { get; set; } // BK-2026...
-
-		// بيانات العميل
-		public string GuestName { get; set; }
-		public string GuestPhone { get; set; }
-
-		// بيانات الغرفة
-		public string RoomNumber { get; set; }
-		public string RoomTypeName { get; set; }
-
-		public string? RatePlanName { get; set; }
-
-		// التواريخ
-		public string CheckInDate { get; set; } // هنرجعها String فورمات جاهز للعرض
-		public string CheckOutDate { get; set; }
-		public int Nights { get; set; }
-
-		// المالي
-		public decimal GrandTotal { get; set; }
-		public string Status { get; set; } // Confirmed, Pending...
-		public string StatusColor { get; set; } // لون الحالة (اختياري للفرونت)
-		public string? Notes { get; set; }
-	}
+        public int Id { get; init; }
+        public string ReservationNumber { get; init; } = string.Empty;
+        public string GuestName { get; init; } = string.Empty;
+        public string GuestPhone { get; init; } = string.Empty;
+        public string? RoomNumber { get; init; }
+        public string RoomTypeName { get; init; } = string.Empty;
+        public string? RatePlanName { get; init; }
+        public string CheckInDate { get; init; } = string.Empty;
+        public string CheckOutDate { get; init; } = string.Empty;
+        public int Nights { get; init; }
+        public decimal GrandTotal { get; init; }
+        public string Status { get; init; } = string.Empty;
+        public string StatusColor { get; init; } = string.Empty;
+        public string? Notes { get; init; }
+    }
 }

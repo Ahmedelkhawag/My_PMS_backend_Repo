@@ -1,29 +1,20 @@
 using PMS.Domain.Enums;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace PMS.Application.DTOs.Reservations
 {
-    public class ChangeReservationStatusDto
+    public record ChangeReservationStatusDto
     {
-		[Required]
-		public int ReservationId { get; set; }
+        [Required]
+        public int ReservationId { get; init; }
 
-		/// <summary>
-		/// حالة الحجز الجديدة (1 = Pending, 2 = Confirmed, 3 = CheckIn, 4 = CheckOut, 5 = Cancelled, 6 = NoShow).
-		/// </summary>
-		[Required]
-		public ReservationStatus NewStatus { get; set; } // (CheckedIn, Cancelled, CheckedOut)
+        /// <summary>New reservation status (1=Pending, 2=Confirmed, 3=CheckIn, 4=CheckOut, 5=Cancelled, 6=NoShow).</summary>
+        [Required]
+        public ReservationStatus NewStatus { get; init; }
 
-		// اختياري: لو بيعمل Check-In ولسه مختارش غرفة، لازم يبعتها هنا
-		public int? RoomId { get; set; }
-
-		public string? Note { get; set; } // سبب الإلغاء مثلاً
-
-		public decimal? FeeAmount { get; set; }
-
-		public string? FeeReason { get; set; }
-	}
+        public int? RoomId { get; init; }
+        public string? Note { get; init; }
+        public decimal? FeeAmount { get; init; }
+        public string? FeeReason { get; init; }
+    }
 }

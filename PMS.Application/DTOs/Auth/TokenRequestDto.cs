@@ -1,16 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace PMS.Application.DTOs.Auth
 {
-    public class TokenRequestDto
+    public record TokenRequestDto
     {
         [Required]
-        public string Token { get; set; }
+        public string Token { get; init; } = string.Empty;
 
         [Required]
-        public string RefreshToken { get; set; }
+        public string RefreshToken { get; init; } = string.Empty;
     }
 }

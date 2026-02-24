@@ -2,22 +2,19 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PMS.Application.DTOs.Companies
 {
-    public class UpdateCompanyProfileDto
+    public record UpdateCompanyProfileDto
     {
-        public string? Name { get; set; }
-
-        public string? TaxNumber { get; set; }
-
-        public string? ContactPerson { get; set; }
+        public string? Name { get; init; }
+        public string? TaxNumber { get; init; }
+        public string? ContactPerson { get; init; }
 
         [Phone]
-        public string? PhoneNumber { get; set; }
+        public string? PhoneNumber { get; init; }
 
         [EmailAddress]
-        public string? Email { get; set; }
+        public string? Email { get; init; }
 
-        public string? Address { get; set; }
-
-        public int? ContractRateId { get; set; }
+        public string? Address { get; init; }
+        public int? ContractRateId { get; init; }
     }
 }

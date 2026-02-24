@@ -1,22 +1,20 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
 using PMS.Application.DTOs.Common;
 
 namespace PMS.Application.DTOs.Guests
 {
-    public class GuestDto : BaseAuditableDto
+    public record GuestDto : BaseAuditableDto
     {
-		public int Id { get; set; }
-		public string FullName { get; set; }
-		public string PhoneNumber { get; set; }
-		public string NationalId { get; set; }
-		public string Nationality { get; set; }
-		public string LoyaltyLevel { get; set; } 
-		public DateTime? DateOfBirth { get; set; }
-		public string? Email { get; set; }
-		public string? CarNumber { get; set; }
-		public string? Notes { get; set; }
-		public bool IsActive { get; set; }
-	}
+        public int Id { get; init; }
+        public string FullName { get; init; } = string.Empty;
+        public string PhoneNumber { get; init; } = string.Empty;
+        public string? NationalId { get; init; }
+        public string? Nationality { get; init; }
+        public string LoyaltyLevel { get; init; } = string.Empty;
+        public DateTime? DateOfBirth { get; init; }
+        public string? Email { get; init; }
+        public string? CarNumber { get; init; }
+        public string? Notes { get; init; }
+        public bool IsActive { get; init; }
+    }
 }

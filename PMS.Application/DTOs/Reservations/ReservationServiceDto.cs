@@ -1,16 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace PMS.Application.DTOs.Reservations
 {
-    public class ReservationServiceDto
+    public record ReservationServiceDto
     {
-		public string ServiceName { get; set; }
-		public decimal Price { get; set; }
-		public int Quantity { get; set; }
-		public bool IsPerDay { get; set; }
-		public decimal Total { get; set; }
-		public int? ExtraServiceId { get; set; }
-	}
+        public string ServiceName { get; init; } = string.Empty;
+        public decimal Price { get; init; }
+        public int Quantity { get; init; }
+        public bool IsPerDay { get; init; }
+        public decimal Total { get; init; }
+        public int? ExtraServiceId { get; init; }
+    }
 }

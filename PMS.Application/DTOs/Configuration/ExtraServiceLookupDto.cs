@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace PMS.Application.DTOs.Configuration
+﻿namespace PMS.Application.DTOs.Configuration
 {
-    public class ExtraServiceLookupDto
+    public record ExtraServiceLookupDto
     {
-		public int Id { get; set; }
-		public string Name { get; set; }
-		public decimal Price { get; set; }
-		public bool IsPerDay { get; set; }
-	}
+        public int Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public decimal Price { get; init; }
+        public bool IsPerDay { get; init; }
+    }
 }

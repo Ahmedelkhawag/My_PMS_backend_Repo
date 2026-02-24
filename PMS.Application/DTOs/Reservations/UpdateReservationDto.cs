@@ -1,54 +1,34 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace PMS.Application.DTOs.Reservations
 {
-    public class UpdateReservationDto
+    public record UpdateReservationDto
     {
-		// البيانات الأساسية (nullable عشان الـ update يكون جزئي)
-		public int? GuestId { get; set; }
-		public int? RoomTypeId { get; set; }
-		public int? RoomId { get; set; }
-
-		public int? CompanyId { get; set; }
-
-		public int? RatePlanId { get; set; }
-
-		// التواريخ (لو اتغيرت هيتغير السعر) - nullable لتحديث جزئي
-		public DateTimeOffset? CheckInDate { get; set; }
-		public DateTimeOffset? CheckOutDate { get; set; }
-
-		// الماليات
-		public decimal? NightlyRate { get; set; }
-		public decimal? DiscountAmount { get; set; }
-
-		// تفاصيل البيزنس
-		public string? RateCode { get; set; }
-		public int? MealPlanId { get; set; }      // بدل string MealPlan
-		public int? BookingSourceId { get; set; } // بدل SourceId
-		public int? MarketSegmentId { get; set; }
-		public string? PurposeOfVisit { get; set; }
-		public string? Notes { get; set; }
-
-		// الإضافات الأخيرة (عشان التحديث يشمل كل حاجة)
-		public string? ExternalReference { get; set; }
-		public string? CarPlate { get; set; }
-
-		// الأعداد
-		public int? Adults { get; set; }
-		public int? Children { get; set; }
-
-		// Flags
-		public bool? IsPostMaster { get; set; }
-		public bool? IsGuestPay { get; set; }
-		public bool? IsNoExtend { get; set; }
-		public bool? IsConfidentialRate { get; set; }
-
-		public bool? IsRateOverridden { get; set; }
-
-		// قائمة الخدمات (ExtraServiceId + Quantity; backend looks up name/price)
-		public List<CreateReservationServiceDto>? Services { get; set; }
-	}
+        public int? GuestId { get; init; }
+        public int? RoomTypeId { get; init; }
+        public int? RoomId { get; init; }
+        public int? CompanyId { get; init; }
+        public int? RatePlanId { get; init; }
+        public DateTimeOffset? CheckInDate { get; init; }
+        public DateTimeOffset? CheckOutDate { get; init; }
+        public decimal? NightlyRate { get; init; }
+        public decimal? DiscountAmount { get; init; }
+        public string? RateCode { get; init; }
+        public int? MealPlanId { get; init; }
+        public int? BookingSourceId { get; init; }
+        public int? MarketSegmentId { get; init; }
+        public string? PurposeOfVisit { get; init; }
+        public string? Notes { get; init; }
+        public string? ExternalReference { get; init; }
+        public string? CarPlate { get; init; }
+        public int? Adults { get; init; }
+        public int? Children { get; init; }
+        public bool? IsPostMaster { get; init; }
+        public bool? IsGuestPay { get; init; }
+        public bool? IsNoExtend { get; init; }
+        public bool? IsConfidentialRate { get; init; }
+        public bool? IsRateOverridden { get; init; }
+        public List<CreateReservationServiceDto>? Services { get; init; }
+    }
 }

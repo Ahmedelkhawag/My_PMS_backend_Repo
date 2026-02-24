@@ -1,20 +1,21 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PMS.Application.DTOs.Rooms
 {
     /// <summary>
     /// Partial update: send only the fields you want to change.
-    /// Omitted fields will be left unchanged.
     /// </summary>
-    public class UpdateRoomDto
+    public record UpdateRoomDto
     {
-        public string? RoomNumber { get; set; }
+        public string? RoomNumber { get; init; }
 
-        [System.ComponentModel.DataAnnotations.Range(1, 100, ErrorMessage = "رقم الطابق غير صحيح")]
-        public int? FloorNumber { get; set; }
+        [Range(1, 100, ErrorMessage = "Floor number is invalid.")]
+        public int? FloorNumber { get; init; }
 
-        public int? RoomTypeId { get; set; }
+        public int? RoomTypeId { get; init; }
 
-        public string? Notes { get; set; }
+        public string? Notes { get; init; }
 
-        public string? Status { get; set; }
+        public string? Status { get; init; }
     }
 }

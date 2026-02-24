@@ -1,20 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace PMS.Application.DTOs
 {
-    public class ChangePasswordDto
+    public record ChangePasswordDto
     {
         [Required]
-        public string CurrentPassword { get; set; }
+        public string CurrentPassword { get; init; } = string.Empty;
 
         [Required]
-        public string NewPassword { get; set; }
+        public string NewPassword { get; init; } = string.Empty;
 
         [Required]
         [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
-        public string ConfirmNewPassword { get; set; }
+        public string ConfirmNewPassword { get; init; } = string.Empty;
     }
 }
