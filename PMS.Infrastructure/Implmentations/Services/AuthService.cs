@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -27,12 +28,12 @@ namespace PMS.Infrastructure.Implmentations.Services
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IOptions<JWT> _jwt;
-        private readonly ApplicationDbContext _context; // محتاجينه عشان نحفظ المستندات
-        private readonly IHttpContextAccessor _httpContextAccessor; // جديد
+        private readonly ApplicationDbContext _context;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        // بنحقن الحاجات اللي محتاجينها
         public AuthService(
          UserManager<AppUser> userManager,
          RoleManager<IdentityRole> roleManager,
@@ -40,7 +41,8 @@ namespace PMS.Infrastructure.Implmentations.Services
          ApplicationDbContext context,
          IUnitOfWork unitOfWork,
          IHttpContextAccessor httpContextAccessor,
-         IWebHostEnvironment webHostEnvironment)
+         IWebHostEnvironment webHostEnvironment,
+         IMapper mapper)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -49,6 +51,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             _httpContextAccessor = httpContextAccessor;
             _webHostEnvironment = webHostEnvironment;
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
         #region Old imp
@@ -394,21 +397,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 // Get roles for each user (required by UserManager API)
                 var roles = await _userManager.GetRolesAsync(user);
 
-                responseList.Add(new UserResponseDto
-                {
-                    Id = user.Id,
-                    FullName = user.FullName,
-                    Username = user.UserName,
-                    Email = user.Email,
-                    PhoneNumber = user.PhoneNumber,
-                    IsActive = user.IsActive,
-                    Role = roles.FirstOrDefault() ?? "Employee",
-                    HotelId = user.HotelId,
-                    CreatedBy = user.CreatedBy,
-                    CreatedAt = user.CreatedAt,
-                    UpdatedBy = user.LastModifiedBy,
-                    UpdatedAt = user.LastModifiedAt
-                });
+                var userDto = _mapper.Map<UserResponseDto>(user);
+                userDto.Role = roles.FirstOrDefault() ?? "Employee";
+                responseList.Add(userDto);
             }
 
             // 7. Create paged result
@@ -448,30 +439,9 @@ namespace PMS.Infrastructure.Implmentations.Services
             // 5. تحويل البيانات لـ DTO
             var roles = await _userManager.GetRolesAsync(targetUser);
 
-            var userDetail = new UserDetailDto
-            {
-                Id = targetUser.Id,
-                FullName = targetUser.FullName,
-                Username = targetUser.UserName,
-                Email = targetUser.Email,
-                PhoneNumber = targetUser.PhoneNumber,
-                IsActive = targetUser.IsActive,
-                Role = roles.FirstOrDefault() ?? "Employee",
-                HotelId = targetUser.HotelId,
-
-                // البيانات الإضافية
-                NationalId = targetUser.NationalId,
-                WorkNumber = targetUser.WorkNumber,
-                Nationality = targetUser.Nationality,
-                Gender = targetUser.Gender?.ToString(),
-                DateOfBirth = targetUser.DateOfBirth,
-                ProfileImagePath = targetUser.ProfileImagePath,
-                DocumentPaths = targetUser.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>(),
-                CreatedBy = targetUser.CreatedBy,
-                CreatedAt = targetUser.CreatedAt,
-                UpdatedBy = targetUser.LastModifiedBy,
-                UpdatedAt = targetUser.LastModifiedAt
-            };
+            var userDetail = _mapper.Map<UserDetailDto>(targetUser);
+            userDetail.Role = roles.FirstOrDefault() ?? "Employee";
+            userDetail.DocumentPaths = targetUser.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>();
 
             return new ApiResponse<UserDetailDto>(userDetail, "User details retrieved successfully");
         }
@@ -491,28 +461,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<UserDetailDto>("User not found.");
 
             var roles = await _userManager.GetRolesAsync(user);
-            var userDetail = new UserDetailDto
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Username = user.UserName,
-                Email = user.Email,
-                PhoneNumber = user.PhoneNumber,
-                IsActive = user.IsActive,
-                Role = roles.FirstOrDefault() ?? "Employee",
-                HotelId = user.HotelId,
-                NationalId = user.NationalId,
-                WorkNumber = user.WorkNumber,
-                Nationality = user.Nationality,
-                Gender = user.Gender?.ToString(),
-                DateOfBirth = user.DateOfBirth,
-                ProfileImagePath = user.ProfileImagePath,
-                DocumentPaths = user.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>(),
-                CreatedBy = user.CreatedBy,
-                CreatedAt = user.CreatedAt,
-                UpdatedBy = user.LastModifiedBy,
-                UpdatedAt = user.LastModifiedAt
-            };
+            var userDetail = _mapper.Map<UserDetailDto>(user);
+            userDetail.Role = roles.FirstOrDefault() ?? "Employee";
+            userDetail.DocumentPaths = user.EmployeeDocs?.Select(d => d.FilePath).ToList() ?? new List<string>();
 
             return new ApiResponse<UserDetailDto>(userDetail, "Profile retrieved successfully");
         }

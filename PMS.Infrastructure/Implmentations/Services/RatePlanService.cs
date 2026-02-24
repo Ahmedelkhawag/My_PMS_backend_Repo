@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Configuration;
@@ -15,10 +16,12 @@ namespace PMS.Infrastructure.Implmentations.Services
     public class RatePlanService : IRatePlanService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public RatePlanService(IUnitOfWork unitOfWork)
+        public RatePlanService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
         public async Task<ResponseObjectDto<List<RatePlanDto>>> GetAllAsync(bool? isPublicOnly = null)
@@ -75,7 +78,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsSuccess = true,
                 StatusCode = 200,
                 Message = "Rate plan retrieved successfully",
-                Data = MapToDto(entity)
+                Data = _mapper.Map<RatePlanDto>(entity)
             };
         }
 
@@ -125,7 +128,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsSuccess = true,
                 StatusCode = 201,
                 Message = "Rate plan created successfully",
-                Data = MapToDto(entity)
+                Data = _mapper.Map<RatePlanDto>(entity)
             };
         }
 
@@ -214,7 +217,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsSuccess = true,
                 StatusCode = 200,
                 Message = "Rate plan updated successfully",
-                Data = MapToDto(entity)
+                Data = _mapper.Map<RatePlanDto>(entity)
             };
         }
 
@@ -352,20 +355,6 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-        private static RatePlanDto MapToDto(RatePlan entity)
-        {
-            return new RatePlanDto
-            {
-                Id = entity.Id,
-                Code = entity.Code,
-                Name = entity.Name,
-                Description = entity.Description,
-                RateType = entity.RateType,
-                RateValue = entity.RateValue,
-                IsPublic = entity.IsPublic,
-                IsActive = entity.IsActive
-            };
-        }
     }
 }
 

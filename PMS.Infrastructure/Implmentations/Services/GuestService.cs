@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Dashboard;
@@ -17,10 +18,12 @@ namespace PMS.Infrastructure.Implmentations.Services
     public class GuestService : IGuestService
 	{
 		private readonly IUnitOfWork _unitOfWork;
+		private readonly IMapper _mapper;
 
-		public GuestService(IUnitOfWork unitOfWork)
+		public GuestService(IUnitOfWork unitOfWork, IMapper mapper)
 		{
 			_unitOfWork = unitOfWork;
+			_mapper = mapper;
 		}
 
 		public async Task<ResponseObjectDto<GuestDto>> AddGuestAsync(CreateGuestDto dto)
@@ -85,24 +88,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			response.IsSuccess = true;
 			response.Message = "تم إضافة النزيل بنجاح";
 			response.StatusCode = 201;
-			response.Data = new GuestDto
-			{
-				Id = guest.Id,
-				FullName = guest.FullName,
-				PhoneNumber = guest.PhoneNumber,
-				NationalId = guest.NationalId,
-				Nationality = guest.Nationality,
-				LoyaltyLevel = guest.LoyaltyLevel.ToString(), // بنرجعها نص
-				DateOfBirth = guest.DateOfBirth,
-				Email = guest.Email,
-				CarNumber = guest.CarNumber,
-				Notes = guest.Notes,
-				IsActive = guest.IsActive,
-				CreatedBy = guest.CreatedBy,
-				CreatedAt = guest.CreatedAt,
-				UpdatedBy = guest.LastModifiedBy,
-				UpdatedAt = guest.LastModifiedAt
-			};
+			response.Data = _mapper.Map<GuestDto>(guest);
 
 			return response;
 		}
@@ -181,24 +167,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			response.IsSuccess = true;
 			response.StatusCode = 200;
 			response.Message = "تم استرجاع بيانات النزيل بنجاح";
-			response.Data = new GuestDto
-			{
-				Id = guest.Id,
-				FullName = guest.FullName,
-				PhoneNumber = guest.PhoneNumber,
-				NationalId = guest.NationalId,
-				Nationality = guest.Nationality,
-				LoyaltyLevel = guest.LoyaltyLevel.ToString(),
-				DateOfBirth = guest.DateOfBirth,
-				Email = guest.Email,
-				CarNumber = guest.CarNumber,
-				Notes = guest.Notes,
-				IsActive = guest.IsActive,
-				CreatedBy = guest.CreatedBy,
-				CreatedAt = guest.CreatedAt,
-				UpdatedBy = guest.LastModifiedBy,
-				UpdatedAt = guest.LastModifiedAt
-			};
+			response.Data = _mapper.Map<GuestDto>(guest);
 
 			return response;
 		}
@@ -305,24 +274,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			// و) إرجاع النتيجة
 			response.IsSuccess = true;
 			response.Message = "تم تحديث بيانات النزيل بنجاح";
-			response.Data = new GuestDto
-			{
-				Id = guest.Id,
-				FullName = guest.FullName,
-				PhoneNumber = guest.PhoneNumber,
-				NationalId = guest.NationalId,
-				Nationality = guest.Nationality,
-				LoyaltyLevel = guest.LoyaltyLevel.ToString(),
-				DateOfBirth = guest.DateOfBirth,
-				Email = guest.Email,
-				CarNumber = guest.CarNumber,
-				Notes = guest.Notes,
-				IsActive = guest.IsActive,
-				CreatedBy = guest.CreatedBy,
-				CreatedAt = guest.CreatedAt,
-				UpdatedBy = guest.LastModifiedBy,
-				UpdatedAt = guest.LastModifiedAt
-			};
+			response.Data = _mapper.Map<GuestDto>(guest);
 
 			return response;
 		}

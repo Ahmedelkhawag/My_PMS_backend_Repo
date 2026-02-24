@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Folios;
@@ -19,12 +20,14 @@ namespace PMS.Infrastructure.Implmentations.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<FolioService> _logger;
+        private readonly IMapper _mapper;
 
-        public FolioService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<FolioService> logger)
+        public FolioService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<FolioService> logger, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
+            _mapper = mapper;
         }
 
         public async Task<ResponseObjectDto<GuestFolioSummaryDto>> GetFolioSummaryAsync(int reservationId)
@@ -48,7 +51,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsSuccess = true,
                 StatusCode = 200,
                 Message = "Folio retrieved successfully",
-                Data = MapToSummaryDto(folio)
+                Data = _mapper.Map<GuestFolioSummaryDto>(folio)
             };
         }
 
@@ -86,7 +89,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             var orderedTransactions = folio.Transactions
                 .OrderByDescending(t => t.Date)
                 .ThenByDescending(t => t.Id)
-                .Select(MapToTransactionDto)
+                .Select(t => _mapper.Map<FolioTransactionDto>(t))
                 .ToList();
 
             var reservationDto = new PMS.Application.DTOs.Reservations.ReservationDto
@@ -360,7 +363,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 IsSuccess = true,
                 StatusCode = 201,
                 Message = "Transaction added successfully",
-                Data = MapToTransactionDto(transaction)
+            Data = _mapper.Map<FolioTransactionDto>(transaction)
             };
         }
 
@@ -487,7 +490,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     IsSuccess = true,
                     StatusCode = 200,
                     Message = "Transaction voided successfully",
-                    Data = MapToTransactionDto(reversal)
+                    Data = _mapper.Map<FolioTransactionDto>(reversal)
                 };
             }
             catch (Exception ex)
@@ -683,7 +686,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     IsSuccess = true,
                     StatusCode = 201,
                     Message = "Refund processed successfully.",
-                    Data = MapToTransactionDto(refundTransaction)
+                    Data = _mapper.Map<FolioTransactionDto>(refundTransaction)
                 };
             }
             catch (Exception ex)
@@ -894,36 +897,6 @@ namespace PMS.Infrastructure.Implmentations.Services
             return code >= 20 && code <= 29;
         }
 
-        private static GuestFolioSummaryDto MapToSummaryDto(GuestFolio folio)
-        {
-            return new GuestFolioSummaryDto
-            {
-                ReservationId = folio.ReservationId,
-                FolioId = folio.Id,
-                TotalCharges = folio.TotalCharges,
-                TotalPayments = folio.TotalPayments,
-                Balance = folio.Balance,
-                IsActive = folio.IsActive,
-                Currency = folio.Currency
-            };
-        }
-
-        private static FolioTransactionDto MapToTransactionDto(FolioTransaction transaction)
-        {
-            return new FolioTransactionDto
-            {
-                Id = transaction.Id,
-                FolioId = transaction.FolioId,
-                Date = transaction.Date,
-                Type = transaction.Type,
-                Amount = transaction.Amount,
-                Description = transaction.Description,
-                ReferenceNo = transaction.ReferenceNo,
-                IsVoided = transaction.IsVoided,
-                CreatedBy = transaction.CreatedBy,
-                CreatedAt = transaction.CreatedAt
-            };
-        }
 
         private static ResponseObjectDto<T> Failure<T>(string message, int statusCode)
         {

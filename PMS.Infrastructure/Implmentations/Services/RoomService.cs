@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Dashboard;
@@ -14,10 +15,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 	public class RoomService : IRoomService
 	{
 		private readonly IUnitOfWork _unitOfWork;
+		private readonly IMapper _mapper;
 
-		public RoomService(IUnitOfWork unitOfWork)
+		public RoomService(IUnitOfWork unitOfWork, IMapper mapper)
 		{
 			_unitOfWork = unitOfWork;
+			_mapper = mapper;
 		}
 
 		// 1. استرجاع كل الغرف (Dashboard: FO/HK status + current reservation) + Pagination
@@ -601,7 +604,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 		}
 
 
-        private static RoomDto MapRoomToDto(Room room, Dictionary<int, Reservation> activeReservations)
+        private RoomDto MapRoomToDto(Room room, Dictionary<int, Reservation> activeReservations)
         {
             // 1. الكشف عن وجود حجز نشط
             Reservation? reservation = null;
@@ -611,32 +614,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
 
             // 2. تحويل الـ Entity لـ DTO
-            var dto = new RoomDto
-            {
-                Id = room.Id,
-                RoomNumber = room.RoomNumber,
-                FloorNumber = room.FloorNumber,
-
-                // بيانات نوع الغرفة
-                RoomTypeName = room.RoomType?.Name ?? "",
-                RoomTypeCode = "", // لو عندك حقل Code في جدول RoomType ضيفه هنا (room.RoomType?.Code)
-
-                BasePrice = room.BasePrice,
-                MaxAdults = room.MaxAdults,
-                Notes = room.Notes,
-
-                // =============================================================
-                // التعديل هنا: تحويل الـ Enums لنصوص (ToString) عشان الـ DTO طالب String
-                // =============================================================
-                BedType = room.BedType.ToString(),
-                HkStatus = room.HKStatus.ToString(), // Entity Enum -> String "Clean"/"Dirty"
-                FoStatus = room.FOStatus.ToString(), // Entity Enum -> String "Vacant"/"Occupied"
-
-                // Default occupancy details (null when vacant)
-                CurrentReservationId = null,
-                GuestName = null,
-                CurrentReservation = null
-            };
+            var dto = _mapper.Map<RoomDto>(room);
 
             // 3. معالجة بيانات الحجز (Nested Object + flat occupancy fields)
             if (reservation != null)

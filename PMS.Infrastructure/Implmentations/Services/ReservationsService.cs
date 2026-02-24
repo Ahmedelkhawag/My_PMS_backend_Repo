@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +25,7 @@ namespace PMS.Infrastructure.Implmentations.Services
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IFolioService _folioService;
+        private readonly IMapper _mapper;
 
         private const string TaxPercentageConfigKey = "FinancialSettings:TaxPercentage";
         private const decimal DefaultTaxPercentage = 0.15m;
@@ -33,12 +35,13 @@ namespace PMS.Infrastructure.Implmentations.Services
         private const int RoomStatusMaintenance = 3;
         private const int RoomStatusOccupied = 5;
 
-        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFolioService folioService)
+        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFolioService folioService, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
             _httpContextAccessor = httpContextAccessor;
             _folioService = folioService;
+            _mapper = mapper;
         }
 
         public async Task<ResponseObjectDto<ReservationDto>> CreateReservationAsync(CreateReservationDto dto)
@@ -215,7 +218,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 var guest = await _unitOfWork.Guests.GetByIdAsync(dto.GuestId);
                 var room = dto.RoomId.HasValue ? await _unitOfWork.Rooms.GetByIdAsync(dto.RoomId.Value) : null;
 
-                var responseDto = MapToReservationDto(reservation, guest, roomType, room);
+                var responseDto = _mapper.Map<ReservationDto>(reservation);
 
                 return new ResponseObjectDto<ReservationDto>
                 {
@@ -528,7 +531,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             return new ResponseObjectDto<ReservationDto>
             {
                 IsSuccess = true,
-                Data = MapToReservationDto(reservation, reservation.Guest, reservation.RoomType, reservation.Room),
+                Data = _mapper.Map<ReservationDto>(reservation),
                 StatusCode = 200
             };
         }
@@ -798,7 +801,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     IsSuccess = true,
                     Message = "Reservation updated successfully",
                     StatusCode = 200,
-                    Data = MapToReservationDto(reservation, reservation.Guest, reservation.RoomType, reservation.Room)
+                    Data = _mapper.Map<ReservationDto>(reservation)
                 };
             }
             catch (Exception)
@@ -1113,77 +1116,5 @@ namespace PMS.Infrastructure.Implmentations.Services
             };
         }
 
-        private ReservationDto MapToReservationDto(Reservation reservation, Guest? guest, RoomType? roomType, Room? room)
-        {
-            var dto = new ReservationDto
-            {
-                Id = reservation.Id,
-                ReservationNumber = reservation.ReservationNumber,
-                GuestId = reservation.GuestId,
-                GuestName = guest?.FullName ?? "Unknown",
-                GuestPhone = guest?.PhoneNumber,
-                GuestEmail = guest?.Email,
-                GuestNationalId = guest?.NationalId,
-                RoomTypeId = reservation.RoomTypeId,
-                RoomTypeName = roomType?.Name ?? "Unknown",
-                RoomId = reservation.RoomId,
-                RoomNumber = room?.RoomNumber ?? "Unassigned",
-                CompanyId = reservation.CompanyId,
-                CompanyName = reservation.Company?.Name,
-                RatePlanId = reservation.RatePlanId,
-                RatePlanName = reservation.RatePlan?.Name,
-                CheckInDate = reservation.CheckInDate,
-                CheckOutDate = reservation.CheckOutDate,
-                Nights = CalculateNights(reservation.CheckInDate, reservation.CheckOutDate),
-                NightlyRate = reservation.NightlyRate,
-                TotalAmount = reservation.TotalAmount,
-                ServicesAmount = reservation.ServicesAmount,
-                DiscountAmount = reservation.DiscountAmount,
-                TaxAmount = reservation.TaxAmount,
-                GrandTotal = reservation.GrandTotal,
-                IsNoExtend = reservation.IsNoExtend,
-                IsConfidentialRate = reservation.IsConfidentialRate,
-                Status = reservation.Status.ToString(),
-                RateCode = reservation.RateCode,
-                MealPlan = reservation.MealPlan?.Name ?? "Unknown",
-                Source = reservation.BookingSource?.Name ?? "Unknown",
-                MarketSegment = reservation.MarketSegment?.Name ?? "Unknown",
-                BookingSourceId = reservation.BookingSourceId,
-                MarketSegmentId = reservation.MarketSegmentId,
-                MealPlanId = reservation.MealPlanId,
-                PurposeOfVisit = reservation.PurposeOfVisit,
-                Notes = reservation.Notes,
-                ExternalReference = reservation.ExternalReference,
-                CarPlate = reservation.CarPlate,
-                CreatedBy = reservation.CreatedBy,
-                CreatedAt = reservation.CreatedAt,
-                UpdatedBy = reservation.LastModifiedBy,
-                UpdatedAt = reservation.LastModifiedAt,
-                Services = reservation.Services?.Select(s => new ReservationServiceDto
-                {
-                    ServiceName = s.ServiceName,
-                    Price = s.Price,
-                    Quantity = s.Quantity,
-                    IsPerDay = s.IsPerDay,
-                    Total = s.TotalServicePrice,
-                    ExtraServiceId = null // ReservationService entity doesn't store ExtraServiceId (snapshot pattern)
-                }).ToList() ?? new List<ReservationServiceDto>()
-            };
-
-            if (reservation.IsConfidentialRate)
-            {
-                dto.NightlyRate = 0;
-                dto.TotalAmount = 0;
-                dto.ServicesAmount = 0;
-                dto.DiscountAmount = 0;
-                dto.TaxAmount = 0;
-                dto.GrandTotal = 0;
-                dto.RateCode = "CONFIDENTIAL";
-            }
-
-            return dto;
-        }
-
-       
     }
 }

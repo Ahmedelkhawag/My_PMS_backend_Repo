@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Companies;
@@ -13,10 +14,12 @@ namespace PMS.Infrastructure.Implmentations.Services
     public class CompanyService : ICompanyService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public CompanyService(IUnitOfWork unitOfWork)
+        public CompanyService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
         public async Task<ResponseObjectDto<CompanyProfileDto>> CreateCompanyAsync(CreateCompanyProfileDto dto)
@@ -57,21 +60,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             await _unitOfWork.CompanyProfiles.AddAsync(company);
             await _unitOfWork.CompleteAsync();
 
-            var result = new CompanyProfileDto
-            {
-                Id = company.Id,
-                Name = company.Name,
-                TaxNumber = company.TaxNumber,
-                ContactPerson = company.ContactPerson,
-                PhoneNumber = company.PhoneNumber,
-                Email = company.Email,
-                Address = company.Address,
-                ContractRateId = company.ContractRateId,
-                CreatedBy = company.CreatedBy,
-                CreatedAt = company.CreatedAt,
-                UpdatedBy = company.LastModifiedBy,
-                UpdatedAt = company.LastModifiedAt
-            };
+            var result = _mapper.Map<CompanyProfileDto>(company);
 
             return new ResponseObjectDto<CompanyProfileDto>
             {
@@ -144,21 +133,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            var dto = new CompanyProfileDto
-            {
-                Id = company.Id,
-                Name = company.Name,
-                TaxNumber = company.TaxNumber,
-                ContactPerson = company.ContactPerson,
-                PhoneNumber = company.PhoneNumber,
-                Email = company.Email,
-                Address = company.Address,
-                ContractRateId = company.ContractRateId,
-                CreatedBy = company.CreatedBy,
-                CreatedAt = company.CreatedAt,
-                UpdatedBy = company.LastModifiedBy,
-                UpdatedAt = company.LastModifiedAt
-            };
+            var dto = _mapper.Map<CompanyProfileDto>(company);
 
             return new ResponseObjectDto<CompanyProfileDto>
             {

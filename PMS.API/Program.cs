@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using PMS.API.Swagger;
+using PMS.Application;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Application.Settings;
@@ -120,6 +121,8 @@ builder.Services.AddScoped<IFolioService, FolioService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Hangfire – SQL Server storage (reuses the same connection string)
 builder.Services.AddHangfire(config => config

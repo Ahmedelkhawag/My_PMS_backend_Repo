@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.Application.DTOs;
@@ -18,11 +19,13 @@ namespace PMS.Infrastructure.Implmentations.Services
 	{
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogger<ShiftService> _logger;
+		private readonly IMapper _mapper;
 
-		public ShiftService(IUnitOfWork unitOfWork, ILogger<ShiftService> logger)
+		public ShiftService(IUnitOfWork unitOfWork, ILogger<ShiftService> logger, IMapper mapper)
 		{
 			_unitOfWork = unitOfWork;
 			_logger = logger;
+			_mapper = mapper;
 		}
 
         public async Task<ResponseObjectDto<ShiftDto>> OpenShiftAsync(string userId, OpenShiftDto dto)
@@ -57,7 +60,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             await _unitOfWork.EmployeeShifts.AddAsync(shift);
             await _unitOfWork.CompleteAsync();
 
-            return ResponseObjectDto<ShiftDto>.Success(MapToShiftDto(shift), "تم فتح الوردية بنجاح.");
+            return ResponseObjectDto<ShiftDto>.Success(_mapper.Map<ShiftDto>(shift), "تم فتح الوردية بنجاح.");
         }
 
         public async Task<ResponseObjectDto<ShiftReportDto>> GetCurrentShiftStatusAsync(string userId)
@@ -116,7 +119,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             _unitOfWork.EmployeeShifts.Update(shift);
             await _unitOfWork.CompleteAsync();
 
-            return ResponseObjectDto<ShiftDto>.Success(MapToShiftDto(shift), "تم إغلاق الوردية بنجاح.");
+            return ResponseObjectDto<ShiftDto>.Success(_mapper.Map<ShiftDto>(shift), "تم إغلاق الوردية بنجاح.");
         }
 
         public async Task<ResponseObjectDto<IEnumerable<ShiftDto>>> GetShiftHistoryAsync(UserFilterDto filter)
@@ -154,7 +157,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var dtos = shifts.Select(MapToShiftDto).ToList();
+            var dtos = _mapper.Map<List<ShiftDto>>(shifts);
             return ResponseObjectDto<IEnumerable<ShiftDto>>.Success(dtos, "تم جلب تاريخ الورديات بنجاح.");
         }
 
@@ -193,7 +196,6 @@ namespace PMS.Infrastructure.Implmentations.Services
             _logger.LogInformation("AutoCloseExpiredShifts: {Count} shift(s) auto-closed.", expiredShifts.Count);
         }
 
-        // الدوال المساعدة (BuildShiftReportAsync و MapToShiftDto) بتفضل زي ما هي لإنها داخلية
         private async Task<ShiftReportDto> BuildShiftReportAsync(int shiftId, DateTime shiftStartTimeUtc)
         {
             var txQuery = _unitOfWork.FolioTransactions
@@ -233,27 +235,5 @@ namespace PMS.Infrastructure.Implmentations.Services
                 NetCash = netCash
             };
         }
-
-        private static ShiftDto MapToShiftDto(EmployeeShift shift)
-        {
-            return new ShiftDto
-            {
-                Id = shift.Id,
-                EmployeeId = shift.EmployeeId,
-                StartedAt = shift.StartedAt,
-                EndedAt = shift.EndedAt,
-                StartingCash = shift.StartingCash,
-                SystemCalculatedCash = shift.SystemCalculatedCash,
-                ActualCashHanded = shift.ActualCashHanded,
-                Difference = shift.Difference,
-                Notes = shift.Notes ?? string.Empty,
-                IsClosed = shift.IsClosed,
-                CreatedBy = shift.CreatedBy,
-                CreatedAt = shift.CreatedAt,
-                UpdatedBy = shift.LastModifiedBy,
-                UpdatedAt = shift.LastModifiedAt
-            };
-        }
     }
 }
-
