@@ -121,6 +121,7 @@ builder.Services.AddScoped<IFolioService, FolioService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IRegistrationCardPdfService, RegistrationCardPdfService>();
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
@@ -203,17 +204,25 @@ app.UseAuthorization();
 
 app.UseHangfireDashboard("/hangfire");
 
-RecurringJob.AddOrUpdate<IShiftService>(
-    "auto-close-expired-shifts",
-    service => service.AutoCloseExpiredShiftsAsync(),
-    "*/30 * * * *");
+try
+{
+    RecurringJob.AddOrUpdate<IShiftService>(
+        "auto-close-expired-shifts",
+        service => service.AutoCloseExpiredShiftsAsync(),
+        "*/30 * * * *");
 
-var egyptTz = TimeZoneInfo.FindSystemTimeZoneById("Egypt Standard Time");
-RecurringJob.AddOrUpdate<INightAuditService>(
-    "auto-night-audit",
-    service => service.RunAutoNightAuditAsync(),
-    "0 2 * * *",
-    new RecurringJobOptions { TimeZone = egyptTz });
+    var egyptTz = TimeZoneInfo.FindSystemTimeZoneById("Egypt Standard Time");
+    RecurringJob.AddOrUpdate<INightAuditService>(
+        "auto-night-audit",
+        service => service.RunAutoNightAuditAsync(),
+        "0 2 * * *",
+        new RecurringJobOptions { TimeZone = egyptTz });
+}
+catch (Exception ex)
+{
+    var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+    startupLogger.LogWarning(ex, "Could not register Hangfire recurring jobs (e.g. SQL Server unavailable). Recurring jobs will not run until the app is restarted with a valid connection.");
+}
 
 app.MapControllers();
 

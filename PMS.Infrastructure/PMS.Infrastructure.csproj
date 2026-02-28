@@ -1,7 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="QuestPDF" Version="2024.10.2" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.2">
@@ -20,5 +21,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <!-- Arabic font for Registration Card PDF: add Cairo-Regular.ttf to Assets/Fonts and it will be embedded. See Assets/Fonts/README.txt -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\Cairo-Regular.ttf" Condition="Exists('Assets\Fonts\Cairo-Regular.ttf')" />
+  </ItemGroup>
 
 </Project>
