@@ -10,6 +10,7 @@ using PMS.Application.DTOs.Shifts;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Enums;
+using System.Globalization;
 
 namespace PMS.Application
 {
@@ -122,6 +123,25 @@ namespace PMS.Application
                         dest.RateCode        = "CONFIDENTIAL";
                     }
                 });
+
+            // ══════════════════════════════════════════════
+            // PDF Generation
+            // ══════════════════════════════════════════════
+            CreateMap<Reservation, RegistrationCardDataDto>()
+                .ForMember(dest => dest.GuestName, opt => opt.MapFrom(src => src.Guest != null ? src.Guest.FullName : "—"))
+                .ForMember(dest => dest.PassportOrIdNumber, opt => opt.MapFrom(src => 
+                    src.Guest != null ? (!string.IsNullOrWhiteSpace(src.Guest.PassportNumber) ? src.Guest.PassportNumber : (!string.IsNullOrWhiteSpace(src.Guest.NationalId) ? src.Guest.NationalId : "—")) : "—"))
+                .ForMember(dest => dest.Nationality, opt => opt.MapFrom(src => src.Guest != null && !string.IsNullOrWhiteSpace(src.Guest.Nationality) ? src.Guest.Nationality : "—"))
+                .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Guest != null && !string.IsNullOrWhiteSpace(src.Guest.PhoneNumber) ? src.Guest.PhoneNumber : "—"))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Guest != null ? src.Guest.Email : null))
+                .ForMember(dest => dest.RoomNumber, opt => opt.MapFrom(src => src.Room != null ? src.Room.RoomNumber : "—"))
+                .ForMember(dest => dest.RoomTypeName, opt => opt.MapFrom(src => src.RoomType != null ? src.RoomType.Name : "—"))
+                .ForMember(dest => dest.CheckInDateFormatted, opt => opt.MapFrom(src => src.CheckInDate.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)))
+                .ForMember(dest => dest.CheckOutDateFormatted, opt => opt.MapFrom(src => src.CheckOutDate.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)))
+                .ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.GuestFolio != null && !string.IsNullOrWhiteSpace(src.GuestFolio.Currency) ? src.GuestFolio.Currency : "EGP"))
+                .ForMember(dest => dest.TodayFormatted, opt => opt.MapFrom(src => DateTime.UtcNow.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)))
+                .ForMember(dest => dest.HotelName, opt => opt.Ignore())
+                .ForMember(dest => dest.ReceptionistName, opt => opt.Ignore());
         }
 
         private static int CalculateNights(DateTimeOffset checkIn, DateTimeOffset checkOut)

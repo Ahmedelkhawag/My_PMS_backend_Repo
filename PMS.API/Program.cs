@@ -17,6 +17,7 @@ using PMS.Infrastructure.Implmentations;
 using PMS.Infrastructure.Implmentations.Services;
 using System.IO;
 using System.Text;
+using PMS.Infrastructure.Extensions;
 
 
 
@@ -122,6 +123,8 @@ builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IRegistrationCardPdfService, RegistrationCardPdfService>();
+
+builder.Services.AddPdfInfrastructure();
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
