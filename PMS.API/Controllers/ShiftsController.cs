@@ -48,26 +48,7 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// الحصول على تقرير الوردية الحالية للمستخدم.
-        /// </summary>
-        [HttpGet("current")]
-        [Authorize]
-        [ProducesResponseType(typeof(ResponseObjectDto<ShiftReportDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> GetCurrentShiftReport()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(userId))
-                return Unauthorized(ResponseObjectDto<string>.Failure("لم يتم التعرف على المستخدم الحالي.", 401));
 
-            var result = await _shiftService.GetCurrentShiftStatusAsync(userId);
-
-            if (!result.IsSuccess)
-                return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
-
-            return Ok(result);
-        }
 
         /// <summary>
         /// إغلاق الوردية الحالية المفتوحة للمستخدم.

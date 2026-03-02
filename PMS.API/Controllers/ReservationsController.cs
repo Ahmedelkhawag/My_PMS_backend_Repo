@@ -14,17 +14,10 @@ namespace PMS.API.Controllers
     public class ReservationsController : ControllerBase
     {
         private readonly IReservationService _reservationService;
-        private readonly IRegistrationCardPdfService _registrationCardPdfService;
-        private readonly IAuthService _authService;
 
-        public ReservationsController(
-            IReservationService reservationService,
-            IRegistrationCardPdfService registrationCardPdfService,
-            IAuthService authService)
+        public ReservationsController(IReservationService reservationService)
         {
             _reservationService = reservationService;
-            _registrationCardPdfService = registrationCardPdfService;
-            _authService = authService;
         }
 
         [HttpPost]
@@ -86,28 +79,7 @@ namespace PMS.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Generates the bilingual (Arabic/English) Guest Registration Card PDF for the reservation.
-        /// </summary>
-        [HttpGet("{id}/registration-card")]
-        [Produces("application/pdf")]
-        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetRegistrationCard(int id)
-        {
-            string? receptionistName = "—";
-            var profileResult = await _authService.GetCurrentUserProfileAsync();
-            if (profileResult.Succeeded && profileResult.Data != null)
-                receptionistName = profileResult.Data.FullName;
 
-            var result = await _registrationCardPdfService.GenerateRegistrationCardAsync(id, receptionistName);
-
-            if (result == null)
-                return NotFound(ResponseObjectDto<string>.Failure("Reservation not found.", 404));
-
-            return File(result.Value.Content, "application/pdf", result.Value.FileName);
-        }
 
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status200OK)]
