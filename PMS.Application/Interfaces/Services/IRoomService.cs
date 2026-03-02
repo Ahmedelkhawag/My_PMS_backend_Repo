@@ -9,7 +9,7 @@ namespace PMS.Application.Interfaces.Services
 {
     public interface IRoomService
     {
-        Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status, int pageNumber, int pageSize);
+        Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(RoomFilterDto filter);
         Task<ResponseObjectDto<RoomDto>> GetRoomByIdAsync(int id);
 
         Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto);

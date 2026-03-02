@@ -125,6 +125,82 @@ namespace PMS.Infrastructure.Context
                 await context.SaveChangesAsync();
             }
         }
+        public static async Task SeedRoomsAsync(ApplicationDbContext context)
+        {
+
+            const string SystemUserId = "b74ddd14-6340-4840-95c2-db12554843e5";
+
+            var roomTypes = await context.RoomTypes.ToListAsync();
+            if (roomTypes.Count == 0) return;
+
+            // 2. هنجيب كل أرقام الغرف اللي موجودة حالياً عشان مكررش حاجة
+            var existingRoomNumbers = await context.Rooms.Select(r => r.RoomNumber).ToListAsync();
+
+            var roomsToAdd = new List<Room>();
+            int typesCount = roomTypes.Count;
+            int typeIndex = 0;
+
+            // إعدادات الأدوار (5 أدوار وكل دور فيه 10 غرف)
+            int floorNumber = 1;
+            int roomsPerFloor = 10;
+            int totalTarget = 50;
+            int createdCount = 0;
+
+            while (createdCount < totalTarget)
+            {
+                for (int i = 1; i <= roomsPerFloor && createdCount < totalTarget; i++)
+                {
+                    var roomNum = $"{floorNumber}{i:D2}";
+
+                    // 👇 الـ Check السحري: لو الغرفة مش موجودة ضيفها
+                    if (!existingRoomNumbers.Contains(roomNum))
+                    {
+                        var roomType = roomTypes[typeIndex % typesCount];
+
+                        var room = new Room
+                        {
+                            RoomNumber = roomNum,
+                            FloorNumber = floorNumber,
+                            RoomTypeId = roomType.Id,
+                            HKStatus = HKStatus.Clean,
+                            FOStatus = FOStatus.Vacant,
+                            RoomStatusId = 1, // Clean
+                            IsActive = true,
+                            MaxAdults = roomType.MaxAdults,
+                            BasePrice = roomType.BasePrice,
+                            Notes = "Seeded by System",
+                            // سيتم تعيين CreatedBy و CreatedAt أوتوماتيكياً في الـ DbContext
+                        };
+
+                        // حالة خاصة لتيست الـ OOO (آخر غرفتين في الـ Seed)
+                        if (createdCount >= 48)
+                        {
+                            room.HKStatus = HKStatus.OOO;
+                            room.RoomStatusId = 3;
+                            room.MaintenanceReason = "Periodic Check";
+                            room.MaintenanceStartDate = DateTime.UtcNow.AddDays(-1);
+                            room.MaintenanceEndDate = DateTime.UtcNow.AddDays(2);
+                        }
+
+                        roomsToAdd.Add(room);
+                    }
+
+                    createdCount++;
+                    typeIndex++;
+                }
+                floorNumber++;
+            }
+
+            if (roomsToAdd.Any())
+            {
+                await context.Rooms.AddRangeAsync(roomsToAdd);
+
+                // 💡 ملحوظة "سنيور": بما إن SaveChangesAsync بتمسح الـ CreatedBy وتكتب "System"
+                // إحنا هنعتمد إن الـ DbContext هيقوم بمهمته، 
+                // ولو عاوز تغير "System" لـ GUID ثابت، لازم نعدل الـ DbContext نفسه.
+                await context.SaveChangesAsync();
+            }
+        }
     }
 }
 

@@ -184,6 +184,7 @@ using (var scope = app.Services.CreateScope())
         await context.Database.MigrateAsync();
 
         await PMS.Infrastructure.Context.ContextSeed.SeedEssentialsAsync(userManager, roleManager, context);
+        await PMS.Infrastructure.Context.ContextSeed.SeedRoomsAsync(context);
     }
     catch (Exception ex)
     {

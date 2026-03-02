@@ -24,7 +24,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 		}
 
 		// 1. استرجاع كل الغرف (Dashboard: FO/HK status + current reservation) + Pagination
-		public async Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(int? floor, int? roomTypeId, string? status, int pageNumber, int pageSize)
+		public async Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(RoomFilterDto filter)
 		{
 			var response = new ResponseObjectDto<PagedResult<RoomDto>>();
 
@@ -34,27 +34,61 @@ namespace PMS.Infrastructure.Implmentations.Services
 				.Where(r => r.IsActive)
 				.AsQueryable();
 
-			if (floor.HasValue)
-				query = query.Where(r => r.FloorNumber == floor);
+			if (filter.Floor.HasValue)
+				query = query.Where(r => r.FloorNumber == filter.Floor);
 
-			if (roomTypeId.HasValue)
-				query = query.Where(r => r.RoomTypeId == roomTypeId);
+			if (filter.Type.HasValue)
+				query = query.Where(r => r.RoomTypeId == filter.Type);
 
-			if (!string.IsNullOrEmpty(status))
-				query = query.Where(r => r.RoomStatus.Name == status);
+			if (!string.IsNullOrEmpty(filter.Status))
+				query = query.Where(r => r.RoomStatus.Name == filter.Status);
+
+			if (filter.FromDate.HasValue && filter.ToDate.HasValue)
+			{
+				// Assuming standard server time offset for simplicity, EF will handle the comparison.
+				var fromOffset = new DateTimeOffset(filter.FromDate.Value, TimeSpan.Zero);
+				var toOffset = new DateTimeOffset(filter.ToDate.Value, TimeSpan.Zero);
+
+                // Exclude rooms with conflicting reservations
+
+                query = query.Where(r => !_unitOfWork.Reservations.GetQueryable().Any(res =>
+                        res.RoomId == r.Id &&
+                        !res.IsDeleted &&
+                        res.Status != ReservationStatus.Cancelled &&
+                        res.Status != ReservationStatus.NoShow && 
+                        res.CheckInDate < toOffset &&
+                        res.CheckOutDate > fromOffset));
+	                   
+                query = query.Where(r =>
+                    !(r.MaintenanceStartDate != null && r.MaintenanceEndDate != null && 
+                      r.MaintenanceStartDate < filter.ToDate &&
+                      r.MaintenanceEndDate > filter.FromDate));
+
+
+                //query = query.Where(r => !_unitOfWork.Reservations.GetQueryable().Any(res =>
+                //	res.RoomId == r.Id &&
+                //	res.Status != ReservationStatus.Cancelled &&
+                //	!res.IsDeleted &&
+                //	res.CheckInDate < toOffset &&
+                //	res.CheckOutDate > fromOffset));
+
+                //// Exclude rooms marked for maintenance during the range
+                //query = query.Where(r =>
+                //	!(r.MaintenanceStartDate < filter.ToDate && r.MaintenanceEndDate > filter.FromDate));
+            }
 
 			var totalCount = await query.CountAsync();
 
-			if (pageNumber < 1) pageNumber = 1;
-			if (pageSize <= 0) pageSize = 10;
+			if (filter.PageNumber < 1) filter.PageNumber = 1;
+			if (filter.PageSize <= 0) filter.PageSize = 10;
 
-			var skip = (pageNumber - 1) * pageSize;
+			var skip = (filter.PageNumber - 1) * filter.PageSize;
 
 			var rooms = await query
 				.OrderBy(r => r.FloorNumber)
 				.ThenBy(r => r.RoomNumber)
 				.Skip(skip)
-				.Take(pageSize)
+				.Take(filter.PageSize)
 				.ToListAsync();
 
 			// Single batch: all active (CheckedIn) reservations with RoomId, with Guest
@@ -69,7 +103,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 			var items = rooms.Select(r => MapRoomToDto(r, reservationByRoomId)).ToList();
 
-			var paged = new PagedResult<RoomDto>(items, totalCount, pageNumber, pageSize);
+			var paged = new PagedResult<RoomDto>(items, totalCount, filter.PageNumber, filter.PageSize);
 
 			response.IsSuccess = true;
 			response.StatusCode = 200;

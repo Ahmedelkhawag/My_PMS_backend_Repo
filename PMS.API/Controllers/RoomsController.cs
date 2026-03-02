@@ -24,14 +24,9 @@ namespace PMS.API.Controllers
         [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<RoomDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAll(
-            [FromQuery] int? floor,
-            [FromQuery] int? type,
-            [FromQuery] string? status,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] RoomFilterDto filter)
         {
-            var result = await _roomService.GetAllRoomsAsync(floor, type, status, pageNumber, pageSize);
+            var result = await _roomService.GetAllRoomsAsync(filter);
 
             if (!result.IsSuccess)
                 return StatusCode(result.StatusCode > 0 ? result.StatusCode : 400, result);
