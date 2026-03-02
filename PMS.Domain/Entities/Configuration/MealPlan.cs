@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
@@ -11,7 +11,7 @@ namespace PMS.Domain.Entities.Configuration
 		public string Name { get; set; } // BB, HB, FB
 
 		[Column(TypeName = "decimal(18,2)")]
-		public decimal Price { get; set; } // سعر الوجبة الافتراضي
+		public decimal Price { get; set; } 
 
 		public bool IsActive { get; set; } = true;
 	}

@@ -73,7 +73,7 @@ namespace PMS.API.Controllers
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateGuestDto dto)
         {
-            // وحدنا شكل الرد في الـ Manual Validation
+            
             if (dto == null)
                 return BadRequest(ResponseObjectDto<string>.Failure("يجب إرسال حقل واحد على الأقل للتحديث", 400));
 

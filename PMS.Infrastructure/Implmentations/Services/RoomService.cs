@@ -23,7 +23,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			_mapper = mapper;
 		}
 
-		// 1. استرجاع كل الغرف (Dashboard: FO/HK status + current reservation) + Pagination
+		
 		public async Task<ResponseObjectDto<PagedResult<RoomDto>>> GetAllRoomsAsync(RoomFilterDto filter)
 		{
 			var response = new ResponseObjectDto<PagedResult<RoomDto>>();
@@ -113,7 +113,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 2. استرجاع غرفة واحدة (Dashboard: FO/HK + current reservation)
+		
 		public async Task<ResponseObjectDto<RoomDto>> GetRoomByIdAsync(int id)
 		{
 			var response = new ResponseObjectDto<RoomDto>();
@@ -146,7 +146,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 3. إنشاء غرفة
+		
 		public async Task<ResponseObjectDto<RoomDto>> CreateRoomAsync(CreateRoomDto dto)
 		{
 			var response = new ResponseObjectDto<RoomDto>();
@@ -197,7 +197,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 4. تحديث غرفة (تحديث جزئي)
+		
 		public async Task<ResponseObjectDto<RoomDto>> UpdateRoomAsync(int id, UpdateRoomDto dto)
 		{
 			var response = new ResponseObjectDto<RoomDto>();
@@ -223,7 +223,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				return response;
 			}
 
-			// التحقق من تكرار رقم الغرفة فقط إذا تم إرساله
+			
 			if (!string.IsNullOrWhiteSpace(dto.RoomNumber))
 			{
 				var duplicateRoom = await _unitOfWork.Rooms.FindAsync(r => r.RoomNumber == dto.RoomNumber && r.Id != id);
@@ -238,7 +238,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				room.RoomNumber = dto.RoomNumber;
 			}
 
-			// تحديث رقم الطابق إذا تم إرساله
+			
 			if (dto.FloorNumber.HasValue)
 			{
 				if (dto.FloorNumber.Value < 1 || dto.FloorNumber.Value > 100)
@@ -252,7 +252,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				room.FloorNumber = dto.FloorNumber.Value;
 			}
 
-			// تحديث نوع الغرفة إذا تم إرساله
+			
 			if (dto.RoomTypeId.HasValue)
 			{
 				var roomType = await _unitOfWork.RoomTypes.GetByIdAsync(dto.RoomTypeId.Value);
@@ -267,13 +267,13 @@ namespace PMS.Infrastructure.Implmentations.Services
 				room.RoomTypeId = dto.RoomTypeId.Value;
 			}
 
-			// تحديث الملاحظات إذا تم إرسالها (حتى لو كانت فارغة لمسحها)
+			
 			if (dto.Notes != null)
 			{
 				room.Notes = dto.Notes;
 			}
 
-			// تحديث حالة الغرفة إذا تم إرسالها (مع مزامنة HKStatus)
+			
 			if (!string.IsNullOrWhiteSpace(dto.Status))
 			{
 				var statusObj = await _unitOfWork.RoomStatuses.FindAsync(s => s.Name == dto.Status);
@@ -285,7 +285,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 					return response;
 				}
 
-				// BLOCK: منع تعيين الحالة Occupied (Id = 5) يدوياً، لأنها مملوكة لموديول الحجز
+				
 				if (statusObj.Id == 5)
 				{
 					response.IsSuccess = false;
@@ -313,7 +313,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 5. حذف
+		
 		public async Task<ResponseObjectDto<bool>> DeleteRoomAsync(int id)
 		{
 			var response = new ResponseObjectDto<bool>();
@@ -335,12 +335,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// استرجاع غرفة تم أرشفتها (Soft-Delete)
+		
 		public async Task<ResponseObjectDto<bool>> RestoreRoomAsync(int id)
 		{
 			var response = new ResponseObjectDto<bool>();
 
-			// نستخدم IgnoreQueryFilters عشان نلاقي الغرفة حتى لو IsDeleted = true
+			
 			var room = await _unitOfWork.Rooms.GetQueryable()
 				.IgnoreQueryFilters()
 				.FirstOrDefaultAsync(r => r.Id == id);
@@ -377,12 +377,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-        // 6. 👇👇 دالة تغيير الحالة (Housekeeping / FrontOffice) 👇👇
+        
         public async Task<ResponseObjectDto<bool>> ChangeRoomStatusAsync(int roomId, ChangeRoomStatusDto dto)
         {
             var response = new ResponseObjectDto<bool>();
 
-            // 1. التأكد من وجود الغرفة
+            
             var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
             if (room == null)
             {
@@ -392,11 +392,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return response;
             }
 
-            // 1.5 الكشف عن وجود حجز Checked-In نشط (الذي يملك حالة Occupied فعلياً)
+            
             var hasActiveReservation = await _unitOfWork.Reservations.GetQueryable()
                 .AnyAsync(r => r.RoomId == roomId && r.Status == ReservationStatus.CheckIn && !r.IsDeleted);
 
-            // 2. التحقق من نوع العملية (HK ولا FO)
+            
             if (!Enum.IsDefined(typeof(RoomStatusType), dto.StatusType))
             {
                 response.IsSuccess = false;
@@ -410,7 +410,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             // =========================================================
             if (dto.StatusType == RoomStatusType.HouseKeeping)
             {
-                // BLOCK: منع تعيين كود الحالة 5 (Occupied) يدوياً — هذه الحالة مملوكة للموديول الخاص بالحجز
+                
                 //if (dto.StatusId == 5)
                 //{
                 //    response.IsSuccess = false;
@@ -420,7 +420,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 //    return response;
                 //}
 
-                // BLOCK: لا يمكن تحويل غرفة عليها حجز Checked-In إلى Vacant Clean مباشرة
+                
                 if (hasActiveReservation && dto.StatusId == 1)
                 {
                     response.IsSuccess = false;
@@ -430,7 +430,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return response;
                 }
 
-                // التحقق من أن الـ StatusId موجود في جدول الـ Lookups
+                
                 if (!Enum.IsDefined(typeof(HKStatus), dto.StatusId))
                 {
                     response.IsSuccess = false;
@@ -439,10 +439,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return response;
                 }
 
-                // 2. تحديث الـ Lookup ID (للداتابيز)
+                
                 room.RoomStatusId = dto.StatusId;
 
-                // 3. تحديث الـ Enum (للكود) - تحويل مباشر لأن الأرقام بقت واحد
+                
                 room.HKStatus = (HKStatus)dto.StatusId;
 
                 if (!string.IsNullOrEmpty(dto.Notes))
@@ -455,7 +455,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             // =========================================================
             else if (dto.StatusType == RoomStatusType.FrontOffice)
             {
-                // ممنوع تغيير FO Status يدوياً لغرفة عليها نزيل حاليّاً
+                
                 if (hasActiveReservation)
                 {
                     response.IsSuccess = false;
@@ -465,7 +465,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return response;
                 }
 
-                // هنا لازم نتأكد إن الرقم اللي مبعوت هو قيمة صحيحة جوه الـ Enum بتاع FOStatus
+                
                 if (!Enum.IsDefined(typeof(FOStatus), dto.StatusId))
                 {
                     response.IsSuccess = false;
@@ -476,7 +476,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 var newFoStatus = (FOStatus)dto.StatusId;
 
-                // BLOCK: لا يمكن تعيين FO = Occupied يدوياً (لازم ييجي من Check-In)
+                
                 if (newFoStatus == FOStatus.Occupied)
                 {
                     response.IsSuccess = false;
@@ -488,9 +488,9 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 room.FOStatus = newFoStatus;
 
-                // ملحوظة: لو غيرنا الـ FO لـ Vacant، ممكن نحتاج نغير الـ RoomStatusId لـ Clean/Dirty
-                // ولو غيرناها لـ Occupied، الـ RoomStatusId المفروض يبقى 5
-                // بس حالياً هنلتزم بتغيير الـ FO Status بس عشان منبوظش اللوجيك بتاعك
+                
+                
+                
 
                 if (!string.IsNullOrEmpty(dto.Notes))
                 {
@@ -498,8 +498,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
             }
 
-            // 3. الحفظ وتحديث الـ Auditing
-            // مش محتاج تنادي room.LastModifiedAt يدوياً لأن الـ Override في DbContext بيعملها
+            
+            
             _unitOfWork.Rooms.Update(room);
             await _unitOfWork.CompleteAsync();
 
@@ -587,7 +587,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return response;
 		}
 
-		// 7. إحصائيات الغرف
+		
 		public async Task<ResponseObjectDto<RoomStatsDto>> GetRoomStatsAsync()
 		{
 			var response = new ResponseObjectDto<RoomStatsDto>();
@@ -640,27 +640,27 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         private RoomDto MapRoomToDto(Room room, Dictionary<int, Reservation> activeReservations)
         {
-            // 1. الكشف عن وجود حجز نشط
+            
             Reservation? reservation = null;
             if (activeReservations.TryGetValue(room.Id, out var foundRes))
             {
                 reservation = foundRes;
             }
 
-            // 2. تحويل الـ Entity لـ DTO
+            
             var dto = _mapper.Map<RoomDto>(room);
 
-            // 3. معالجة بيانات الحجز (Nested Object + flat occupancy fields)
+            
             if (reservation != null)
             {
-                // Business Rule: طالما فيه حجز نشط، يبقى الـ FO Status لازم يظهر Occupied
+                
                 dto.FoStatus = FOStatus.Occupied.ToString();
 
-                // تعبئة تفاصيل الإشغال الحالية
+                
                 dto.CurrentReservationId = reservation.Id;
                 dto.GuestName = reservation.Guest?.FullName;
 
-                // ملء بيانات الـ CurrentReservationDto (للإسترجاع التفصيلي)
+                
                 dto.CurrentReservation = new CurrentReservationDto
                 {
                     Id = reservation.Id,

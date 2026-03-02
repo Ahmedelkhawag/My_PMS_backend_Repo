@@ -15,17 +15,17 @@ namespace PMS.Domain.Entities
         public int Id { get; set; }
 
         [Required]
-        public string RoomNumber { get; set; } = string.Empty; // رقم الغرفة (101, 102, A-01) - لازم يكون مميز
+        public string RoomNumber { get; set; } = string.Empty; 
 
-        public int FloorNumber { get; set; } // رقم الطابق (1, 2, 3...) زي ما ظاهر في الفلتر
+        public int FloorNumber { get; set; } 
 
-        public string? Notes { get; set; } // ملاحظات (مثلاً: "التكييف محتاج صيانة")
+        public string? Notes { get; set; } 
 
-        public bool IsActive { get; set; } = true; // لو حبيت توقف الغرفة مؤقتاً من غير ما تمسحها
+        public bool IsActive { get; set; } = true; 
 
-        // --- العلاقات (Relationships) ---
+        
 
-        // كل غرفة لازم يكون ليها نوع واحد (Single, Double, etc.)
+        
         public int RoomTypeId { get; set; }
 
         [ForeignKey("RoomTypeId")]
@@ -41,7 +41,7 @@ namespace PMS.Domain.Entities
 
         public FOStatus FOStatus { get; set; } = FOStatus.Vacant;
 
-		public int RoomStatusId { get; set; } // بدل Enum - retained for legacy; FO status computed from reservations
+		public int RoomStatusId { get; set; } 
 		[ForeignKey("RoomStatusId")]
 		public RoomStatusLookup RoomStatus { get; set; }
 

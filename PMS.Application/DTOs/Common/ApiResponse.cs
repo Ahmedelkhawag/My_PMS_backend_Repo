@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,11 +11,11 @@ namespace PMS.Application.DTOs.Common
         public List<string> Errors { get; set; }
         public T Data { get; set; }
 
-        // Constructors لتسهيل الاستخدام
+        
 
         public ApiResponse() { }
 
-        // حالة النجاح
+        
         public ApiResponse(T data, string message = null)
         {
             Succeeded = true;
@@ -24,7 +24,7 @@ namespace PMS.Application.DTOs.Common
             Errors = null;
         }
 
-        // حالة الفشل
+        
         public ApiResponse(string message)
         {
             Succeeded = false;
@@ -32,7 +32,7 @@ namespace PMS.Application.DTOs.Common
             Errors = new List<string> { message };
         }
 
-        // حالة الفشل مع قائمة أخطاء (للـ Validation)
+        
         public ApiResponse(List<string> errors, string message = "Validation failed")
         {
             Succeeded = false;

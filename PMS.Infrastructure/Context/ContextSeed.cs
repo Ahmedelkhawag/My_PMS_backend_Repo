@@ -21,7 +21,7 @@ namespace PMS.Infrastructure.Context
             {
                 systemUser = new AppUser
                 {
-                    Id = SystemUserId, // بنثبت الـ Id عشان نستخدمه في الكود
+                    Id = SystemUserId, 
                     UserName = "system_auto",
                     Email = "system@pms.com",
                     FullName = "System Automator",
@@ -30,11 +30,11 @@ namespace PMS.Infrastructure.Context
                     EmailConfirmed = true,
                     StatusID = await context.Statuses.Where(s => s.Name == "Active").Select(s => s.StatusID).FirstOrDefaultAsync()
                 };
-                await userManager.CreateAsync(systemUser, "System@Password123"); // باسورد معقد بس مش هنستخدمه
+                await userManager.CreateAsync(systemUser, "System@Password123"); 
             }
 
 
-            // 1. زراعة الـ Statuses
+            
             if (!await context.Statuses.AnyAsync())
             {
                 await context.Statuses.AddRangeAsync(
@@ -45,7 +45,7 @@ namespace PMS.Infrastructure.Context
                 await context.SaveChangesAsync();
             }
 
-            // 2. زراعة الرولز
+            
             string[] roles = {
                 Roles.SuperAdmin,
                 Roles.IT,
@@ -63,7 +63,7 @@ namespace PMS.Infrastructure.Context
                 }
             }
 
-            // 3. زراعة / تحديث الـ SuperAdmin
+            
             const string superAdminPassword = "123";
 
             var defaultUser = new AppUser
@@ -97,7 +97,7 @@ namespace PMS.Infrastructure.Context
             }
             else
             {
-                // تأكد من أن باسورد الـ SuperAdmin الحالي هو 123 في كل بيئة
+                
                 var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
                 var resetResult = await userManager.ResetPasswordAsync(user, resetToken, superAdminPassword);
 
@@ -133,14 +133,14 @@ namespace PMS.Infrastructure.Context
             var roomTypes = await context.RoomTypes.ToListAsync();
             if (roomTypes.Count == 0) return;
 
-            // 2. هنجيب كل أرقام الغرف اللي موجودة حالياً عشان مكررش حاجة
+            
             var existingRoomNumbers = await context.Rooms.Select(r => r.RoomNumber).ToListAsync();
 
             var roomsToAdd = new List<Room>();
             int typesCount = roomTypes.Count;
             int typeIndex = 0;
 
-            // إعدادات الأدوار (5 أدوار وكل دور فيه 10 غرف)
+            
             int floorNumber = 1;
             int roomsPerFloor = 10;
             int totalTarget = 50;
@@ -152,7 +152,7 @@ namespace PMS.Infrastructure.Context
                 {
                     var roomNum = $"{floorNumber}{i:D2}";
 
-                    // 👇 الـ Check السحري: لو الغرفة مش موجودة ضيفها
+                    
                     if (!existingRoomNumbers.Contains(roomNum))
                     {
                         var roomType = roomTypes[typeIndex % typesCount];
@@ -169,10 +169,10 @@ namespace PMS.Infrastructure.Context
                             MaxAdults = roomType.MaxAdults,
                             BasePrice = roomType.BasePrice,
                             Notes = "Seeded by System",
-                            // سيتم تعيين CreatedBy و CreatedAt أوتوماتيكياً في الـ DbContext
+                            
                         };
 
-                        // حالة خاصة لتيست الـ OOO (آخر غرفتين في الـ Seed)
+                        
                         if (createdCount >= 48)
                         {
                             room.HKStatus = HKStatus.OOO;
@@ -195,9 +195,9 @@ namespace PMS.Infrastructure.Context
             {
                 await context.Rooms.AddRangeAsync(roomsToAdd);
 
-                // 💡 ملحوظة "سنيور": بما إن SaveChangesAsync بتمسح الـ CreatedBy وتكتب "System"
-                // إحنا هنعتمد إن الـ DbContext هيقوم بمهمته، 
-                // ولو عاوز تغير "System" لـ GUID ثابت، لازم نعدل الـ DbContext نفسه.
+                
+                
+                
                 await context.SaveChangesAsync();
             }
         }

@@ -4,7 +4,7 @@ using Microsoft.OpenApi.Models;
 namespace PMS.API.Swagger
 {
     /// <summary>
-    /// يضيف وصف تلقائي لكل Enum في Swagger يبين قيمة كل رقم.
+    
     /// </summary>
     public class EnumDescriptionSchemaFilter : ISchemaFilter
     {
@@ -26,7 +26,7 @@ namespace PMS.API.Swagger
 
             var mapping = string.Join(", ", names.Select((n, i) => $"{values[i]} = {n}"));
 
-            // لو فيه description قديم (من XML) نزود عليه بدل ما نمسحه
+            
             if (string.IsNullOrWhiteSpace(schema.Description))
             {
                 schema.Description = $"Values: {mapping}";

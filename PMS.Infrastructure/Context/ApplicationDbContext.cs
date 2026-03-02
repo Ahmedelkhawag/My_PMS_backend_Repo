@@ -15,7 +15,7 @@ namespace PMS.Infrastructure.Context
 {
 	public class ApplicationDbContext : IdentityDbContext<AppUser>
 	{
-		private readonly IHttpContextAccessor _httpContextAccessor; // عشان نجيب مين اللي مسح
+		private readonly IHttpContextAccessor _httpContextAccessor; 
 		public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IHttpContextAccessor httpContextAccessor)
 		 : base(options)
 		{
@@ -62,10 +62,10 @@ namespace PMS.Infrastructure.Context
 	);
 
 			// ==========================================
-			// 2. زراعة الغرف (Rooms)
+			
 			// ==========================================
 			builder.Entity<Room>().HasData(
-		// الدور الأول
+		
 		new Room
 		{
 			Id = 1,
@@ -74,7 +74,7 @@ namespace PMS.Infrastructure.Context
 			RoomTypeId = 1,
 			RoomStatusId = 1,
 			IsActive = true,
-			CreatedAt = new DateTime(2026, 1, 1) // 👈 التعديل هنا (تاريخ ثابت)
+			CreatedAt = new DateTime(2026, 1, 1) 
 		},
 		new Room
 		{
@@ -84,7 +84,7 @@ namespace PMS.Infrastructure.Context
 			RoomTypeId = 2,
 			RoomStatusId = 2,
 			IsActive = true,
-			CreatedAt = new DateTime(2026, 1, 1) // 👈 وهنا
+			CreatedAt = new DateTime(2026, 1, 1) 
 		},
 		new Room
 		{
@@ -94,10 +94,10 @@ namespace PMS.Infrastructure.Context
 			RoomTypeId = 2,
 			RoomStatusId = 1,
 			IsActive = true,
-			CreatedAt = new DateTime(2026, 1, 1) // 👈 وهنا
+			CreatedAt = new DateTime(2026, 1, 1) 
 		},
 
-		// الدور الثاني
+		
 		new Room
 		{
 			Id = 4,
@@ -139,7 +139,7 @@ namespace PMS.Infrastructure.Context
 		new BookingSource { Id = 5, Name = "Website", IsActive = true, RequiresExternalReference = false }
 	);
 
-			// قطاعات السوق
+			
 			builder.Entity<MarketSegment>().HasData(
 				new MarketSegment { Id = 1, Name = "Individual (أفراد)" },
 				new MarketSegment { Id = 2, Name = "Corporate (شركات)" },
@@ -147,7 +147,7 @@ namespace PMS.Infrastructure.Context
 				new MarketSegment { Id = 4, Name = "Government (حكومي)" }
 			);
 
-			// الوجبات
+			
 			builder.Entity<MealPlan>().HasData(
 				new MealPlan { Id = 1, Name = "Room Only (بدون وجبات)", Price = 0 },
 				new MealPlan { Id = 2, Name = "Bed & Breakfast (إفطار)", Price = 150 },
@@ -155,14 +155,14 @@ namespace PMS.Infrastructure.Context
 				new MealPlan { Id = 4, Name = "Full Board (إفطار وغداء وعشاء)", Price = 700 }
 			);
 
-            // حالات الغرف - colors use standardized hex codes
+            
             builder.Entity<RoomStatusLookup>().HasData(
-        new RoomStatusLookup { Id = 1, Name = "Clean (نظيفة)", Color = StatusColorPalette.Success }, // أخضر
-        new RoomStatusLookup { Id = 2, Name = "Dirty (متسخة)", Color = StatusColorPalette.Danger },  // أحمر
-        new RoomStatusLookup { Id = 3, Name = "Inspected (تم الفحص)", Color = "#2ecc71" },           // أخضر فاتح أو مميز
-        new RoomStatusLookup { Id = 4, Name = "Out of Order (صيانة جسيمة)", Color = StatusColorPalette.Secondary }, // رمادي
-        new RoomStatusLookup { Id = 5, Name = "Out of Service (صيانة بسيطة)", Color = StatusColorPalette.Warning }  // أصفر
-                                                                                                                    // ملحوظة: شيلنا Occupied من هنا لأنها حالة FO مش HK، أو ممكن تخليها رقم 6 لو محتاجها ضروري للعرض
+        new RoomStatusLookup { Id = 1, Name = "Clean (نظيفة)", Color = StatusColorPalette.Success }, 
+        new RoomStatusLookup { Id = 2, Name = "Dirty (متسخة)", Color = StatusColorPalette.Danger },  
+        new RoomStatusLookup { Id = 3, Name = "Inspected (تم الفحص)", Color = "#2ecc71" },           
+        new RoomStatusLookup { Id = 4, Name = "Out of Order (صيانة جسيمة)", Color = StatusColorPalette.Secondary }, 
+        new RoomStatusLookup { Id = 5, Name = "Out of Service (صيانة بسيطة)", Color = StatusColorPalette.Warning }  
+                                                                                                                    
 			);
 
 
@@ -304,19 +304,19 @@ namespace PMS.Infrastructure.Context
 			});
 
 
-			// 1. تطبيق الفلتر السحري (Global Query Filter) 🧹
-			// اللفة دي عشان نطبق الفلتر على كل الـ Entities اللي واخدة ISoftDeletable مرة واحدة
+			
+			
 			foreach (var entityType in builder.Model.GetEntityTypes())
 			{
 				if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
 				{
-					// دي كأننا كتبنا: builder.Entity<AppUser>().HasQueryFilter(e => !e.IsDeleted);
-					// بس معمولة بشكل Generic عشان تشتغل للكل
+					
+					
 					var parameter = Expression.Parameter(entityType.ClrType, "e");
 					var propertyMethodInfo = typeof(EF).GetMethod("Property")?.MakeGenericMethod(typeof(bool));
 					var isDeletedProperty = Expression.Call(propertyMethodInfo, parameter, Expression.Constant("IsDeleted"));
 
-					// الشرط: IsDeleted == false
+					
 					var compareExpression = Expression.MakeBinary(ExpressionType.Equal, isDeletedProperty, Expression.Constant(false));
 					var lambda = Expression.Lambda(compareExpression, parameter);
 
@@ -325,16 +325,16 @@ namespace PMS.Infrastructure.Context
 			}
 		}
 
-		// 2. تحويل الحذف الحقيقي لحذف ناعم 🔄
+		
 		public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
 		{
-			// بنجيب اليوزر الحالي (لو مفيش يوزر بنكتب System)
+			
 			var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
 			var currentDateTime = DateTime.UtcNow;
 
 			foreach (var entry in ChangeTracker.Entries())
 			{
-				// 1. معالجة الـ Auditing (الإنشاء والتعديل) 🆕
+				
 				if (entry.Entity is IAuditable auditableEntity)
 				{
 					if (entry.State == EntityState.Added)
@@ -344,7 +344,7 @@ namespace PMS.Infrastructure.Context
 					}
 					else if (entry.State == EntityState.Modified)
 					{
-						// بنمنع تعديل بيانات الإنشاء بالغلط
+						
 						entry.Property(nameof(IAuditable.CreatedBy)).IsModified = false;
 						entry.Property(nameof(IAuditable.CreatedAt)).IsModified = false;
 
@@ -353,7 +353,7 @@ namespace PMS.Infrastructure.Context
 					}
 				}
 
-				// 2. معالجة الـ Soft Delete (زي ما كانت)
+				
 				if (entry.Entity is ISoftDeletable softDeletableEntity && entry.State == EntityState.Deleted)
 				{
 					entry.State = EntityState.Modified;

@@ -5,7 +5,7 @@ using System.Text;
 namespace PMS.Domain.Enums
 {
     /// <summary>
-    /// النوع:
+    
     /// 1 = Male
     /// 2 = Female
     /// </summary>

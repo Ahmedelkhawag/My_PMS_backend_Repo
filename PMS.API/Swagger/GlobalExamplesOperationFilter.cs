@@ -23,12 +23,12 @@ namespace PMS.API.Swagger
 
                 if (!operation.Responses.TryGetValue(statusCode, out var response)) continue;
 
-                // التعديل الجوهري: هنلف على كل أنواع الـ Content (json, text/plain, etc)
+                
                 foreach (var content in response.Content)
                 {
                     var mediaType = content.Value;
 
-                    // لو فيه مثال يدوي محطوط، مش هنلمسه
+                    
                     if (mediaType.Example != null) continue;
 
                     var clrType = supported.Type ?? supported.ModelMetadata?.ModelType;
@@ -36,7 +36,7 @@ namespace PMS.API.Swagger
 
                     var useErrorExample = supported.IsDefaultResponse || !IsSuccessStatusCode(statusCodeInt);
 
-                    // نركز فقط على الـ ResponseObjectDto لتوحيد السيستم
+                    
                     if (IsGenericTypeDefinition(clrType, typeof(ResponseObjectDto<>), out var responseDtoArg))
                     {
                         if (useErrorExample)
@@ -51,7 +51,7 @@ namespace PMS.API.Swagger
                             mediaType.Example = SwaggerExampleFactory.CreateResponseObjectDtoSuccessExample(dataExample, statusCodeInt, "Operation successful");
                         }
                     }
-                    // لو paged result
+                    
                     else if (IsGenericTypeDefinition(clrType, typeof(PagedResult<>), out var pageArg))
                     {
                         if (useErrorExample)
@@ -65,7 +65,7 @@ namespace PMS.API.Swagger
                             mediaType.Example = SwaggerExampleFactory.CreatePagedResultExample(elementExample);
                         }
                     }
-                    // أي نوع تاني وفي حالة فشل، اجبره يظهر شكل الـ Error بتاعنا
+                    
                     else if (useErrorExample)
                     {
                         var message = GetDefaultMessageForStatusCode(statusCodeInt);
@@ -74,7 +74,7 @@ namespace PMS.API.Swagger
                 }
             }
 
-            // نضمن إن الإيرورز المشهورة ليها أمثلة في السواجر
+            
             EnsureErrorResponseWithExample(operation, 400, "Bad Request");
             EnsureErrorResponseWithExample(operation, 401, "Unauthorized");
             EnsureErrorResponseWithExample(operation, 403, "Forbidden");

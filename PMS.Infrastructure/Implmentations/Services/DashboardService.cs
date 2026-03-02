@@ -39,8 +39,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Where(g => !g.IsDeleted);
 
             // NOTE:
-            // EF Core لا يسمح بتشغيل أكثر من استعلام Async في نفس الوقت
-            // على نفس الـ DbContext. لذلك ننفذ كل CountAsync بالتسلسل.
+            
+            
 
             var occupiedRoomIds = await _unitOfWork.Reservations.GetQueryable()
                 .Where(r => r.Status == ReservationStatus.CheckIn && !r.IsDeleted && r.RoomId != null)

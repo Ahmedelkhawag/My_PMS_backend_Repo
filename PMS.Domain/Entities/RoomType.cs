@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -11,18 +11,18 @@ namespace PMS.Domain.Entities
         public int Id { get; set; }
 
         [Required]
-        public string Name { get; set; } = string.Empty; // مثال: فردية، مزدوجة، جناح ملكي
+        public string Name { get; set; } = string.Empty; 
 
         [Column(TypeName = "decimal(18,2)")]
-        public decimal BasePrice { get; set; } // السعر المبدئي لليلة (زي ما ظاهر في الكارت 540 ر.س)
+        public decimal BasePrice { get; set; } 
 
-        public string? Description { get; set; } // وصف (تطل على البحر، بها جاكوزي...)
+        public string? Description { get; set; } 
 
-        public int MaxAdults { get; set; } // أقصى عدد بالغين
-        public int MaxChildren { get; set; } // أقصى عدد أطفال
+        public int MaxAdults { get; set; } 
+        public int MaxChildren { get; set; } 
 
-        // علاقة: النوع الواحد ممكن يكون عليه غرف كتير
-        // (هنفك الكومنت ده الخطوة الجاية لما نعمل كلاس الغرفة)
+        
+        
         public ICollection<Room> Rooms { get; set; }
     }
 }

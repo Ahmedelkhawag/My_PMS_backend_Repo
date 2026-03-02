@@ -5,7 +5,7 @@ using System.Text;
 namespace PMS.Domain.Enums
 {
     /// <summary>
-    /// حالة الحجز:
+    
     /// 1 = Pending
     /// 2 = Confirmed
     /// 3 = CheckIn

@@ -5,7 +5,7 @@ using System.Text;
 namespace PMS.Domain.Enums
 {
     /// <summary>
-    /// مصدر الحجز:
+    
     /// 1 = Direct
     /// 2 = Website
     /// 3 = BookingCom

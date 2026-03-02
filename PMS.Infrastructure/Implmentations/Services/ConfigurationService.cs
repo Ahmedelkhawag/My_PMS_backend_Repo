@@ -13,7 +13,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 {
     public class ConfigurationService: IConfigurationService
 	{
-		private readonly IUnitOfWork _unitOfWork; // 👈 الحقن هنا
+		private readonly IUnitOfWork _unitOfWork; 
 
 		public ConfigurationService(IUnitOfWork unitOfWork)
 		{
@@ -67,7 +67,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 		public async Task<IEnumerable<BookingSourceLookupDto>> GetBookingSourcesAsync()
 		{
-			// بنستخدم GetQueryable عشان نعمل Projection (Select) في الداتابيز
+			
 			return await _unitOfWork.BookingSources.GetQueryable()
 				.Where(x => x.IsActive)
 				.Select(x => new BookingSourceLookupDto

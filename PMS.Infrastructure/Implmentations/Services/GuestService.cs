@@ -271,7 +271,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			_unitOfWork.Guests.Update(guest);
 			await _unitOfWork.CompleteAsync();
 
-			// و) إرجاع النتيجة
+			
 			response.IsSuccess = true;
 			response.Message = "تم تحديث بيانات النزيل بنجاح";
 			response.Data = _mapper.Map<GuestDto>(guest);
@@ -294,7 +294,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 				return response;
 			}
 
-			// Soft Delete (إخفاء فقط)
+			
 			guest.IsActive = false;
 			_unitOfWork.Guests.Update(guest);
 			await _unitOfWork.CompleteAsync();
@@ -307,12 +307,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 		}
 
 
-		// استرجاع نزيل تم أرشفته (Soft-Delete)
+		
 		public async Task<ResponseObjectDto<bool>> RestoreGuestAsync(int id)
 		{
 			var response = new ResponseObjectDto<bool>();
 
-			// نستخدم IgnoreQueryFilters عشان نلاقي النزيل حتى لو IsDeleted = true
+			
 			var guest = await _unitOfWork.Guests.GetQueryable()
 				.IgnoreQueryFilters()
 				.FirstOrDefaultAsync(g => g.Id == id);
@@ -352,14 +352,14 @@ namespace PMS.Infrastructure.Implmentations.Services
 
 		//public async Task<ResponseObjectDto<IEnumerable<GuestSearchDto>>> SearchGuestsAsync(string searchTerm)
 		//{
-		//	// لو البحث فاضي نرجع قائمة فاضية أو أول 10 نزلاء (حسب الرغبة)
+		
 		//	if (string.IsNullOrWhiteSpace(searchTerm))
 		//	{
 		//		return new ResponseObjectDto<IEnumerable<GuestSearchDto>>
 		//		{
 		//			IsSuccess = true,
 		//			Data = new List<GuestSearchDto>(),
-		//			Message = "يرجى إدخال كلمة للبحث"
+		
 		//		};
 		//	}
 
@@ -367,7 +367,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 		//		.Where(g => g.FullName.Contains(searchTerm) ||
 		//					g.PhoneNumber.Contains(searchTerm) ||
 		//					g.NationalId.Contains(searchTerm))
-		//		.Take(20) // بنحدد العدد عشان الأداء (Autocomplete)
+		
 		//		.Select(g => new GuestSearchDto
 		//		{
 		//			Id = g.Id,
@@ -381,12 +381,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 		//	{
 		//		IsSuccess = true,
 		//		Data = guests,
-		//		Message = $"تم العثور على {guests.Count} نتيجة",
+		
 		//		StatusCode = 200
 		//	};
 		//}
 
-		// إحصائيات النزلاء
+		
 		public async Task<ResponseObjectDto<GuestStatsDto>> GetGuestStatsAsync()
 		{
 			var response = new ResponseObjectDto<GuestStatsDto>();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -22,14 +22,14 @@ namespace PMS.Application.DTOs.Common
             };
         }
 
-        // دالة جاهزة في حالة الفشل
+        
         public static ResponseObjectDto<T> Failure(string message, int statusCode = 400)
         {
             return new ResponseObjectDto<T>
             {
                 IsSuccess = false,
                 Message = message,
-                Data = default, // هيكون null
+                Data = default, 
                 StatusCode = statusCode
             };
         }

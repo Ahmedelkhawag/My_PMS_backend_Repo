@@ -1,4 +1,4 @@
-﻿using ClosedXML.Excel;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using PMS.Application.DTOs.Reports;
 using PMS.Application.Interfaces.Services;
@@ -20,7 +20,7 @@ namespace PMS.Infrastructure.Implmentations.Services
         }
         public async Task<byte[]> GeneratePoliceReportAsync(DateTime? businessDate)
         {
-            // 1. تحديد تاريخ التقرير (تاريخ البيزنس المفتوح)
+            
             DateTime reportDate;
             if (businessDate.HasValue)
             {
@@ -28,7 +28,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
             else
             {
-                // بنجيب اليوم اللي حالته Open من السيستم
+                
                 var currentBusinessDay = await _unitOfWork.BusinessDays
                     .GetQueryable()
                     .AsNoTracking()
@@ -37,33 +37,33 @@ namespace PMS.Infrastructure.Implmentations.Services
                 reportDate = currentBusinessDay?.Date ?? DateTime.UtcNow.Date;
             }
 
-            // 2. سحب البيانات (تم تصحيح الـ Query هنا) 👇
+            
             var activeReservations = await _unitOfWork.Reservations
                 .GetQueryable()
-                .Include(r => r.Guest) // هنجيب النزيل بس
-                .Include(r => r.Room)  // هنجيب الغرفة
+                .Include(r => r.Guest) 
+                .Include(r => r.Room)  
                 .Where(r => r.Status == ReservationStatus.CheckIn && !r.IsDeleted)
                 .AsNoTracking()
                 .ToListAsync();
 
-            // 3. تحويل البيانات لـ DTO
+            
             var reportData = new List<PoliceReportDto>();
 
             foreach (var res in activeReservations)
             {
-                // تحديد نوع الوثيقة بناءً على وجود الرقم القومي
+                
                 bool hasNationalId = !string.IsNullOrWhiteSpace(res.Guest.NationalId);
 
                 var item = new PoliceReportDto
                 {
                     GuestName = res.Guest.FullName,
 
-                    // هنا بنسحب الجنسية كـ string عادي من غير Include 👇
+                    
                     Nationality = !string.IsNullOrEmpty(res.Guest.Nationality) ? res.Guest.Nationality : "Unknown",
 
                     DocumentType = hasNationalId ? "National ID" : "Passport",
 
-                    // Fallback لو مفيش باسبور مسجل في الـ Entity نستخدم الـ NationalId
+                    
                     DocumentNumber = hasNationalId ? res.Guest.NationalId : (res.Guest.NationalId ?? "N/A"),
 
                     RoomNumber = res.Room != null ? res.Room.RoomNumber : "N/A",
@@ -75,7 +75,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 reportData.Add(item);
             }
 
-            // 4. توليد ملف الإكسيل (نفس كود ClosedXML اللي عملناه في Task 3)
+            
             using (var workbook = new ClosedXML.Excel.XLWorkbook())
             {
                 var worksheet = workbook.Worksheets.Add("Daily Police Report");

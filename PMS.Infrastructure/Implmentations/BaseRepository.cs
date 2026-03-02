@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PMS.Application.Interfaces.Repositories;
 using PMS.Infrastructure.Context;
 using System;
@@ -38,8 +38,8 @@ namespace PMS.Infrastructure.Implmentations
             return await query.SingleOrDefaultAsync(criteria);
         }
 
-        // ... (باقي الدوال زي Add, Update, Delete تنفيذ مباشر للـ EF Core)
-        // عشان منضيعش وقتك هكتبلك أهم اتنين:
+        
+        
 
         public async Task<T> AddAsync(T entity)
         {
@@ -58,7 +58,7 @@ namespace PMS.Infrastructure.Implmentations
             _context.Set<T>().Remove(entity);
         }
 
-        // (ممكن تكمل باقي الدوال FindAllAsync, AddRangeAsync, etc. بنفس المنطق)
+        
         public async Task<IEnumerable<T>> FindAllAsync(Expression<Func<T, bool>> criteria, string[] includes = null)
         {
             IQueryable<T> query = _context.Set<T>();

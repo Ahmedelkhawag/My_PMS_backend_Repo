@@ -626,7 +626,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return NotFoundResponse<ReservationDto>("Reservation not found");
                 }
 
-                // استخدم القيم الحالية لو الـ body ما بعتهاش قيم جديدة
+                
                 var newCheckInDate = dto.CheckInDate ?? reservation.CheckInDate;
                 var newCheckOutDate = dto.CheckOutDate ?? reservation.CheckOutDate;
                 var newNightlyRate = dto.NightlyRate ?? reservation.NightlyRate;
@@ -680,7 +680,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 if (dto.Services != null)
                 {
-                    // المستخدم عايز يغير الخدمات (أو يحذفها لو بعت ليست فاضية)
+                    
                     List<ExtraService> updateFetchedExtraServices;
                     if (dto.Services.Any())
                     {
@@ -704,7 +704,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     }
                     else
                     {
-                        // ليست فاضية = امسح كل الخدمات
+                        
                         updateFetchedExtraServices = new List<ExtraService>();
                     }
 
@@ -717,7 +717,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
                 else
                 {
-                    // المستخدم ما بعتش Services -> احتفظ بالخدمات الحالية لكن حدّث الإجماليات حسب عدد الليالي والسعر الجديد
+                    
                     var activeServices = reservation.Services?.Where(s => !s.IsDeleted).ToList() ?? new List<ReservationService>();
                     foreach (var service in activeServices)
                     {
@@ -742,7 +742,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     grandTotal = subTotal + taxAmount;
                 }
 
-                // Update Fields (فقط الحاجات اللي اتبعتت أو القيم المحسوبة)
+                
                 reservation.GuestId = dto.GuestId ?? reservation.GuestId;
                 reservation.RoomTypeId = dto.RoomTypeId ?? reservation.RoomTypeId;
                 reservation.RoomId = effectiveRoomId;
@@ -782,7 +782,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 if (dto.Services != null)
                 {
-                    // استبدل قائمة الخدمات فقط لو المستخدم بعت Services
+                    
                     if (reservation.Services != null && reservation.Services.Any())
                     {
                         // Explicitly delete old services from the database to avoid orphaned records

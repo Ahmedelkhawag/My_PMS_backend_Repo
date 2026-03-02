@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,7 +9,7 @@ namespace PMS.Domain.Entities.Configuration
 		public int Id { get; set; }
 		public string Name { get; set; } // "Spa", "Airport Pickup"
 		public decimal Price { get; set; } // 300.00
-		public bool IsPerDay { get; set; } // هل تحسب يومياً؟ (Parking = true, Transfer = false)
+		public bool IsPerDay { get; set; } 
 		public bool IsActive { get; set; } = true;
 	}
 }

@@ -5,7 +5,7 @@ using System.Text;
 namespace PMS.Domain.Enums
 {
     /// <summary>
-    /// حالة الغرفة:
+    
     /// 0 = Available
     /// 1 = Occupied
     /// 2 = Maintenance

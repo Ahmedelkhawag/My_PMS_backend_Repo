@@ -389,7 +389,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     return Failure<FolioTransactionDto>("Cannot void a system-generated reversal transaction.", 400);
                 }
 
-                // شيلنا الـ if (transaction.IsVoided) من هنا عشان هنعملها بشكل آمن تحت
+                
 
                 var folio = transaction.Folio;
                 if (folio == null)
@@ -432,19 +432,19 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 var currentBusinessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
 
-                // 🚨 التعديل السحري: Voiding + Locking (عشان نمنع الـ Race Condition)
+                
                 var rowsAffected = await _unitOfWork.FolioTransactions.GetQueryable()
                     .Where(t => t.Id == transactionId && !t.IsVoided)
                     .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsVoided, true));
 
                 if (rowsAffected == 0)
                 {
-                    // لو رجعت صفر يبقى الحركة دي اتلغت أو اتنقلت في نفس اللحظة من ريكويست تاني
+                    
                     await _unitOfWork.RollbackTransactionAsync();
                     return Failure<FolioTransactionDto>("Transaction is already voided or processed by another request.", 409);
                 }
 
-                // شيلنا السطر القديم بتاع: transaction.IsVoided = true;
+                
 
                 var isDebit = IsDebit(transaction.Type);
                 var signedReverseAmount = -transaction.Amount;
@@ -458,13 +458,13 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Amount = signedReverseAmount,
                     Description = $"VOID: {transaction.Description}",
                     ReferenceNo = transaction.ReferenceNo,
-                    IsVoided = false, // ✅ الكارثة اتصلحت: الحركة دي لازم تفضل عايشة
+                    IsVoided = false, 
                     ShiftId = activeShiftId
                 };
 
                 await _unitOfWork.FolioTransactions.AddAsync(reversal);
 
-                // ... بقيت الكود بتاع الـ ExecuteUpdateAsync للـ Folio زي ما هو بالظبط ...
+                
                 if (isDebit)
                 {
                     await _unitOfWork.GuestFolios.GetQueryable()
@@ -496,19 +496,19 @@ namespace PMS.Infrastructure.Implmentations.Services
             catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
-                // ... (اللوج هنا زي ما كان)
+                
                 return Failure<FolioTransactionDto>("An internal error occurred while processing the transaction.", 500);
             }
         }
 
         public async Task<ResponseObjectDto<bool>> PostPaymentWithDiscountAsync(PostPaymentWithDiscountDto dto)
         {
-            // 1. نفتح الـ Database Transaction
+            
             await _unitOfWork.BeginTransactionAsync();
 
             try
             {
-                // 2. نسجل عملية الدفع الأساسية
+                
                 var paymentDto = new CreateTransactionDto
                 {
                     ReservationId = dto.ReservationId,
@@ -521,12 +521,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 var paymentResult = await ProcessTransactionInternalAsync(paymentDto);
                 if (!paymentResult.IsSuccess)
                 {
-                    // لو الدفع فشل (مثلاً نسي يكتب رقم الفيزا)، نلغي كل حاجة
+                    
                     await _unitOfWork.RollbackTransactionAsync();
                     return Failure<bool>($"Payment failed: {paymentResult.Message}", 400);
                 }
 
-                // 3. لو فيه خصم، نسجله كعملية تانية
+                
                 if (dto.ApplyDiscount)
                 {
                     if (dto.DiscountAmount == null || dto.DiscountAmount <= 0)
@@ -547,13 +547,13 @@ namespace PMS.Infrastructure.Implmentations.Services
                     var discountResult = await ProcessTransactionInternalAsync(discountDto);
                     if (!discountResult.IsSuccess)
                     {
-                        // لو الخصم فشل (مثلاً نسي يكتب السبب)، نلغي الدفع وكل اللي حصل
+                        
                         await _unitOfWork.RollbackTransactionAsync();
                         return Failure<bool>($"Discount failed: {discountResult.Message}", 400);
                     }
                 }
 
-                // 4. لو كله تمام، نـ Commit التغييرات للداتابيز بأمان
+                
                 await _unitOfWork.CompleteAsync();
                 await _unitOfWork.CommitTransactionAsync();
 
@@ -567,7 +567,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
             catch (Exception ex)
             {
-                // لو ضرب أي Error فجأة، نرجع في كلامنا فوراً
+                
                 await _unitOfWork.RollbackTransactionAsync();
                 _logger.LogError(ex, "A critical error occurred while processing payment and optional discount for reservation {ReservationId}.", dto.ReservationId);
                 return Failure<bool>("An internal error occurred while processing the transaction. Please try again or contact support.", 500);
@@ -576,7 +576,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<FolioTransactionDto>> RefundTransactionAsync(int originalTransactionId, decimal refundAmount, string reason, string userId)
         {
-            await _unitOfWork.BeginTransactionAsync(); // 1. فتحنا الترانزاكشن
+            await _unitOfWork.BeginTransactionAsync(); 
             try
             {
                 if (refundAmount <= 0)
@@ -784,7 +784,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 if (rowsAffected == 0)
                 {
-                    // لو مفيش صفوف اتعدلت، يبقى الترانزاكشن دي اتلغت أو اتنقلت في نفس اللحظة من ريكويست تاني
+                    
                     await _unitOfWork.RollbackTransactionAsync();
                     return Failure<bool>("Transaction is already transferred or voided by another process.", 409); // 409 Conflict
                 }

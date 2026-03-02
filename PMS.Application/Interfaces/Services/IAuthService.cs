@@ -37,7 +37,7 @@ namespace PMS.Application.Interfaces.Services
 
         Task<List<StatusDto>> GetStatusesAsync();
 
-        Task<AuthModel> RefreshTokenAsync(string token); // بيستقبل الـ Refresh Token ويرجع Access جديد
+        Task<AuthModel> RefreshTokenAsync(string token); 
         Task<bool> RevokeTokenAsync(string token);
     }
 }

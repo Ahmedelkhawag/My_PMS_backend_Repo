@@ -5,7 +5,7 @@ using System.Text;
 namespace PMS.Domain.Enums
 {
     /// <summary>
-    /// مستوى الولاء:
+    
     /// 0 = Bronze
     /// 1 = Silver
     /// 2 = Gold

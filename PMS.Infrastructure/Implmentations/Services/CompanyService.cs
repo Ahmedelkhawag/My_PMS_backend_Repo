@@ -157,7 +157,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 };
             }
 
-            // القيم المقترحة (تستخدم القيم الحالية لو الحقول ما اتبعتش)
+            
             var nameProposed = dto.Name?.Trim() ?? company.Name;
             var emailProposed = dto.Email?.Trim() ?? company.Email ?? string.Empty;
             var phoneProposed = dto.PhoneNumber?.Trim() ?? company.PhoneNumber ?? string.Empty;
@@ -165,7 +165,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 ? dto.TaxNumber.Trim()
                 : company.TaxNumber;
 
-            // نتحقق الأول: هل في أي من الحقول الحساسة هيتغير فعلاً؟
+            
             var isNameChanging = dto.Name != null &&
                                  !string.Equals(dto.Name.Trim(), company.Name, StringComparison.OrdinalIgnoreCase);
 
@@ -178,7 +178,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             var isTaxChanging = dto.TaxNumber != null &&
                                 !string.Equals(dto.TaxNumber.Trim(), company.TaxNumber, StringComparison.Ordinal);
 
-            // لو ولا واحد من دول هيتغير، يبقى مفيش داعي نعمل duplicate check
+            
             if (isNameChanging || isEmailChanging || isPhoneChanging || isTaxChanging)
             {
                 var existing = await _unitOfWork.CompanyProfiles.GetQueryable()
@@ -202,7 +202,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
             }
 
-            // تحديث الحقول فقط لو بعتّها
+            
             if (dto.Name != null) company.Name = dto.Name.Trim();
             if (dto.TaxNumber != null) company.TaxNumber = dto.TaxNumber;
             if (dto.ContactPerson != null) company.ContactPerson = dto.ContactPerson.Trim();
