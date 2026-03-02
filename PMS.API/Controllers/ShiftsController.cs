@@ -12,6 +12,7 @@ namespace PMS.API.Controllers
 {
 	[Route("api/shifts")]
 	[ApiController]
+	[Authorize]
 	public class ShiftsController : ControllerBase
 	{
 		private readonly IShiftService _shiftService;

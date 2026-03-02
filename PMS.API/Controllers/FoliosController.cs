@@ -25,6 +25,7 @@ namespace PMS.API.Controllers
         /// Adds a new transaction to the folio of the given reservation.
         /// </summary>
         [HttpPost("transaction")]
+        [Authorize(Roles = "Accountant,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AddTransaction([FromBody] CreateTransactionDto dto)
@@ -41,6 +42,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("transactions/{id}/void")]
+        [Authorize(Roles = "Accountant,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> VoidTransaction(int id)
@@ -54,6 +56,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("{reservationId}")]
+        [Authorize(Roles = "Receptionist,Accountant,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioDetailsDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetFolioByReservation(int reservationId)
@@ -67,6 +70,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("{reservationId}/summary")]
+        [Authorize(Roles = "Receptionist,Accountant,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestFolioSummaryDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetFolioSummary(int reservationId)
         {
@@ -79,6 +83,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("post-payment")]
+        [Authorize(Roles = "Accountant,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PostPaymentWithDiscount([FromBody] PostPaymentWithDiscountDto dto)
@@ -95,6 +100,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("transactions/{id}/refund")]
+        [Authorize(Roles = "Accountant,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<FolioTransactionDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
@@ -116,6 +122,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("transactions/{id}/transfer")]
+        [Authorize(Roles = "Accountant,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> TransferTransaction(int id, [FromBody] TransferTransactionDto dto)

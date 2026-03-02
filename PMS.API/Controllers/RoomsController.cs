@@ -11,6 +11,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/rooms")]
     [ApiController]
+    [Authorize]
     public class RoomsController : ControllerBase
     {
         private readonly IRoomService _roomService;
@@ -21,7 +22,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping")]
         [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<RoomDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll([FromQuery] RoomFilterDto filter)
@@ -35,7 +36,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,IT,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateRoomDto dto)
@@ -52,7 +53,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,IT,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
@@ -73,7 +74,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,IT,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -87,7 +88,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/restore")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,IT,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Restore(int id)
@@ -101,7 +102,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/status")]
-        [Authorize]
+        [Authorize(Roles = "HouseKeeping,HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ChangeStatus(
@@ -143,7 +144,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping")]
         [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
@@ -157,7 +158,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("summary")]
-        [Authorize]
+        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping")]
         [ProducesResponseType(typeof(ResponseObjectDto<RoomStatsDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSummary()
         {
@@ -170,7 +171,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("{id}/maintenance/start")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,IT,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> StartMaintenance(int id, [FromBody] RoomMaintenanceDto dto)
@@ -187,7 +188,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("{id}/maintenance/finish")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,IT,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> FinishMaintenance(int id)

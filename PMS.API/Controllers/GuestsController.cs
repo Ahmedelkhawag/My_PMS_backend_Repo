@@ -10,6 +10,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/guests")]
     [ApiController]
+    [Authorize(Roles = "Receptionist,HotelManager")]
     public class GuestsController : ControllerBase
     {
         private readonly IGuestService _guestService;
@@ -19,7 +20,6 @@ namespace PMS.API.Controllers
             _guestService = guestService;
         }
         [HttpPost]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
@@ -37,7 +37,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<GuestDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll(
@@ -54,7 +53,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
@@ -68,7 +66,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateGuestDto dto)
@@ -89,7 +86,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -103,7 +99,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/restore")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Restore(int id)
@@ -117,7 +112,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("summary")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<GuestStatsDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetSummary()

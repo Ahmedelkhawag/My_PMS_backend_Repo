@@ -9,6 +9,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/lookups")]
     [ApiController]
+    [Authorize(Roles = "IT,SuperAdmin")]
     public class LookupsConfigurationController : ControllerBase
     {
         private readonly IConfigurationService _configService;
@@ -102,7 +103,6 @@ namespace PMS.API.Controllers
 		}
 
 		[HttpGet("all")]
-		[Authorize]
 		[ProducesResponseType(typeof(ResponseObjectDto<AppLookupsDto>), StatusCodes.Status200OK)]
 		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
 		public async Task<IActionResult> GetAllLookups()

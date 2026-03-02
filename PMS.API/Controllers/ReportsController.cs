@@ -7,6 +7,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Accountant,HotelManager,SuperAdmin")]
     public class ReportsController : ControllerBase
     {
         private readonly IReportService _reportService;
@@ -25,7 +26,6 @@ namespace PMS.API.Controllers
         [HttpGet("police-report")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [Authorize]
         public async Task<IActionResult> DownloadPoliceReport([FromQuery] DateTime? date)
         {
             try

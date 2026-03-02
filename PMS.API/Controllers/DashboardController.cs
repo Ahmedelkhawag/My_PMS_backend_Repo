@@ -10,6 +10,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/dashboard")]
     [ApiController]
+    [Authorize]
     public class DashboardController : ControllerBase
     {
         private readonly IDashboardService _dashboardService;

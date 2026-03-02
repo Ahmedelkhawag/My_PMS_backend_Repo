@@ -8,6 +8,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/companies")]
     [ApiController]
+    [Authorize]
     public class CompaniesController : ControllerBase
     {
         private readonly ICompanyService _companyService;

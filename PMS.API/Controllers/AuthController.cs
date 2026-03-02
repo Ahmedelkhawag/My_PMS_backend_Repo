@@ -21,7 +21,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost("employees")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<AuthModel>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> RegisterEmployee([FromForm] RegisterEmployeeDto model)
@@ -125,7 +125,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("users")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<UserResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllUsers([FromQuery] string? search, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -136,7 +136,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("users/{id}")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<UserDetailDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetUserById(string id)
@@ -164,7 +164,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("employees/{id}")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status200OK)]
         public async Task<IActionResult> UpdateEmployee(string id, [FromForm] UpdateEmployeeDto model)
         {
@@ -179,7 +179,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpDelete("users/{id}")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status200OK)]
         public async Task<IActionResult> DeleteUser(string id)
         {
@@ -190,7 +190,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("users/{id}/restore")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status200OK)]
         public async Task<IActionResult> RestoreUser(string id)
         {

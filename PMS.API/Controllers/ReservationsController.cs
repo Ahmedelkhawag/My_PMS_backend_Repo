@@ -10,6 +10,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/reservations")]
     [ApiController]
+    [Authorize(Roles = "Receptionist,HotelManager")]
     public class ReservationsController : ControllerBase
     {
         private readonly IReservationService _reservationService;
@@ -27,7 +28,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpPost]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status409Conflict)]
@@ -45,7 +45,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<ReservationListDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAll(
@@ -63,7 +62,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/status")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
@@ -92,7 +90,6 @@ namespace PMS.API.Controllers
         /// Generates the bilingual (Arabic/English) Guest Registration Card PDF for the reservation.
         /// </summary>
         [HttpGet("{id}/registration-card")]
-        [Authorize]
         [Produces("application/pdf")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -113,7 +110,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
@@ -127,7 +123,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -141,7 +137,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/restore")]
-        [Authorize]
+        [Authorize(Roles = "HotelManager")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Restore(int id)
@@ -155,7 +151,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateReservationDto dto)
@@ -172,7 +167,6 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("summary")]
-        [Authorize]
         [ProducesResponseType(typeof(ResponseObjectDto<ReservationStatsDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetSummary()
