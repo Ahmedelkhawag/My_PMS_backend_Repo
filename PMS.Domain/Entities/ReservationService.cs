@@ -11,32 +11,23 @@ namespace PMS.Domain.Entities
 	{
 		public int Id { get; set; }
 
-		// ==========================
-		// 1. الربط بالحجز
-		// ==========================
+	
 		public int ReservationId { get; set; }
 		[ForeignKey("ReservationId")]
-		public Reservation Reservation { get; set; } // عشان نرجع للحجز الأب
+		public Reservation Reservation { get; set; } 
 
-		// ==========================
-		// 2. تفاصيل الخدمة
-		// ==========================
-		// هنخزن الاسم والسعر هنا عشان لو سعر الخدمة اتغير في المستقبل، الحجز القديم يفضل بسعره القديم (Snapshot)
+	
 		[Required]
 		public string ServiceName { get; set; } = string.Empty; // "Spa", "Airport Pickup"
 
 		[Column(TypeName = "decimal(18,2)")]
-		public decimal Price { get; set; } // 300.00 (سعر الوحدة)
+		public decimal Price { get; set; } 
 
-		public int Quantity { get; set; } = 1; // العدد (لو طلب خدمتين غسيل مثلاً)
+		public int Quantity { get; set; } = 1; 
 
-		public bool IsPerDay { get; set; } = false; // هل الخدمة دي بتتحسب يومياً؟ (زي VIP في الصورة)
+		public bool IsPerDay { get; set; } = false;
 
-		// ==========================
-		// 3. الإجمالي الخاص بالخدمة دي
-		// ==========================
-		// لو هي يومية = السعر * العدد * عدد الليالي
-		// لو مرة واحدة = السعر * العدد
+		
 		[Column(TypeName = "decimal(18,2)")]
 		public decimal TotalServicePrice { get; set; }
 
