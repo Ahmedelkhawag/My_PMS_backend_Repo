@@ -10,7 +10,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/reservations")]
     [ApiController]
-    [Authorize(Roles = "Receptionist,HotelManager")]
+    [Authorize(Roles = "Receptionist,HotelManager,SuperAdmin")]
     public class ReservationsController : ControllerBase
     {
         private readonly IReservationService _reservationService;
@@ -123,7 +123,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "HotelManager")]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -137,7 +137,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/restore")]
-        [Authorize(Roles = "HotelManager")]
+        [Authorize(Roles = "HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Restore(int id)

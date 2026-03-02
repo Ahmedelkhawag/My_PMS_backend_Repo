@@ -10,7 +10,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/guests")]
     [ApiController]
-    [Authorize(Roles = "Receptionist,HotelManager")]
+    [Authorize(Roles = "Receptionist,HotelManager,SuperAdmin")]
     public class GuestsController : ControllerBase
     {
         private readonly IGuestService _guestService;

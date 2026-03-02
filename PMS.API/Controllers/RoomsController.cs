@@ -22,7 +22,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping")]
+        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<PagedResult<RoomDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll([FromQuery] RoomFilterDto filter)
@@ -102,7 +102,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "HouseKeeping,HotelManager")]
+        [Authorize(Roles = "HouseKeeping,HotelManager,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ChangeStatus(
@@ -144,7 +144,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping")]
+        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<RoomDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
@@ -158,7 +158,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpGet("summary")]
-        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping")]
+        [Authorize(Roles = "Receptionist,HotelManager,HouseKeeping,SuperAdmin")]
         [ProducesResponseType(typeof(ResponseObjectDto<RoomStatsDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSummary()
         {
