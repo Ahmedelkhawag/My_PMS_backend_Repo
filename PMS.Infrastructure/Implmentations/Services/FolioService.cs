@@ -224,7 +224,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
-                _logger.LogError(ex, "Error adding transaction for reservation {ReservationId}", dto.ReservationId);
+                _logger.LogError(ex, "A critical error occurred while adding transaction for reservation {ReservationId}.", dto.ReservationId);
                 return Failure<FolioTransactionDto>("An error occurred while adding the transaction.", 500);
             }
         }
@@ -238,7 +238,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding transaction without commit for reservation {ReservationId}", dto.ReservationId);
+                _logger.LogError(ex, "A critical error occurred while adding transaction without commit for reservation {ReservationId}.", dto.ReservationId);
                 return Failure<FolioTransactionDto>("An error occurred while adding the transaction.", 500);
             }
         }
@@ -337,26 +337,16 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (isDebit)
             {
-                await _unitOfWork.GuestFolios.GetQueryable()
-                    .Where(f => f.Id == folio.Id)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(f => f.TotalCharges, f => f.TotalCharges + signedAmount)
-                        .SetProperty(f => f.Balance, f => f.Balance + signedAmount));
-                
                 folio.TotalCharges += signedAmount;
                 folio.Balance += signedAmount;
             }
             else
             {
-                await _unitOfWork.GuestFolios.GetQueryable()
-                    .Where(f => f.Id == folio.Id)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(f => f.TotalPayments, f => f.TotalPayments + signedAmount)
-                        .SetProperty(f => f.Balance, f => f.Balance - signedAmount));
-
                 folio.TotalPayments += signedAmount;
                 folio.Balance -= signedAmount;
             }
+
+            _unitOfWork.GuestFolios.Update(folio);
 
             return new ResponseObjectDto<FolioTransactionDto>
             {
@@ -496,7 +486,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
-                
+                _logger.LogError(ex, "A critical error occurred while voiding transaction {TransactionId}.", transactionId);
                 return Failure<FolioTransactionDto>("An internal error occurred while processing the transaction.", 500);
             }
         }

@@ -10,7 +10,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Accountant,HotelManager,SuperAdmin")]
+   
     public class ReportsController : ControllerBase
     {
         private readonly IReportService _reportService;
@@ -36,6 +36,8 @@ namespace PMS.API.Controllers
         /// </summary>
         /// <param name="date">Optional: The business date for the report. Defaults to current open business date.</param>
         /// <returns>Excel File (.xlsx)</returns>
+        /// 
+        [Authorize(Roles = "HotelManager,SuperAdmin,Receptionist")]
         [HttpGet("police-report")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -64,6 +66,8 @@ namespace PMS.API.Controllers
         /// <summary>
         /// الحصول على تقرير الوردية الحالية للمستخدم.
         /// </summary>
+        /// 
+        [Authorize]
         [HttpGet("shift/current")]
         [ProducesResponseType(typeof(ResponseObjectDto<ShiftReportDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
@@ -84,6 +88,8 @@ namespace PMS.API.Controllers
         /// <summary>
         /// Generates the bilingual (Arabic/English) Guest Registration Card PDF for the reservation.
         /// </summary>
+        /// 
+        [Authorize(Roles = "HotelManager,SuperAdmin,Receptionist")]
         [HttpGet("registration-card/{id}")]
         [Produces("application/pdf")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]

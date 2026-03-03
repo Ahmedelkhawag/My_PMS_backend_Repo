@@ -9,7 +9,7 @@ namespace PMS.API.Controllers
 {
     [Route("api/lookups")]
     [ApiController]
-    [Authorize(Roles = "IT,SuperAdmin")]
+    [Authorize(Roles = "HotelManager,IT,SuperAdmin,Receptionist,Accountant")]
     public class LookupsConfigurationController : ControllerBase
     {
         private readonly IConfigurationService _configService;

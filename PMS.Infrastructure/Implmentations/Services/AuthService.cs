@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PMS.Application.DTOs;
@@ -33,6 +34,7 @@ namespace PMS.Infrastructure.Implmentations.Services
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILogger<AuthService> _logger;
 
         public AuthService(
          UserManager<AppUser> userManager,
@@ -42,7 +44,8 @@ namespace PMS.Infrastructure.Implmentations.Services
          IUnitOfWork unitOfWork,
          IHttpContextAccessor httpContextAccessor,
          IWebHostEnvironment webHostEnvironment,
-         IMapper mapper)
+         IMapper mapper,
+         ILogger<AuthService> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -52,6 +55,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             _webHostEnvironment = webHostEnvironment;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<AuthModel> RegisterEmployeeAsync(RegisterEmployeeDto model)
@@ -132,6 +136,9 @@ namespace PMS.Infrastructure.Implmentations.Services
                 await _unitOfWork.CompleteAsync();
             }
 
+            var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
+            _logger.LogInformation("New employee {Username} with Role {Role} was registered by {CreatedBy}.", model.Username, model.Role, currentUserId);
+
             return new AuthModel
             {
                 IsAuthenticated = true,
@@ -149,7 +156,10 @@ namespace PMS.Infrastructure.Implmentations.Services
            .SingleOrDefaultAsync(u => u.UserName == model.UserName);
 
             if (user is null || !await _userManager.CheckPasswordAsync(user, model.Password))
+            {
+                _logger.LogWarning("Failed login attempt for username {Username}.", model.UserName);
                 return new AuthModel { Message = "Invalid Username or Password!" };
+            }
 
             if (!user.IsActive)
                 return new AuthModel { Message = "User is Disabled!" };
@@ -159,6 +169,8 @@ namespace PMS.Infrastructure.Implmentations.Services
             refreshToken.AppUserId = user.Id;
             await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
             await _unitOfWork.CompleteAsync();
+
+            _logger.LogInformation("User {UserId} logged in successfully.", user.Id);
 
             return new AuthModel
             {
@@ -389,6 +401,8 @@ namespace PMS.Infrastructure.Implmentations.Services
             if (!updateResult.Succeeded)
                 return new ApiResponse<string>(updateResult.Errors.Select(e => e.Description).ToList(), "Failed to update user.");
 
+            _logger.LogWarning("Admin {AdminId} forced a password reset for User {UserId}.", currentUserId, targetUserId);
+
             return new ApiResponse<string>(data: null, "Password reset successfully. User must change password on next login.");
         }
 
@@ -494,6 +508,8 @@ namespace PMS.Infrastructure.Implmentations.Services
             if (!result.Succeeded)
                 return new ApiResponse<string>("Failed to delete user.");
 
+            _logger.LogInformation("User {UserId} was deleted by {AdminId}.", userId, currentUserId);
+
             return new ApiResponse<string>(data: null, "User deleted successfully");
         }
 
@@ -521,6 +537,8 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (!result.Succeeded)
                 return new ApiResponse<string>("Failed to restore user.");
+
+            _logger.LogInformation("User {UserId} was restored by {AdminId}.", userId, currentUserId);
 
             return new ApiResponse<string>(data: null, "User restored successfully");
         }
@@ -631,12 +649,14 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (storedRefreshToken == null)
             {
+                _logger.LogWarning("Refresh token attempt failed: Invalid token presented.");
                 authModel.Message = "Invalid Token";
                 return authModel;
             }
 
             if (!storedRefreshToken.IsActive)
             {
+                _logger.LogWarning("Refresh token attempt failed: Inactive token presented for User {UserId}.", storedRefreshToken.AppUserId);
                 authModel.Message = "Inactive Token";
                 return authModel;
             }

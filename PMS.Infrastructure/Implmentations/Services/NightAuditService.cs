@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PMS.Application.DTOs.Audit;
 using PMS.Application.DTOs.Common;
@@ -17,21 +19,29 @@ namespace PMS.Infrastructure.Implmentations.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<NightAuditService> _logger;
+        private readonly IConfiguration _configuration;
 
         public NightAuditService(
             IUnitOfWork unitOfWork,
-            ILogger<NightAuditService> logger)
+            ILogger<NightAuditService> logger,
+            IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _configuration = configuration;
         }
 
         public async Task RunAutoNightAuditAsync()
         {
             _logger.LogInformation("RunAutoNightAuditAsync: System-triggered night audit starting.");
-            const string SystemUserId = "b74ddd14-6340-4840-95c2-db12554843e5";
+            
+            var systemUserId = _configuration["NightAuditSettings:SystemUserId"];
+            if (string.IsNullOrWhiteSpace(systemUserId))
+            {
+                throw new InvalidOperationException("RunAutoNightAuditAsync: NightAuditSettings:SystemUserId is missing in configuration.");
+            }
 
-            var result = await RunNightAuditAsync(SystemUserId, force: true);
+            var result = await RunNightAuditAsync(systemUserId, force: true);
 
             if (!result.Succeeded)
             {
@@ -126,14 +136,27 @@ namespace PMS.Infrastructure.Implmentations.Services
                 response.NoShowsMarked = await HandleNoShowsAsync(currentBusinessDate);
 
                 // Step C.5: Force close all open employee shifts
-                var openShiftsClosed = await _unitOfWork.EmployeeShifts
+                var openShiftIds = await _unitOfWork.EmployeeShifts
                     .GetQueryable()
                     .Where(s => !s.IsClosed)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(x => x.IsClosed, true)
-                        .SetProperty(x => x.EndedAt, DateTime.UtcNow));
+                    .Select(s => s.EmployeeId)
+                    .ToListAsync();
 
-                _logger.LogInformation("Force-closed {Count} open employee shifts for Night Audit.", openShiftsClosed);
+                if (openShiftIds.Any())
+                {
+                    var openShiftsClosed = await _unitOfWork.EmployeeShifts
+                        .GetQueryable()
+                        .Where(s => !s.IsClosed)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(x => x.IsClosed, true)
+                            .SetProperty(x => x.EndedAt, DateTime.UtcNow));
+
+                    foreach (var employeeId in openShiftIds)
+                    {
+                        _logger.LogInformation("Force-closed open shift for EmployeeId: {EmployeeId}", employeeId);
+                    }
+                    _logger.LogInformation("Force-closed a total of {Count} open employee shifts for Night Audit.", openShiftsClosed);
+                }
 
                 // Step D: Roll Business Date
                 response.NewBusinessDate = await RollBusinessDateAsync(currentBusinessDay, userId, currentBusinessDate);
@@ -230,6 +253,9 @@ namespace PMS.Infrastructure.Implmentations.Services
             var foliosWithChargeToday = existingRoomCharges.ToHashSet();
             int processedRooms = 0;
 
+            var newTransactions = new List<FolioTransaction>();
+            var foliosToUpdateByAmount = new Dictionary<decimal, List<int>>();
+
             foreach (var reservation in checkedInReservations)
             {
                 if (!foliosByReservationId.TryGetValue(reservation.Id, out var folio))
@@ -261,15 +287,33 @@ namespace PMS.Infrastructure.Implmentations.Services
                     IsVoided = false
                 };
 
-                await _unitOfWork.FolioTransactions.AddAsync(transactionEntity);
+                newTransactions.Add(transactionEntity);
 
-                await _unitOfWork.GuestFolios.GetQueryable()
-                    .Where(f => f.Id == folio.Id)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(f => f.TotalCharges, f => f.TotalCharges + chargeAmount)
-                        .SetProperty(f => f.Balance, f => f.Balance + chargeAmount));
+                if (!foliosToUpdateByAmount.ContainsKey(chargeAmount))
+                {
+                    foliosToUpdateByAmount[chargeAmount] = new List<int>();
+                }
+                foliosToUpdateByAmount[chargeAmount].Add(folio.Id);
 
                 processedRooms++;
+            }
+
+            if (newTransactions.Any())
+            {
+                await _unitOfWork.FolioTransactions.AddRangeAsync(newTransactions);
+
+                // Bulk update optimization grouping by the charge amount
+                foreach (var group in foliosToUpdateByAmount)
+                {
+                    var amount = group.Key;
+                    var idsToUpdate = group.Value;
+
+                    await _unitOfWork.GuestFolios.GetQueryable()
+                        .Where(f => idsToUpdate.Contains(f.Id))
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(f => f.TotalCharges, f => f.TotalCharges + amount)
+                            .SetProperty(f => f.Balance, f => f.Balance + amount));
+                }
             }
 
             _logger.LogInformation("Posted room charges for {ProcessedRooms} reservations on BusinessDate={Date}.",

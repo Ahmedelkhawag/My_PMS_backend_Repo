@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PMS.Application.DTOs.Common;
 using PMS.Application.DTOs.Dashboard;
 using PMS.Application.DTOs.Reservations;
@@ -35,13 +36,16 @@ namespace PMS.Infrastructure.Implmentations.Services
         private const int RoomStatusMaintenance = 3;
         private const int RoomStatusOccupied = 5;
 
-        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFolioService folioService, IMapper mapper)
+        private readonly ILogger<ReservationsService> _logger;
+
+        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFolioService folioService, IMapper mapper, ILogger<ReservationsService> logger)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
             _httpContextAccessor = httpContextAccessor;
             _folioService = folioService;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<ResponseObjectDto<ReservationDto>> CreateReservationAsync(CreateReservationDto dto)
@@ -228,9 +232,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Data = responseDto
                 };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "Failed to create reservation for Guest {GuestId} with Room {RoomId}.", dto.GuestId, dto.RoomId);
                 throw;
             }
         }
@@ -298,11 +303,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 
         public async Task<ResponseObjectDto<bool>> ChangeStatusAsync(ChangeReservationStatusDto dto)
         {
+            Reservation reservation = null;
             await _unitOfWork.BeginTransactionAsync();
             try
             {
                 // Load reservation with room, because we must update both atomically
-                var reservation = await _unitOfWork.Reservations.GetQueryable()
+                reservation = await _unitOfWork.Reservations.GetQueryable()
                     .Include(r => r.Room)
                     .FirstOrDefaultAsync(r => r.Id == dto.ReservationId);
 
@@ -515,9 +521,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Data = true
                 };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "Failed to change status for Reservation {ReservationId} from {CurrentStatus} to {NewStatus}.", dto.ReservationId, reservation?.Status, dto.NewStatus);
                 throw;
             }
         }
@@ -804,9 +811,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                     Data = _mapper.Map<ReservationDto>(reservation)
                 };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "Failed to update Reservation {ReservationId}.", id);
                 throw;
             }
         }

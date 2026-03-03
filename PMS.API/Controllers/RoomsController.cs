@@ -102,7 +102,7 @@ namespace PMS.API.Controllers
         }
 
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "HouseKeeping,HotelManager,SuperAdmin")]
+        [Authorize(Roles = "HouseKeeping,HotelManager,SuperAdmin,Receptionist")]
         [ProducesResponseType(typeof(ResponseObjectDto<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ChangeStatus(

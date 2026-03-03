@@ -78,7 +78,7 @@ namespace PMS.API.Controllers
         /// عرض تاريخ الورديات (للمديرين فقط).
         /// </summary>
         [HttpGet("history")]
-        [Authorize(Roles = $"{Roles.HotelManager},{Roles.SuperAdmin}")]
+        [Authorize(Roles = $"{Roles.HotelManager},{Roles.SuperAdmin},{Roles.Accountant}")]
         [ProducesResponseType(typeof(ResponseObjectDto<IEnumerable<ShiftDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseObjectDto<string>), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetShiftHistory([FromQuery] UserFilterDto filter)
