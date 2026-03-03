@@ -18,5 +18,6 @@ namespace PMS.Application.DTOs.Configuration
         public List<EnumLookupDto> TransactionTypes { get; init; } = new();
         public List<LookupDto> ReservationStatuses { get; init; } = new();
         public List<RatePlanLookupDto> RatePlans { get; init; } = new();
+        public List<string> Roles { get; set; } = new List<string>();
     }
 }

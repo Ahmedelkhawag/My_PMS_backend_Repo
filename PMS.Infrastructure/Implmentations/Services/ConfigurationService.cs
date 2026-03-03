@@ -14,10 +14,12 @@ namespace PMS.Infrastructure.Implmentations.Services
     public class ConfigurationService: IConfigurationService
 	{
 		private readonly IUnitOfWork _unitOfWork; 
+		private readonly IAuthService _authService;
 
-		public ConfigurationService(IUnitOfWork unitOfWork)
+		public ConfigurationService(IUnitOfWork unitOfWork, IAuthService authService)
 		{
 			_unitOfWork = unitOfWork;
+			_authService = authService;
 		}
 
 		public Task<ResponseObjectDto<StatusConfigurationDto>> GetStatusConfigurationAsync()
@@ -210,6 +212,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var extraServices = (await GetExtraServicesAsync()).ToList();
 			var reservationStatuses = (await GetReservationStatusesAsync()).ToList();
 			var ratePlans = (await GetRatePlansAsync(null)).ToList();
+			var roles = await _authService.GetRolesAsync();
 
 			var transactionTypesResult = await GetTransactionTypesLookupAsync();
 			if (!transactionTypesResult.IsSuccess || transactionTypesResult.Data == null)
@@ -261,7 +264,8 @@ namespace PMS.Infrastructure.Implmentations.Services
 				BedTypes = bedTypes,
 				TransactionTypes = transactionTypesResult.Data,
 				ReservationStatuses = reservationStatuses,
-				RatePlans = ratePlans
+				RatePlans = ratePlans,
+				Roles = roles
 			};
 
 			return new ResponseObjectDto<AppLookupsDto>
