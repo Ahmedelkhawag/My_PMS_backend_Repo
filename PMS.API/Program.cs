@@ -123,6 +123,7 @@ builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IRegistrationCardPdfService, RegistrationCardPdfService>();
+builder.Services.AddScoped<IAccountingService, AccountingService>();
 
 builder.Services.AddPdfInfrastructure();
 
@@ -186,6 +187,8 @@ using (var scope = app.Services.CreateScope())
 
         await PMS.Infrastructure.Context.ContextSeed.SeedEssentialsAsync(userManager, roleManager, context);
         await PMS.Infrastructure.Context.ContextSeed.SeedRoomsAsync(context);
+        await PMS.Infrastructure.Context.ContextSeed.SeedAccountsAsync(context);
+        await PMS.Infrastructure.Context.ContextSeed.SeedJournalEntryMappingsAsync(context);
     }
     catch (Exception ex)
     {

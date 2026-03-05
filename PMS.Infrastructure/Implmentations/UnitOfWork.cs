@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PMS.Application.Interfaces.Repositories;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
+using PMS.Domain.Entities.BackOffice;
 using PMS.Domain.Entities.Configuration;
 using PMS.Infrastructure.Context;
 using System;
@@ -33,7 +34,11 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<RoomStatusLookup> RoomStatuses { get; private set; }
 		public IBaseRepository<ExtraService> ExtraServices { get; private set; }
 		public IBaseRepository<CompanyProfile> CompanyProfiles { get; private set; }
-		public IBaseRepository<RatePlan> RatePlans { get; private set; }
+        public IBaseRepository<RatePlan> RatePlans { get; private set; }
+        public IBaseRepository<Account> Accounts { get; private set; }
+        public IBaseRepository<JournalEntry> JournalEntries { get; private set; }
+        public IBaseRepository<JournalEntryLine> JournalEntryLines { get; private set; }
+        public IBaseRepository<JournalEntryMapping> JournalEntryMappings { get; private set; }
 		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -59,6 +64,11 @@ namespace PMS.Infrastructure.Implmentations
 			CompanyProfiles = new BaseRepository<CompanyProfile>(_context);
 			RatePlans = new BaseRepository<RatePlan>(_context);
 			BusinessDays = new BaseRepository<BusinessDay>(_context);
+
+            Accounts = new BaseRepository<Account>(_context);
+            JournalEntries = new BaseRepository<JournalEntry>(_context);
+            JournalEntryLines = new BaseRepository<JournalEntryLine>(_context);
+            JournalEntryMappings = new BaseRepository<JournalEntryMapping>(_context);
 		}
 
         public async Task<int> CompleteAsync()

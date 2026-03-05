@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
@@ -11,9 +12,11 @@ using PMS.Infrastructure.Context;
 namespace PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260304131540_AddBackOfficeGLFoundation")]
+    partial class AddBackOfficeGLFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -463,58 +466,6 @@ namespace PMS.Infrastructure.Migrations
                     b.HasIndex("JournalEntryId");
 
                     b.ToTable("JournalEntryLines");
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.JournalEntryMapping", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("CreditAccountId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DebitAccountId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TransactionType")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreditAccountId");
-
-                    b.HasIndex("DebitAccountId");
-
-                    b.HasIndex("TransactionType");
-
-                    b.ToTable("JournalEntryMappings");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.BusinessDay", b =>
@@ -1949,25 +1900,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Navigation("Account");
 
                     b.Navigation("JournalEntry");
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.JournalEntryMapping", b =>
-                {
-                    b.HasOne("PMS.Domain.Entities.BackOffice.Account", "CreditAccount")
-                        .WithMany()
-                        .HasForeignKey("CreditAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("PMS.Domain.Entities.BackOffice.Account", "DebitAccount")
-                        .WithMany()
-                        .HasForeignKey("DebitAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CreditAccount");
-
-                    b.Navigation("DebitAccount");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.BusinessDay", b =>

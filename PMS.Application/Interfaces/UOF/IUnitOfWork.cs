@@ -33,6 +33,11 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<CompanyProfile> CompanyProfiles { get; }
 		IBaseRepository<RatePlan> RatePlans { get; }
 
+        IBaseRepository<PMS.Domain.Entities.BackOffice.Account> Accounts { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntry> JournalEntries { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntryLine> JournalEntryLines { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntryMapping> JournalEntryMappings { get; }
+
 		//  SaveChanges
 		Task<int> CompleteAsync();
 

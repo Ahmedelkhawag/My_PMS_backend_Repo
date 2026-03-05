@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PMS.Domain.Entities;
+using PMS.Domain.Entities.BackOffice;
 using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Constants;
 using PMS.Domain.Interfaces;
@@ -50,6 +51,11 @@ namespace PMS.Infrastructure.Context
 		public DbSet<RoomStatusLookup> RoomStatusLookups { get; set; }
 		public DbSet<CompanyProfile> CompanyProfiles { get; set; }
 		public DbSet<RatePlan> RatePlans { get; set; }
+
+		public DbSet<Account> Accounts { get; set; }
+		public DbSet<JournalEntry> JournalEntries { get; set; }
+		public DbSet<JournalEntryLine> JournalEntryLines { get; set; }
+		public DbSet<JournalEntryMapping> JournalEntryMappings { get; set; }
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);
@@ -303,9 +309,62 @@ namespace PMS.Infrastructure.Context
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 
+			// Back-Office GL: Account configuration
+			builder.Entity<Account>(entity =>
+			{
+				entity.Property(a => a.CurrentBalance).HasColumnType("decimal(18,2)");
 
-			
-			
+				entity.HasOne(a => a.ParentAccount)
+					  .WithMany(a => a.ChildAccounts)
+					  .HasForeignKey(a => a.ParentAccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office GL: JournalEntry configuration
+			builder.Entity<JournalEntry>(entity =>
+			{
+				entity.HasIndex(j => j.EntryNumber)
+					  .IsUnique();
+
+				entity.HasMany(j => j.Lines)
+					  .WithOne(l => l.JournalEntry)
+					  .HasForeignKey(l => l.JournalEntryId)
+					  .OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(j => j.BusinessDay)
+					  .WithMany()
+					  .HasForeignKey(j => j.BusinessDayId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office GL: JournalEntryLine configuration
+			builder.Entity<JournalEntryLine>(entity =>
+			{
+				entity.Property(l => l.Debit).HasColumnType("decimal(18,2)");
+				entity.Property(l => l.Credit).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(l => l.Account)
+					  .WithMany()
+					  .HasForeignKey(l => l.AccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office GL: JournalEntryMapping configuration
+			builder.Entity<JournalEntryMapping>(entity =>
+			{
+				entity.HasIndex(m => m.TransactionType).IsUnique(false);
+
+				entity.HasOne(m => m.DebitAccount)
+					  .WithMany()
+					  .HasForeignKey(m => m.DebitAccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(m => m.CreditAccount)
+					  .WithMany()
+					  .HasForeignKey(m => m.CreditAccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
 			foreach (var entityType in builder.Model.GetEntityTypes())
 			{
 				if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))

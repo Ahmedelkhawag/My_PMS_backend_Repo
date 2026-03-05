@@ -21,13 +21,15 @@ namespace PMS.Infrastructure.Implmentations.Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<FolioService> _logger;
         private readonly IMapper _mapper;
+        private readonly IAccountingService _accountingService;
 
-        public FolioService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<FolioService> logger, IMapper mapper)
+        public FolioService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<FolioService> logger, IMapper mapper, IAccountingService accountingService)
         {
             _unitOfWork = unitOfWork;
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
             _mapper = mapper;
+            _accountingService = accountingService;
         }
 
         public async Task<ResponseObjectDto<GuestFolioSummaryDto>> GetFolioSummaryAsync(int reservationId)
@@ -214,6 +216,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 {
                     await _unitOfWork.CompleteAsync();
                     await _unitOfWork.CommitTransactionAsync();
+
+                    if (result.Data != null)
+                    {
+                        _ = _accountingService.PostTransactionToGLAsync(result.Data.Id);
+                    }
                 }
                 else
                 {

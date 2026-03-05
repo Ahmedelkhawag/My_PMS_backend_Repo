@@ -2,6 +2,7 @@ using AutoMapper;
 using PMS.Application.DTOs.Auth;
 using PMS.Application.DTOs.Companies;
 using PMS.Application.DTOs.Configuration;
+using PMS.Application.DTOs.BackOffice;
 using PMS.Application.DTOs.Folios;
 using PMS.Application.DTOs.Guests;
 using PMS.Application.DTOs.Reservations;
@@ -85,6 +86,12 @@ namespace PMS.Application
                 .ForMember(dest => dest.FolioId, opt => opt.MapFrom(src => src.Id));
 
             CreateMap<FolioTransaction, FolioTransactionDto>();
+
+            // ══════════════════════════════════════════════
+            // Back-Office / GL
+            // ══════════════════════════════════════════════
+            CreateMap<JournalEntryLineDto, PMS.Domain.Entities.BackOffice.JournalEntryLine>();
+            CreateMap<CreateJournalEntryDto, PMS.Domain.Entities.BackOffice.JournalEntry>();
 
             // ══════════════════════════════════════════════
             // Reservation
