@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Back-Office local documentation (keep locally, do not push)
+docs/BackOffice_API_Frontend_Guide.md
+docs/BackOffice_Guide_AR.md
+docs/BackOffice_Services_Explained.md
