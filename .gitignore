@@ -361,3 +361,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# App settings with credentials (keep locally, use appsettings.json.example as template)
+PMS.API/appsettings.json
+PMS.API/appsettings.Test.json
+
+# Back-Office local documentation (keep locally, do not push)
+docs/BackOffice_API_Frontend_Guide.md
+docs/BackOffice_Guide_AR.md
+docs/BackOffice_Services_Explained.md
+docs/Deploy_Workflow_Guide.md
