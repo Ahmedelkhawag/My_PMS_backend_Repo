@@ -144,6 +144,9 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(o =>
 {
+    var jwtKey = builder.Configuration["JWT:Key"];
+    if (string.IsNullOrWhiteSpace(jwtKey))
+        throw new InvalidOperationException("JWT:Key is not set. Add JWT section to appsettings or appsettings.{Environment}.json.");
     o.RequireHttpsMetadata = false;
     o.SaveToken = false;
     o.TokenValidationParameters = new TokenValidationParameters
@@ -155,8 +158,7 @@ builder.Services.AddAuthentication(options =>
 
         ValidIssuer = builder.Configuration["JWT:Issuer"],
         ValidAudience = builder.Configuration["JWT:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"])),
-
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
 
         ClockSkew = TimeSpan.Zero
     };
