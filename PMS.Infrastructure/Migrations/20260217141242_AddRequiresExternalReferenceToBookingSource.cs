@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,12 +10,16 @@ namespace PMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "RequiresExternalReference",
-                table: "BookingSources",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+            // Idempotent: add column only if it does not exist (e.g. Test DB already has it)
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (
+                    SELECT 1 FROM sys.columns
+                    WHERE object_id = OBJECT_ID('BookingSources') AND name = 'RequiresExternalReference'
+                )
+                BEGIN
+                    ALTER TABLE [BookingSources] ADD [RequiresExternalReference] bit NOT NULL DEFAULT CAST(0 AS bit);
+                END
+            ");
 
             migrationBuilder.UpdateData(
                 table: "BookingSources",
