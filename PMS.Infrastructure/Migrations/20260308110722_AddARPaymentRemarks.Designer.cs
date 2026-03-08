@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
@@ -11,9 +12,11 @@ using PMS.Infrastructure.Context;
 namespace PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308110722_AddARPaymentRemarks")]
+    partial class AddARPaymentRemarks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -285,63 +288,6 @@ namespace PMS.Infrastructure.Migrations
                     b.HasIndex("StatusID");
 
                     b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.ARAdjustment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ARInvoiceId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("AdjustmentDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("ReferenceNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ARInvoiceId");
-
-                    b.ToTable("ARAdjustments");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.ARInvoice", b =>
@@ -2188,17 +2134,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Navigation("Country");
 
                     b.Navigation("Status");
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.ARAdjustment", b =>
-                {
-                    b.HasOne("PMS.Domain.Entities.BackOffice.AR.ARInvoice", "ARInvoice")
-                        .WithMany()
-                        .HasForeignKey("ARInvoiceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ARInvoice");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.ARInvoice", b =>

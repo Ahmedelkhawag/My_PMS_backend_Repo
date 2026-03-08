@@ -3,6 +3,7 @@ using PMS.Application.Interfaces.Repositories;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.BackOffice;
+using PMS.Domain.Entities.BackOffice.AR;
 using PMS.Domain.Entities.Configuration;
 using PMS.Infrastructure.Context;
 using System;
@@ -39,6 +40,11 @@ namespace PMS.Infrastructure.Implmentations
         public IBaseRepository<JournalEntry> JournalEntries { get; private set; }
         public IBaseRepository<JournalEntryLine> JournalEntryLines { get; private set; }
         public IBaseRepository<JournalEntryMapping> JournalEntryMappings { get; private set; }
+        public IBaseRepository<ARInvoice> ARInvoices { get; private set; }
+        public IBaseRepository<ARInvoiceLine> ARInvoiceLines { get; private set; }
+        public IBaseRepository<ARPayment> ARPayments { get; private set; }
+        public IBaseRepository<ARPaymentAllocation> ARPaymentAllocations { get; private set; }
+        public IBaseRepository<ARAdjustment> ARAdjustments { get; private set; }
 		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -69,6 +75,12 @@ namespace PMS.Infrastructure.Implmentations
             JournalEntries = new BaseRepository<JournalEntry>(_context);
             JournalEntryLines = new BaseRepository<JournalEntryLine>(_context);
             JournalEntryMappings = new BaseRepository<JournalEntryMapping>(_context);
+
+            ARInvoices = new BaseRepository<ARInvoice>(_context);
+            ARInvoiceLines = new BaseRepository<ARInvoiceLine>(_context);
+            ARPayments = new BaseRepository<ARPayment>(_context);
+            ARPaymentAllocations = new BaseRepository<ARPaymentAllocation>(_context);
+            ARAdjustments = new BaseRepository<ARAdjustment>(_context);
 		}
 
         public async Task<int> CompleteAsync()

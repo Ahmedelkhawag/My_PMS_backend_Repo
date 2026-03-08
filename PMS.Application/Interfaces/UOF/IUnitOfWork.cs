@@ -38,6 +38,12 @@ namespace PMS.Application.Interfaces.UOF
         IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntryLine> JournalEntryLines { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntryMapping> JournalEntryMappings { get; }
 
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARInvoice> ARInvoices { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARInvoiceLine> ARInvoiceLines { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARPayment> ARPayments { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARPaymentAllocation> ARPaymentAllocations { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARAdjustment> ARAdjustments { get; }
+
 		//  SaveChanges
 		Task<int> CompleteAsync();
 

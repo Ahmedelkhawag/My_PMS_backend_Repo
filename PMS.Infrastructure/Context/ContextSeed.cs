@@ -272,46 +272,118 @@ namespace PMS.Infrastructure.Context
 
         public static async Task SeedJournalEntryMappingsAsync(ApplicationDbContext context)
         {
-            if (await context.JournalEntryMappings.AnyAsync())
+            var now = DateTime.UtcNow;
+            var hasAny = await context.JournalEntryMappings.AnyAsync();
+
+            if (!hasAny)
             {
+                var mappings = new List<JournalEntryMapping>
+                {
+                    new JournalEntryMapping
+                    {
+                        TransactionType = TransactionType.RoomCharge,
+                        DebitAccountId = 1132, // Guest Ledger (In-house Guests)
+                        CreditAccountId = 411, // Room Revenue
+                        IsActive = true,
+                        CreatedAt = now,
+                        CreatedBy = "System"
+                    },
+                    new JournalEntryMapping
+                    {
+                        TransactionType = TransactionType.CashPayment,
+                        DebitAccountId = 1111, // Front Office Cashier
+                        CreditAccountId = 1132, // Guest Ledger (In-house Guests)
+                        IsActive = true,
+                        CreatedAt = now,
+                        CreatedBy = "System"
+                    },
+                    new JournalEntryMapping
+                    {
+                        TransactionType = TransactionType.Refund,
+                        DebitAccountId = 1132, // Guest Ledger (In-house Guests)
+                        CreditAccountId = 1111, // Front Office Cashier
+                        IsActive = true,
+                        CreatedAt = now,
+                        CreatedBy = "System"
+                    },
+                    new JournalEntryMapping
+                    {
+                        TransactionType = TransactionType.CityLedgerPayment,
+                        DebitAccountId = 1131, // City Ledger (Companies/Travel Agents)
+                        CreditAccountId = 1132, // Guest Ledger (In-house Guests)
+                        IsActive = true,
+                        CreatedAt = now,
+                        CreatedBy = "System"
+                    }
+                };
+
+                await context.JournalEntryMappings.AddRangeAsync(mappings);
+                await context.SaveChangesAsync();
                 return;
             }
 
-            var now = DateTime.UtcNow;
+            bool added = false;
 
-            var mappings = new List<JournalEntryMapping>
+            if (!await context.JournalEntryMappings.AnyAsync(m => m.TransactionType == TransactionType.RoomCharge))
             {
-                new JournalEntryMapping
+                await context.JournalEntryMappings.AddAsync(new JournalEntryMapping
                 {
                     TransactionType = TransactionType.RoomCharge,
-                    DebitAccountId = 1132, // Guest Ledger (In-house Guests)
-                    CreditAccountId = 411, // Room Revenue
+                    DebitAccountId = 1132,
+                    CreditAccountId = 411,
                     IsActive = true,
                     CreatedAt = now,
                     CreatedBy = "System"
-                },
-                new JournalEntryMapping
+                });
+                added = true;
+            }
+
+            if (!await context.JournalEntryMappings.AnyAsync(m => m.TransactionType == TransactionType.CashPayment))
+            {
+                await context.JournalEntryMappings.AddAsync(new JournalEntryMapping
                 {
                     TransactionType = TransactionType.CashPayment,
-                    DebitAccountId = 1111, // Front Office Cashier
-                    CreditAccountId = 1132, // Guest Ledger (In-house Guests)
+                    DebitAccountId = 1111,
+                    CreditAccountId = 1132,
                     IsActive = true,
                     CreatedAt = now,
                     CreatedBy = "System"
-                },
-                new JournalEntryMapping
+                });
+                added = true;
+            }
+
+            if (!await context.JournalEntryMappings.AnyAsync(m => m.TransactionType == TransactionType.Refund))
+            {
+                await context.JournalEntryMappings.AddAsync(new JournalEntryMapping
                 {
                     TransactionType = TransactionType.Refund,
-                    DebitAccountId = 1132, // Guest Ledger (In-house Guests)
-                    CreditAccountId = 1111, // Front Office Cashier
+                    DebitAccountId = 1132,
+                    CreditAccountId = 1111,
                     IsActive = true,
                     CreatedAt = now,
                     CreatedBy = "System"
-                }
-            };
+                });
+                added = true;
+            }
 
-            await context.JournalEntryMappings.AddRangeAsync(mappings);
-            await context.SaveChangesAsync();
+            if (!await context.JournalEntryMappings.AnyAsync(m => m.TransactionType == TransactionType.CityLedgerPayment))
+            {
+                await context.JournalEntryMappings.AddAsync(new JournalEntryMapping
+                {
+                    TransactionType = TransactionType.CityLedgerPayment,
+                    DebitAccountId = 1131,
+                    CreditAccountId = 1132,
+                    IsActive = true,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                });
+                added = true;
+            }
+
+            if (added)
+            {
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

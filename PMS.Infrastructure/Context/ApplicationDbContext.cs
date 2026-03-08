@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.BackOffice;
+using PMS.Domain.Entities.BackOffice.AR;
 using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Constants;
 using PMS.Domain.Interfaces;
@@ -56,6 +57,12 @@ namespace PMS.Infrastructure.Context
 		public DbSet<JournalEntry> JournalEntries { get; set; }
 		public DbSet<JournalEntryLine> JournalEntryLines { get; set; }
 		public DbSet<JournalEntryMapping> JournalEntryMappings { get; set; }
+
+		public DbSet<ARInvoice> ARInvoices { get; set; }
+		public DbSet<ARInvoiceLine> ARInvoiceLines { get; set; }
+		public DbSet<ARPayment> ARPayments { get; set; }
+		public DbSet<ARPaymentAllocation> ARPaymentAllocations { get; set; }
+		public DbSet<ARAdjustment> ARAdjustments { get; set; }
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);
@@ -362,6 +369,76 @@ namespace PMS.Infrastructure.Context
 				entity.HasOne(m => m.CreditAccount)
 					  .WithMany()
 					  .HasForeignKey(m => m.CreditAccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office AR: ARInvoice configuration
+			builder.Entity<ARInvoice>(entity =>
+			{
+				entity.HasIndex(i => i.InvoiceNumber)
+					  .IsUnique();
+
+				entity.Property(i => i.TotalAmount).HasColumnType("decimal(18,2)");
+				entity.Property(i => i.PaidAmount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(i => i.Company)
+					  .WithMany()
+					  .HasForeignKey(i => i.CompanyId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office AR: ARInvoiceLine configuration
+			builder.Entity<ARInvoiceLine>(entity =>
+			{
+				entity.Property(l => l.Amount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(l => l.ARInvoice)
+					  .WithMany(i => i.Lines)
+					  .HasForeignKey(l => l.ARInvoiceId)
+					  .OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(l => l.FolioTransaction)
+					  .WithMany()
+					  .HasForeignKey(l => l.FolioTransactionId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office AR: ARPayment configuration
+			builder.Entity<ARPayment>(entity =>
+			{
+				entity.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+				entity.Property(p => p.UnallocatedAmount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(p => p.Company)
+					  .WithMany()
+					  .HasForeignKey(p => p.CompanyId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office AR: ARPaymentAllocation configuration
+			builder.Entity<ARPaymentAllocation>(entity =>
+			{
+				entity.Property(a => a.AmountApplied).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(a => a.ARPayment)
+					  .WithMany()
+					  .HasForeignKey(a => a.ARPaymentId)
+					  .OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(a => a.ARInvoice)
+					  .WithMany()
+					  .HasForeignKey(a => a.ARInvoiceId)
+					  .OnDelete(DeleteBehavior.Cascade);
+			});
+
+			// Back-Office AR: ARAdjustment configuration
+			builder.Entity<ARAdjustment>(entity =>
+			{
+				entity.Property(a => a.Amount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(a => a.ARInvoice)
+					  .WithMany()
+					  .HasForeignKey(a => a.ARInvoiceId)
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 

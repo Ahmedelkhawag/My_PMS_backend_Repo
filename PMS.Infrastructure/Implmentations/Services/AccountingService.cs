@@ -5,6 +5,7 @@ using PMS.Application.DTOs.BackOffice;
 using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities.BackOffice;
+using PMS.Domain.Entities.BackOffice.AR;
 using PMS.Domain.Enums.BackOffice;
 using System;
 using System.Linq;
@@ -117,6 +118,215 @@ namespace PMS.Infrastructure.Implmentations.Services
                 await _unitOfWork.CommitTransactionAsync();
 
                 return new ApiResponse<bool>(true, "Transaction posted to GL successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        public async Task<ApiResponse<bool>> PostARPaymentToGLAsync(int arPaymentId)
+        {
+            var payment = await _unitOfWork.ARPayments
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == arPaymentId);
+
+            if (payment == null)
+            {
+                return new ApiResponse<bool>("AR payment not found.");
+            }
+
+            if (payment.Amount <= 0)
+            {
+                return new ApiResponse<bool>("AR payment amount is zero; nothing to post.");
+            }
+
+            var debitAccountId = GetDebitAccountIdForPaymentMethod(payment.PaymentMethod);
+            if (debitAccountId == null)
+            {
+                return new ApiResponse<bool>($"Unknown payment method '{payment.PaymentMethod}'; cannot determine debit account.");
+            }
+
+            const int CityLedgerAccountId = 1131;
+            var debitAccount = await _unitOfWork.Accounts.GetByIdAsync(debitAccountId.Value);
+            var creditAccount = await _unitOfWork.Accounts.GetByIdAsync(CityLedgerAccountId);
+
+            if (debitAccount == null || creditAccount == null)
+            {
+                return new ApiResponse<bool>("Debit or credit account not found.");
+            }
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+            {
+                return new ApiResponse<bool>("No open BusinessDay found to attach the journal entry.");
+            }
+
+            var description = $"AR Payment - Ref: {payment.ReferenceNumber ?? "N/A"}";
+            var journalEntry = new JournalEntry
+            {
+                EntryNumber = GenerateEntryNumber(businessDate),
+                Date = businessDate,
+                Description = description,
+                ReferenceNo = payment.ReferenceNumber ?? string.Empty,
+                BusinessDayId = businessDay.Id
+            };
+
+            var absAmount = Math.Abs(payment.Amount);
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = debitAccountId.Value,
+                Debit = absAmount,
+                Credit = 0m,
+                Memo = description
+            });
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = CityLedgerAccountId,
+                Debit = 0m,
+                Credit = absAmount,
+                Memo = description
+            });
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.JournalEntries.AddAsync(journalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
+
+                ApplyBalanceEffect(debitAccount, absAmount, isDebit: true);
+                ApplyBalanceEffect(creditAccount, absAmount, isDebit: false);
+
+                _unitOfWork.Accounts.Update(debitAccount);
+                _unitOfWork.Accounts.Update(creditAccount);
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<bool>(true, "AR payment posted to GL successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        private static int? GetDebitAccountIdForPaymentMethod(string method)
+        {
+            return method?.ToUpperInvariant() switch
+            {
+                "CASH" => 1111,   // Front Office Cashier
+                "CHECK" => 1121,  // Main Bank
+                "BANKTRANSFER" => 1121,
+                _ => null
+            };
+        }
+
+        public async Task<ApiResponse<bool>> PostARAdjustmentToGLAsync(int arAdjustmentId)
+        {
+            var adjustment = await _unitOfWork.ARAdjustments
+                .GetQueryable()
+                .AsNoTracking()
+                .Include(a => a.ARInvoice)
+                .FirstOrDefaultAsync(a => a.Id == arAdjustmentId);
+
+            if (adjustment == null)
+            {
+                return new ApiResponse<bool>("AR adjustment not found.");
+            }
+
+            if (adjustment.Amount <= 0)
+            {
+                return new ApiResponse<bool>("AR adjustment amount is zero; nothing to post.");
+            }
+
+            const int CityLedgerAccountId = 1131;
+            const int RevenueAccountId = 411;
+            const int DiscountContraRevenueAccountId = 413;
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+            {
+                return new ApiResponse<bool>("No open BusinessDay found to attach the journal entry.");
+            }
+
+            int debitAccountId;
+            int creditAccountId;
+            string description;
+
+            if (adjustment.Type == Domain.Enums.BackOffice.ARAdjustmentType.CreditNote)
+            {
+                debitAccountId = DiscountContraRevenueAccountId;
+                creditAccountId = CityLedgerAccountId;
+                description = $"AR Credit Note - {adjustment.Reason}";
+            }
+            else
+            {
+                debitAccountId = CityLedgerAccountId;
+                creditAccountId = RevenueAccountId;
+                description = $"AR Debit Note - {adjustment.Reason}";
+            }
+
+            var debitAccount = await _unitOfWork.Accounts.GetByIdAsync(debitAccountId);
+            var creditAccount = await _unitOfWork.Accounts.GetByIdAsync(creditAccountId);
+
+            if (debitAccount == null || creditAccount == null)
+            {
+                return new ApiResponse<bool>("Debit or credit account not found.");
+            }
+
+            var journalEntry = new JournalEntry
+            {
+                EntryNumber = GenerateEntryNumber(businessDate),
+                Date = businessDate,
+                Description = description,
+                ReferenceNo = adjustment.ReferenceNumber ?? string.Empty,
+                BusinessDayId = businessDay.Id
+            };
+
+            var absAmount = Math.Abs(adjustment.Amount);
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = debitAccountId,
+                Debit = absAmount,
+                Credit = 0m,
+                Memo = description
+            });
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = creditAccountId,
+                Debit = 0m,
+                Credit = absAmount,
+                Memo = description
+            });
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.JournalEntries.AddAsync(journalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
+
+                ApplyBalanceEffect(debitAccount, absAmount, isDebit: true);
+                ApplyBalanceEffect(creditAccount, absAmount, isDebit: false);
+
+                _unitOfWork.Accounts.Update(debitAccount);
+                _unitOfWork.Accounts.Update(creditAccount);
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<bool>(true, "AR adjustment posted to GL successfully.");
             }
             catch
             {

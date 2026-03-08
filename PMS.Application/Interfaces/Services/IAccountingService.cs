@@ -7,6 +7,8 @@ namespace PMS.Application.Interfaces.Services
     public interface IAccountingService
     {
         Task<ApiResponse<bool>> PostTransactionToGLAsync(int folioTransactionId);
+        Task<ApiResponse<bool>> PostARPaymentToGLAsync(int arPaymentId);
+        Task<ApiResponse<bool>> PostARAdjustmentToGLAsync(int arAdjustmentId);
         Task<ApiResponse<bool>> CreateManualJournalEntryAsync(CreateJournalEntryDto dto);
         Task<ApiResponse<TrialBalanceReportDto>> GetTrialBalanceAsync();
         Task<ApiResponse<AccountStatementHeaderDto>> GetAccountStatementAsync(int accountId, DateTime startDate, DateTime endDate);
