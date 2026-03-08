@@ -7,10 +7,10 @@
   },
   "AllowedHosts": "*",
   "ConnectionStrings": {
-    "DefaultConnection": "Server=db41123.public.databaseasp.net; Database=db41123; User Id=db41123; Password=Ahmed@123852; Encrypt=True; TrustServerCertificate=True; MultipleActiveResultSets=True;"
+    "DefaultConnection": "Server=YOUR_SERVER;Database=YOUR_DATABASE;User Id=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;"
   },
   "JWT": {
-    "Key": "3d88d75ed74a561f7fd6632ce1899b4f3b56e45e0666f3eba279b2c9bba7d331a1c32d6d",
+    "Key": "YOUR_JWT_KEY_AT_LEAST_32_CHARS",
     "Issuer": "https://localhost:7107",
     "Audience": "https://localhost:7107",
     "DurationInMinutes": 30,
@@ -20,6 +20,6 @@
     "TaxPercentage": 0.15
   },
   "NightAuditSettings": {
-    "SystemUserId": "b74ddd14-6340-4840-95c2-db12554843e5"
+    "SystemUserId": "YOUR_SYSTEM_USER_GUID"
   }
 }
