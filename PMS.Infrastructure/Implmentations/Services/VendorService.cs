@@ -270,5 +270,198 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<bool>("An unexpected error occurred while deleting the vendor.");
             }
         }
+
+        public async Task<ApiResponse<VendorStatementReportDto>> GetVendorStatementAsync(int vendorId, DateTime? fromDate, DateTime? toDate)
+        {
+            var vendor = await _unitOfWork.Vendors
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == vendorId);
+
+            if (vendor == null)
+            {
+                return new ApiResponse<VendorStatementReportDto>("Vendor not found.");
+            }
+
+            var vendorDto = _mapper.Map<VendorDto>(vendor);
+
+            var invoicesQuery = _unitOfWork.APInvoices
+                .GetQueryable()
+                .AsNoTracking()
+                .Where(i => i.VendorId == vendorId && i.Status != Domain.Enums.BackOffice.AP.APInvoiceStatus.Draft);
+
+            var paymentsQuery = _unitOfWork.APPayments
+                .GetQueryable()
+                .AsNoTracking()
+                .Where(p => p.VendorId == vendorId && !p.IsVoided);
+
+            if (toDate.HasValue)
+            {
+                var to = toDate.Value.Date.AddDays(1);
+                invoicesQuery = invoicesQuery.Where(i => i.InvoiceDate < to);
+                paymentsQuery = paymentsQuery.Where(p => p.PaymentDate < to);
+            }
+
+            DateTime fromBoundary = fromDate?.Date ?? DateTime.MinValue.Date;
+
+            var allInvoices = await invoicesQuery.ToListAsync();
+            var allPayments = await paymentsQuery.ToListAsync();
+
+            var openingInvoicesTotal = allInvoices
+                .Where(i => i.InvoiceDate.Date < fromBoundary)
+                .Sum(i => i.TotalAmount);
+
+            var openingPaymentsTotal = allPayments
+                .Where(p => p.PaymentDate.Date < fromBoundary)
+                .Sum(p => p.Amount);
+
+            var openingBalance = openingInvoicesTotal - openingPaymentsTotal;
+
+            var inRangeInvoices = allInvoices
+                .Where(i => i.InvoiceDate.Date >= fromBoundary)
+                .Select(i => new VendorStatementLineDto(
+                    i.InvoiceDate,
+                    "Invoice",
+                    i.VendorInvoiceNo,
+                    $"AP Invoice #{i.VendorInvoiceNo}",
+                    Debit: 0m,
+                    Credit: i.TotalAmount,
+                    RunningBalance: 0m
+                ));
+
+            var inRangePayments = allPayments
+                .Where(p => p.PaymentDate.Date >= fromBoundary)
+                .Select(p => new VendorStatementLineDto(
+                    p.PaymentDate,
+                    "Payment",
+                    p.ReferenceNo ?? string.Empty,
+                    $"AP Payment - {p.Method}",
+                    Debit: p.Amount,
+                    Credit: 0m,
+                    RunningBalance: 0m
+                ));
+
+            var lines = inRangeInvoices
+                .Concat(inRangePayments)
+                .OrderBy(l => l.Date)
+                .ThenBy(l => l.Type)
+                .ToList();
+
+            var runningBalance = openingBalance;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var line = lines[i];
+                runningBalance = runningBalance + line.Credit - line.Debit;
+                lines[i] = line with { RunningBalance = runningBalance };
+            }
+
+            var report = new VendorStatementReportDto(
+                vendorDto,
+                fromDate,
+                toDate,
+                openingBalance,
+                runningBalance,
+                lines
+            );
+
+            return new ApiResponse<VendorStatementReportDto>(report, "Vendor statement generated successfully.");
+        }
+
+        public async Task<ApiResponse<APAgingReportDto>> GetAPAgingReportAsync(DateTime asOfDate)
+        {
+            var asOf = asOfDate.Date;
+
+            var relevantStatuses = new[]
+            {
+                Domain.Enums.BackOffice.AP.APInvoiceStatus.Approved,
+                Domain.Enums.BackOffice.AP.APInvoiceStatus.PartiallyPaid
+            };
+
+            var invoices = await _unitOfWork.APInvoices
+                .GetQueryable()
+                .AsNoTracking()
+                .Include(i => i.Vendor)
+                .Where(i => relevantStatuses.Contains(i.Status))
+                .ToListAsync();
+
+            var grouped = invoices
+                .Select(i => new
+                {
+                    Invoice = i,
+                    Remaining = i.TotalAmount - i.AmountPaid
+                })
+                .Where(x => x.Remaining > 0m)
+                .GroupBy(x => new { x.Invoice.VendorId, x.Invoice.Vendor.Name });
+
+            var buckets = new List<APAgingBucketDto>();
+            decimal grandTotal = 0m;
+
+            foreach (var group in grouped)
+            {
+                decimal current = 0m;
+                decimal overdue1To30 = 0m;
+                decimal overdue31To60 = 0m;
+                decimal overdue61To90 = 0m;
+                decimal overdueOver90 = 0m;
+
+                foreach (var item in group)
+                {
+                    var days = (asOf - item.Invoice.DueDate.Date).Days;
+                    var amount = item.Remaining;
+
+                    if (days <= 0)
+                    {
+                        current += amount;
+                    }
+                    else if (days <= 30)
+                    {
+                        overdue1To30 += amount;
+                    }
+                    else if (days <= 60)
+                    {
+                        overdue31To60 += amount;
+                    }
+                    else if (days <= 90)
+                    {
+                        overdue61To90 += amount;
+                    }
+                    else
+                    {
+                        overdueOver90 += amount;
+                    }
+                }
+
+                var totalOutstanding = current + overdue1To30 + overdue31To60 + overdue61To90 + overdueOver90;
+                if (totalOutstanding <= 0m)
+                {
+                    continue;
+                }
+
+                grandTotal += totalOutstanding;
+
+                buckets.Add(new APAgingBucketDto(
+                    group.Key.VendorId,
+                    group.Key.Name,
+                    current,
+                    overdue1To30,
+                    overdue31To60,
+                    overdue61To90,
+                    overdueOver90,
+                    totalOutstanding
+                ));
+            }
+
+            var sortedBuckets = buckets
+                .OrderByDescending(b => b.TotalOutstanding)
+                .ToList();
+
+            var report = new APAgingReportDto(
+                asOf,
+                sortedBuckets,
+                grandTotal
+            );
+
+            return new ApiResponse<APAgingReportDto>(report, "AP aging report generated successfully.");
+        }
     }
 }

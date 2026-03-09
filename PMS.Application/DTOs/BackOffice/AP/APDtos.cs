@@ -66,4 +66,40 @@ namespace PMS.Application.DTOs.BackOffice.AP
         public int? JournalEntryId { get; init; }
         public IEnumerable<APPaymentAllocationDto> Allocations { get; init; }
     }
+
+    public record VendorStatementLineDto(
+        DateTime Date,
+        string Type,
+        string ReferenceNo,
+        string Description,
+        decimal Debit,
+        decimal Credit,
+        decimal RunningBalance
+    );
+
+    public record VendorStatementReportDto(
+        VendorDto Vendor,
+        DateTime? FromDate,
+        DateTime? ToDate,
+        decimal TotalOpeningBalance,
+        decimal TotalClosingBalance,
+        List<VendorStatementLineDto> Lines
+    );
+
+    public record APAgingBucketDto(
+        int VendorId,
+        string VendorName,
+        decimal Current,
+        decimal Overdue1To30Days,
+        decimal Overdue31To60Days,
+        decimal Overdue61To90Days,
+        decimal OverdueOver90Days,
+        decimal TotalOutstanding
+    );
+
+    public record APAgingReportDto(
+        DateTime AsOfDate,
+        List<APAgingBucketDto> VendorBuckets,
+        decimal GrandTotalOutstanding
+    );
 }

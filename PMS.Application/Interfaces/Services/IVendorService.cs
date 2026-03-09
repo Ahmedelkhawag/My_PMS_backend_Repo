@@ -11,5 +11,7 @@ namespace PMS.Application.Interfaces.Services
         Task<ApiResponse<VendorDto>> CreateVendorAsync(CreateVendorDto dto);
         Task<ApiResponse<VendorDto>> UpdateVendorAsync(int id, UpdateVendorDto dto);
         Task<ApiResponse<bool>> DeleteVendorAsync(int id);
+        Task<ApiResponse<VendorStatementReportDto>> GetVendorStatementAsync(int vendorId, DateTime? fromDate, DateTime? toDate);
+        Task<ApiResponse<APAgingReportDto>> GetAPAgingReportAsync(DateTime asOfDate);
     }
 }

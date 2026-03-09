@@ -103,5 +103,32 @@ namespace PMS.API.Controllers
 
             return Ok(result);
         }
+
+        /// <summary>Gets a vendor statement (invoices vs payments) with running balance.</summary>
+        [HttpGet("{id:int}/statement")]
+        [ProducesResponseType(typeof(ApiResponse<VendorStatementReportDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<VendorStatementReportDto>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetStatement(
+            int id,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var result = await _vendorService.GetVendorStatementAsync(id, fromDate, toDate);
+
+            if (!result.Succeeded && result.Message?.Contains("not found") == true)
+                return NotFound(result);
+
+            return Ok(result);
+        }
+
+        /// <summary>Gets the AP aging report grouped by vendor.</summary>
+        [HttpGet("aging-report")]
+        [ProducesResponseType(typeof(ApiResponse<APAgingReportDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAPAgingReport([FromQuery] DateTime? asOfDate)
+        {
+            var date = asOfDate ?? DateTime.UtcNow;
+            var result = await _vendorService.GetAPAgingReportAsync(date);
+            return Ok(result);
+        }
     }
 }
