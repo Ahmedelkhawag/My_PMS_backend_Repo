@@ -44,6 +44,12 @@ namespace PMS.Application.Interfaces.UOF
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARPaymentAllocation> ARPaymentAllocations { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARAdjustment> ARAdjustments { get; }
 
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AP.Vendor> Vendors { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AP.APInvoice> APInvoices { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AP.APInvoiceLine> APInvoiceLines { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AP.APPayment> APPayments { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AP.APPaymentAllocation> APPaymentAllocations { get; }
+
 		//  SaveChanges
 		Task<int> CompleteAsync();
 

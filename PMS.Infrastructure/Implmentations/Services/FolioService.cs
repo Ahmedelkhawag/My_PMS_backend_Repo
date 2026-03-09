@@ -94,7 +94,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Select(t => _mapper.Map<FolioTransactionDto>(t))
                 .ToList();
 
-            var reservationDto = new PMS.Application.DTOs.Reservations.ReservationDto
+            var reservationDto = new global::PMS.Application.DTOs.Reservations.ReservationDto
             {
                 Id = reservation.Id,
                 ReservationNumber = reservation.ReservationNumber,
@@ -134,7 +134,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 CarPlate = reservation.CarPlate,
                 PurposeOfVisit = reservation.PurposeOfVisit,
                 MarketSegment = reservation.MarketSegment?.Name,
-                Services = reservation.Services?.Select(s => new PMS.Application.DTOs.Reservations.ReservationServiceDto
+                Services = reservation.Services?.Select(s => new global::PMS.Application.DTOs.Reservations.ReservationServiceDto
                 {
                     ServiceName = s.ServiceName,
                     Price = s.Price,
@@ -142,7 +142,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     IsPerDay = s.IsPerDay,
                     Total = s.TotalServicePrice,
                     ExtraServiceId = null
-                }).ToList() ?? new List<PMS.Application.DTOs.Reservations.ReservationServiceDto>()
+                }).ToList() ?? new List<global::PMS.Application.DTOs.Reservations.ReservationServiceDto>()
             };
 
             var expectedRemainingBalance = reservation.GrandTotal - folio.TotalPayments;
@@ -480,6 +480,15 @@ namespace PMS.Infrastructure.Implmentations.Services
                 }
 
                 await _unitOfWork.CompleteAsync();
+
+                // Reverse the original transaction in the General Ledger
+                var glReversalResult = await _accountingService.ReverseTransactionInGLAsync(transactionId);
+                if (!glReversalResult.Succeeded)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Failure<FolioTransactionDto>($"Critical Error: Failed to reverse transaction in GL. Reason: {glReversalResult.Message}", 500);
+                }
+
                 await _unitOfWork.CommitTransactionAsync();
 
                 return new ResponseObjectDto<FolioTransactionDto>

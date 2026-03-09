@@ -28,7 +28,11 @@ namespace PMS.Domain.Enums
         Discount = 24,
         Refund = 25,
         TransferCredit = 26,
-        CityLedgerPayment = 27
+        CityLedgerPayment = 27,
+
+        // 30-39 : System Adjustments
+        ShiftShortage = 30,
+        ShiftOverage = 31
     }
 }
 

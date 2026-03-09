@@ -91,7 +91,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 WorkNumber = model.WorkNumber,
                 NationalId = model.NationalId,
                 Nationality = model.Nationality,
-                Gender = Enum.TryParse<PMS.Domain.Enums.Gender>(model.Gender, true, out var parsedGender) ? parsedGender : null,
+                Gender = Enum.TryParse<global::PMS.Domain.Enums.Gender>(model.Gender, true, out var parsedGender) ? parsedGender : null,
                 DateOfBirth = model.BirthdayDate,
                 ProfileImagePath = profileImgPath,
                 IsActive = model.IsActive,

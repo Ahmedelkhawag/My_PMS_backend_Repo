@@ -4,6 +4,7 @@ using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.BackOffice;
 using PMS.Domain.Entities.BackOffice.AR;
+using PMS.Domain.Entities.BackOffice.AP;
 using PMS.Domain.Entities.Configuration;
 using PMS.Infrastructure.Context;
 using System;
@@ -45,6 +46,12 @@ namespace PMS.Infrastructure.Implmentations
         public IBaseRepository<ARPayment> ARPayments { get; private set; }
         public IBaseRepository<ARPaymentAllocation> ARPaymentAllocations { get; private set; }
         public IBaseRepository<ARAdjustment> ARAdjustments { get; private set; }
+
+        public IBaseRepository<Vendor> Vendors { get; private set; }
+        public IBaseRepository<APInvoice> APInvoices { get; private set; }
+        public IBaseRepository<APInvoiceLine> APInvoiceLines { get; private set; }
+        public IBaseRepository<APPayment> APPayments { get; private set; }
+        public IBaseRepository<APPaymentAllocation> APPaymentAllocations { get; private set; }
 		public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -81,6 +88,12 @@ namespace PMS.Infrastructure.Implmentations
             ARPayments = new BaseRepository<ARPayment>(_context);
             ARPaymentAllocations = new BaseRepository<ARPaymentAllocation>(_context);
             ARAdjustments = new BaseRepository<ARAdjustment>(_context);
+
+            Vendors = new BaseRepository<Vendor>(_context);
+            APInvoices = new BaseRepository<APInvoice>(_context);
+            APInvoiceLines = new BaseRepository<APInvoiceLine>(_context);
+            APPayments = new BaseRepository<APPayment>(_context);
+            APPaymentAllocations = new BaseRepository<APPaymentAllocation>(_context);
 		}
 
         public async Task<int> CompleteAsync()

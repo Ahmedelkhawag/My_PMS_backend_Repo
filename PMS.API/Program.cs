@@ -125,6 +125,9 @@ builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IRegistrationCardPdfService, RegistrationCardPdfService>();
 builder.Services.AddScoped<IAccountingService, AccountingService>();
+builder.Services.AddScoped<IVendorService, VendorService>();
+builder.Services.AddScoped<IAPInvoiceService, APInvoiceService>();
+builder.Services.AddScoped<IAPPaymentService, APPaymentService>();
 
 builder.Services.AddPdfInfrastructure();
 

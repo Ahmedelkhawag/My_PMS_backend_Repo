@@ -39,8 +39,12 @@ namespace PMS.Domain.Entities
 		[Column(TypeName = "decimal(18,2)")]
 		public decimal? ActualCashHanded { get; set; }
 
-		[Column(TypeName = "decimal(18,2)")]
 		public decimal? Difference { get; set; }
+
+		public int? ReconciliationTransactionId { get; set; }
+
+		[ForeignKey(nameof(ReconciliationTransactionId))]
+		public virtual FolioTransaction? ReconciliationTransaction { get; set; }
 
 		public string Notes { get; set; } = string.Empty;
 

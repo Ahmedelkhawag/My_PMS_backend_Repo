@@ -12,11 +12,10 @@ namespace PMS.Domain.Entities
     {
         public int Id { get; set; }
 
-        [Required]
-        public int FolioId { get; set; }
+        public int? FolioId { get; set; }
 
         [ForeignKey(nameof(FolioId))]
-        public GuestFolio Folio { get; set; }
+        public GuestFolio? Folio { get; set; }
 
         public int? ShiftId { get; set; }
 

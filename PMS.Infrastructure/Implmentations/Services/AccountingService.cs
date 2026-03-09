@@ -6,6 +6,7 @@ using PMS.Application.Interfaces.Services;
 using PMS.Application.Interfaces.UOF;
 using PMS.Domain.Entities.BackOffice;
 using PMS.Domain.Entities.BackOffice.AR;
+using PMS.Domain.Entities.BackOffice.AP;
 using PMS.Domain.Enums.BackOffice;
 using System;
 using System.Collections.Generic;
@@ -132,6 +133,272 @@ namespace PMS.Infrastructure.Implmentations.Services
             }
         }
 
+        public async Task<ApiResponse<bool>> ReverseTransactionInGLAsync(int folioTransactionId)
+        {
+            var transaction = await _unitOfWork.FolioTransactions
+                .GetQueryable()
+                .Include(t => t.Folio)
+                .FirstOrDefaultAsync(t => t.Id == folioTransactionId);
+
+            if (transaction == null)
+            {
+                return new ApiResponse<bool>("Folio transaction not found.");
+            }
+
+            if (!transaction.IsPostedToGL || transaction.JournalEntryId == null)
+            {
+                // Not posted, so nothing to reverse in GL
+                return new ApiResponse<bool>(true, "Transaction was not posted to GL; nothing to reverse.");
+            }
+
+            var originalJournalEntry = await _unitOfWork.JournalEntries
+                .GetQueryable()
+                .Include(je => je.Lines)
+                .FirstOrDefaultAsync(je => je.Id == transaction.JournalEntryId);
+
+            if (originalJournalEntry == null)
+            {
+                return new ApiResponse<bool>("Original Journal Entry not found.");
+            }
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+            {
+                return new ApiResponse<bool>("No open BusinessDay found to attach the reversal journal entry.");
+            }
+
+            var reversalJournalEntry = new JournalEntry
+            {
+                EntryNumber = GenerateEntryNumber(businessDate),
+                Date = DateTime.UtcNow,
+                ReferenceNo = $"REV-{transaction.Id}",
+                Description = $"Reversal of Transaction #{transaction.Id} - Original Ref: {transaction.ReferenceNo ?? "N/A"}",
+                BusinessDayId = businessDay.Id
+            };
+
+            foreach (var line in originalJournalEntry.Lines)
+            {
+                // Swap Debit and Credit
+                var reversedLine = new JournalEntryLine
+                {
+                    JournalEntry = reversalJournalEntry,
+                    AccountId = line.AccountId,
+                    Debit = line.Credit,
+                    Credit = line.Debit,
+                    Memo = $"Reversal: {line.Memo}"
+                };
+
+                reversalJournalEntry.Lines.Add(reversedLine);
+            }
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.JournalEntries.AddAsync(reversalJournalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(reversalJournalEntry.Lines);
+
+                // Update balances applying the NEW reversal lines
+                foreach (var line in reversalJournalEntry.Lines)
+                {
+                    var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                    if (account != null)
+                    {
+                        if (line.Debit > 0)
+                        {
+                            ApplyBalanceEffect(account, line.Debit, isDebit: true);
+                        }
+                        if (line.Credit > 0)
+                        {
+                            ApplyBalanceEffect(account, line.Credit, isDebit: false);
+                        }
+                        _unitOfWork.Accounts.Update(account);
+                    }
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<bool>(true, "Transaction reversed in GL successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // AP Invoice → GL
+        // ─────────────────────────────────────────────────────────────────────
+        public async Task<ApiResponse<int>> PostAPInvoiceToGLAsync(int invoiceId)
+        {
+            var invoice = await _unitOfWork.APInvoices
+                .GetQueryable()
+                .Include(i => i.Lines)
+                .Include(i => i.Vendor)
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+
+            if (invoice == null)
+                return new ApiResponse<int>("AP Invoice not found.");
+
+            if (invoice.TotalAmount <= 0)
+                return new ApiResponse<int>("Invoice total is zero; nothing to post.");
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+                return new ApiResponse<int>("No open BusinessDay found to attach the journal entry.");
+
+            var description = $"AP Invoice #{invoice.VendorInvoiceNo} from {invoice.Vendor.Name}";
+
+            var journalEntry = new JournalEntry
+            {
+                EntryNumber   = GenerateEntryNumber(businessDate),
+                Date          = invoice.InvoiceDate,
+                Description   = description,
+                ReferenceNo   = invoice.VendorInvoiceNo,
+                BusinessDayId = businessDay.Id
+            };
+
+            // Credit line → AP Control Account (Vendor.APAccountId)
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = invoice.Vendor.APAccountId,
+                Debit     = 0m,
+                Credit    = invoice.TotalAmount,
+                Memo      = description
+            });
+
+            // Debit lines → one per invoice line (Expense Account)
+            foreach (var line in invoice.Lines)
+            {
+                journalEntry.Lines.Add(new JournalEntryLine
+                {
+                    AccountId = line.ExpenseAccountId,
+                    Debit     = line.Amount,
+                    Credit    = 0m,
+                    Memo      = line.Description
+                });
+            }
+
+            // Gather all account IDs to load in one query
+            var accountIds = journalEntry.Lines.Select(l => l.AccountId).Distinct().ToList();
+            var accounts   = await _unitOfWork.Accounts
+                .GetQueryable()
+                .Where(a => accountIds.Contains(a.Id))
+                .ToListAsync();
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.JournalEntries.AddAsync(journalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
+                await _unitOfWork.CompleteAsync(); // generate journalEntry.Id
+
+                foreach (var jeLine in journalEntry.Lines)
+                {
+                    var account = accounts.FirstOrDefault(a => a.Id == jeLine.AccountId);
+                    if (account != null)
+                    {
+                        if (jeLine.Debit > 0)  ApplyBalanceEffect(account, jeLine.Debit,  isDebit: true);
+                        if (jeLine.Credit > 0) ApplyBalanceEffect(account, jeLine.Credit, isDebit: false);
+                        _unitOfWork.Accounts.Update(account);
+                    }
+                }
+
+                // Link the journal entry back to the invoice
+                invoice.JournalEntryId = journalEntry.Id;
+                _unitOfWork.APInvoices.Update(invoice);
+
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<int>(journalEntry.Id, "AP Invoice posted to GL successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Generic Journal Entry Reversal (reusable by AR voiding & AP voiding)
+        // ─────────────────────────────────────────────────────────────────────
+        public async Task<ApiResponse<bool>> ReverseJournalEntryAsync(
+            int journalEntryId, string referenceCode, string description)
+        {
+            var originalEntry = await _unitOfWork.JournalEntries
+                .GetQueryable()
+                .Include(je => je.Lines)
+                .FirstOrDefaultAsync(je => je.Id == journalEntryId);
+
+            if (originalEntry == null)
+                return new ApiResponse<bool>("Journal Entry not found.");
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay  = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+                return new ApiResponse<bool>("No open BusinessDay found to attach the reversal entry.");
+
+            var reversalEntry = new JournalEntry
+            {
+                EntryNumber   = GenerateEntryNumber(businessDate),
+                Date          = DateTime.UtcNow,
+                ReferenceNo   = referenceCode,
+                Description   = description,
+                BusinessDayId = businessDay.Id
+            };
+
+            foreach (var line in originalEntry.Lines)
+            {
+                reversalEntry.Lines.Add(new JournalEntryLine
+                {
+                    JournalEntry = reversalEntry,
+                    AccountId    = line.AccountId,
+                    Debit        = line.Credit,   // swap
+                    Credit       = line.Debit,    // swap
+                    Memo         = $"Reversal: {line.Memo}"
+                });
+            }
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.JournalEntries.AddAsync(reversalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(reversalEntry.Lines);
+
+                foreach (var line in reversalEntry.Lines)
+                {
+                    var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                    if (account == null) continue;
+                    if (line.Debit  > 0) ApplyBalanceEffect(account, line.Debit,  isDebit: true);
+                    if (line.Credit > 0) ApplyBalanceEffect(account, line.Credit, isDebit: false);
+                    _unitOfWork.Accounts.Update(account);
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+                return new ApiResponse<bool>(true, "Journal entry reversed successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
         public async Task<ApiResponse<bool>> PostARPaymentToGLAsync(int arPaymentId)
         {
             var payment = await _unitOfWork.ARPayments
@@ -216,6 +483,106 @@ namespace PMS.Infrastructure.Implmentations.Services
                 await _unitOfWork.CommitTransactionAsync();
 
                 return new ApiResponse<bool>(true, "AR payment posted to GL successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        public async Task<ApiResponse<int>> PostAPPaymentToGLAsync(int paymentId, int creditAccountId)
+        {
+            var payment = await _unitOfWork.APPayments
+                .GetQueryable()
+                .Include(p => p.Vendor)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+            if (payment == null)
+            {
+                return new ApiResponse<int>("AP payment not found.");
+            }
+
+            if (payment.Amount <= 0)
+            {
+                return new ApiResponse<int>("AP payment amount is zero; nothing to post.");
+            }
+
+            var apControlAccount = await _unitOfWork.Accounts.GetByIdAsync(payment.Vendor.APAccountId);
+            var creditAccount = await _unitOfWork.Accounts.GetByIdAsync(creditAccountId);
+
+            if (apControlAccount == null || creditAccount == null)
+            {
+                return new ApiResponse<int>("AP control account or credit account not found.");
+            }
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+            {
+                return new ApiResponse<int>("No open BusinessDay found to attach the journal entry.");
+            }
+
+            var description = $"Payment to Vendor {payment.Vendor.Name} - Ref: {payment.ReferenceNo ?? "N/A"}";
+
+            var journalEntry = new JournalEntry
+            {
+                EntryNumber   = GenerateEntryNumber(businessDate),
+                Date          = payment.PaymentDate,
+                Description   = description,
+                ReferenceNo   = payment.ReferenceNo ?? string.Empty,
+                BusinessDayId = businessDay.Id
+            };
+
+            var absAmount = Math.Abs(payment.Amount);
+
+            // Debit AP Control (reduce liability)
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = payment.Vendor.APAccountId,
+                Debit     = absAmount,
+                Credit    = 0m,
+                Memo      = description
+            });
+
+            // Credit cash/bank account
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = creditAccountId,
+                Debit     = 0m,
+                Credit    = absAmount,
+                Memo      = description
+            });
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.JournalEntries.AddAsync(journalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
+                await _unitOfWork.CompleteAsync(); // generate journalEntry.Id
+
+                ApplyBalanceEffect(apControlAccount, absAmount, isDebit: true);
+                ApplyBalanceEffect(creditAccount, absAmount, isDebit: false);
+
+                _unitOfWork.Accounts.Update(apControlAccount);
+                _unitOfWork.Accounts.Update(creditAccount);
+
+                // Link back to APPayment
+                var paymentToUpdate = await _unitOfWork.APPayments.GetByIdAsync(payment.Id);
+                if (paymentToUpdate != null)
+                {
+                    paymentToUpdate.JournalEntryId = journalEntry.Id;
+                    _unitOfWork.APPayments.Update(paymentToUpdate);
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<int>(journalEntry.Id, "AP payment posted to GL successfully.");
             }
             catch
             {

@@ -20,6 +20,8 @@ namespace PMS.Application.Interfaces.Services
 
 		Task<ResponseObjectDto<List<EnumLookupDto>>> GetTransactionTypesLookupAsync();
 
+		Task<IEnumerable<AccountLookupDto>> GetAccountsLookupAsync();
+
 		Task<ResponseObjectDto<AppLookupsDto>> GetAllLookupsAsync();
 	}
 }

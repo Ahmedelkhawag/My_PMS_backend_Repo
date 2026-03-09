@@ -267,9 +267,10 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Where(t =>
                     t.Type == TransactionType.RoomCharge &&
                     t.BusinessDate == currentBusinessDate &&
-                    folioIds.Contains(t.FolioId) &&
+                    t.FolioId != null &&
+                    folioIds.Contains(t.FolioId.Value) &&
                     !t.IsVoided)
-                .Select(t => t.FolioId)
+                .Select(t => t.FolioId.Value)
                 .ToListAsync();
 
             var foliosWithChargeToday = existingRoomCharges.ToHashSet();

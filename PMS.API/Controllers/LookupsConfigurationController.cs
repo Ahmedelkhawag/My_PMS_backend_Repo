@@ -102,6 +102,15 @@ namespace PMS.API.Controllers
 			return Ok(result);
 		}
 
+		[HttpGet("accounts")]
+		[ProducesResponseType(typeof(IEnumerable<AccountLookupDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
+		public async Task<IActionResult> GetAccounts()
+		{
+			var result = await _configService.GetAccountsLookupAsync();
+			return Ok(result);
+		}
+
 		[HttpGet("all")]
 		[ProducesResponseType(typeof(ResponseObjectDto<AppLookupsDto>), StatusCodes.Status200OK)]
 		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]

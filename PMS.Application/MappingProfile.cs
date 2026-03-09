@@ -8,6 +8,9 @@ using PMS.Application.DTOs.Guests;
 using PMS.Application.DTOs.Reservations;
 using PMS.Application.DTOs.Rooms;
 using PMS.Application.DTOs.Shifts;
+using PMS.Application.DTOs.BackOffice.AP;
+using PMS.Domain.Entities.BackOffice.AP;
+using PMS.Domain.Enums.BackOffice;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Enums;
@@ -149,6 +152,28 @@ namespace PMS.Application
                 .ForMember(dest => dest.TodayFormatted, opt => opt.MapFrom(src => DateTime.UtcNow.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)))
                 .ForMember(dest => dest.HotelName, opt => opt.Ignore())
                 .ForMember(dest => dest.ReceptionistName, opt => opt.Ignore());
+
+            // ══════════════════════════════════════════════
+            // Back-Office / AP
+            // ══════════════════════════════════════════════
+            CreateMap<Vendor, VendorDto>()
+                .ForMember(dest => dest.APAccountId, opt => opt.MapFrom(src => src.APAccountId))
+                .ForMember(dest => dest.DefaultExpenseAccountId, opt => opt.MapFrom(src => src.DefaultExpenseAccountId));
+
+            CreateMap<CreateVendorDto, Vendor>();
+            CreateMap<UpdateVendorDto, Vendor>();
+
+            CreateMap<APInvoice, APInvoiceDto>()
+                .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => src.Vendor != null ? src.Vendor.Name : string.Empty))
+                .ForMember(dest => dest.Balance,    opt => opt.MapFrom(src => src.TotalAmount - src.AmountPaid));
+
+            CreateMap<APInvoiceLine, APInvoiceLineDto>();
+
+            CreateMap<APPayment, APPaymentDto>()
+                .ForMember(dest => dest.VendorName, opt => opt.MapFrom(src => src.Vendor != null ? src.Vendor.Name : string.Empty))
+                .ForMember(dest => dest.Method,     opt => opt.MapFrom(src => src.Method.ToString()));
+
+            CreateMap<APPaymentAllocation, APPaymentAllocationDto>();
         }
 
         private static int CalculateNights(DateTimeOffset checkIn, DateTimeOffset checkOut)

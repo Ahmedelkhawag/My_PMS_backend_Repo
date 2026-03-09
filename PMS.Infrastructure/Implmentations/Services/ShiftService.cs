@@ -20,12 +20,14 @@ namespace PMS.Infrastructure.Implmentations.Services
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogger<ShiftService> _logger;
 		private readonly IMapper _mapper;
+		private readonly IAccountingService _accountingService;
 
-		public ShiftService(IUnitOfWork unitOfWork, ILogger<ShiftService> logger, IMapper mapper)
+		public ShiftService(IUnitOfWork unitOfWork, ILogger<ShiftService> logger, IMapper mapper, IAccountingService accountingService)
 		{
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
+			_accountingService = accountingService;
 		}
 
         public async Task<ResponseObjectDto<ShiftDto>> OpenShiftAsync(string userId, OpenShiftDto dto)
@@ -92,34 +94,80 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return ResponseObjectDto<ShiftDto>.Failure("معرف المستخدم غير صحيح.", 400);
             }
 
-            var shift = await _unitOfWork.EmployeeShifts
-                .GetQueryable()
-                .OrderByDescending(s => s.StartedAt)
-                .FirstOrDefaultAsync(s => s.EmployeeId == userId && !s.IsClosed);
-
-            if (shift == null)
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                return ResponseObjectDto<ShiftDto>.Failure("لا توجد وردية مفتوحة لإغلاقها.", 404);
+                var shift = await _unitOfWork.EmployeeShifts
+                    .GetQueryable()
+                    .OrderByDescending(s => s.StartedAt)
+                    .FirstOrDefaultAsync(s => s.EmployeeId == userId && !s.IsClosed);
+
+                if (shift == null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return ResponseObjectDto<ShiftDto>.Failure("لا توجد وردية مفتوحة لإغلاقها.", 404);
+                }
+
+                var report = await BuildShiftReportAsync(shift.Id, shift.StartedAt);
+                var netSystemCash = report.NetCash;
+
+                var expectedCash = shift.StartingCash + netSystemCash;
+                var actualCash = dto?.ActualCash ?? 0m;
+                var difference = actualCash - expectedCash;
+
+                shift.SystemCalculatedCash = netSystemCash;
+                shift.ActualCashHanded = actualCash;
+                shift.Difference = difference;
+                shift.Notes = dto?.Notes ?? string.Empty;
+                shift.IsClosed = true;
+                shift.EndedAt = DateTime.UtcNow;
+
+                _unitOfWork.EmployeeShifts.Update(shift);
+                await _unitOfWork.CompleteAsync();
+
+                if (difference != 0)
+                {
+                    var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+                    var transactionType = difference > 0 ? TransactionType.ShiftOverage : TransactionType.ShiftShortage;
+
+                    var reconciliationTx = new FolioTransaction
+                    {
+                        FolioId = null, // Discrepancy does not belong to a specific guest
+                        Date = DateTime.UtcNow,
+                        BusinessDate = businessDate,
+                        Type = transactionType,
+                        Amount = Math.Abs(difference),
+                        Description = $"Shift Reconciliation Adjustment for Shift #{shift.Id}",
+                        ReferenceNo = $"SHIFT-{shift.Id}",
+                        ShiftId = shift.Id,
+                        IsVoided = false
+                    };
+
+                    await _unitOfWork.FolioTransactions.AddAsync(reconciliationTx);
+                    await _unitOfWork.CompleteAsync(); // Get Transaction ID
+
+                    shift.ReconciliationTransactionId = reconciliationTx.Id;
+                    _unitOfWork.EmployeeShifts.Update(shift);
+                    await _unitOfWork.CompleteAsync();
+
+                    var glResult = await _accountingService.PostTransactionToGLAsync(reconciliationTx.Id);
+                    if (!glResult.Succeeded)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return ResponseObjectDto<ShiftDto>.Failure($"فشل في ترحيل تسوية الخزنة للقيود اليومية: {glResult.Message}", 500);
+                    }
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                return ResponseObjectDto<ShiftDto>.Success(_mapper.Map<ShiftDto>(shift), "تم إغلاق الوردية وتمرير التسويات بنجاح.");
             }
-
-            var report = await BuildShiftReportAsync(shift.Id, shift.StartedAt);
-            var netSystemCash = report.NetCash;
-
-            var expectedCash = shift.StartingCash + netSystemCash;
-            var actualCash = dto?.ActualCash ?? 0m;
-            var difference = actualCash - expectedCash;
-
-            shift.SystemCalculatedCash = netSystemCash;
-            shift.ActualCashHanded = actualCash;
-            shift.Difference = difference;
-            shift.Notes = dto?.Notes ?? string.Empty;
-            shift.IsClosed = true;
-            shift.EndedAt = DateTime.UtcNow;
-
-            _unitOfWork.EmployeeShifts.Update(shift);
-            await _unitOfWork.CompleteAsync();
-
-            return ResponseObjectDto<ShiftDto>.Success(_mapper.Map<ShiftDto>(shift), "تم إغلاق الوردية بنجاح.");
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "Error occurred while closing shift for user {UserId}", userId);
+                return ResponseObjectDto<ShiftDto>.Failure("حدث خطأ أثناء إغلاق الوردية.", 500);
+            }
         }
 
         public async Task<ResponseObjectDto<IEnumerable<ShiftDto>>> GetShiftHistoryAsync(UserFilterDto filter)

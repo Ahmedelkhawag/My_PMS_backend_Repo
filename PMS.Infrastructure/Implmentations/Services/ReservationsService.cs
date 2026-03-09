@@ -355,7 +355,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                     if (feeType.HasValue)
                     {
-                        var feeDto = new PMS.Application.DTOs.Folios.CreateTransactionDto
+                        var feeDto = new global::PMS.Application.DTOs.Folios.CreateTransactionDto
                         {
                             ReservationId = reservation.Id,
                             Amount = dto.FeeAmount.Value,
@@ -384,7 +384,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                     // If there's an active folio with a positive balance and a linked Company, try auto AR transfer
                     if (reservation.GuestFolio != null && reservation.GuestFolio.IsActive && reservation.GuestFolio.Balance > 0 && reservation.CompanyId.HasValue)
                     {
-                        var arTransferDto = new PMS.Application.DTOs.BackOffice.AR.TransferFolioDto(
+                        var arTransferDto = new global::PMS.Application.DTOs.BackOffice.AR.TransferFolioDto(
                             reservation.Id, 
                             "Auto AR Transfer at Check-out");
                             

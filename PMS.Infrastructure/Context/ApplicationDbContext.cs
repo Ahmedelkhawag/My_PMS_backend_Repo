@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using PMS.Domain.Entities;
 using PMS.Domain.Entities.BackOffice;
 using PMS.Domain.Entities.BackOffice.AR;
+	using PMS.Domain.Entities.BackOffice.AP;
+	using PMS.Domain.Enums.BackOffice.AP;
 using PMS.Domain.Entities.Configuration;
 using PMS.Domain.Constants;
 using PMS.Domain.Interfaces;
@@ -63,6 +65,13 @@ namespace PMS.Infrastructure.Context
 		public DbSet<ARPayment> ARPayments { get; set; }
 		public DbSet<ARPaymentAllocation> ARPaymentAllocations { get; set; }
 		public DbSet<ARAdjustment> ARAdjustments { get; set; }
+
+		// AP Module
+		public DbSet<Vendor> Vendors { get; set; }
+		public DbSet<APInvoice> APInvoices { get; set; }
+		public DbSet<APInvoiceLine> APInvoiceLines { get; set; }
+		public DbSet<APPayment> APPayments { get; set; }
+		public DbSet<APPaymentAllocation> APPaymentAllocations { get; set; }
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);
@@ -210,7 +219,7 @@ namespace PMS.Infrastructure.Context
 					Code = "STANDARD",
 					Name = "Standard Rate",
 					Description = "Standard public rate plan (no discount).",
-					RateType = PMS.Domain.Enums.RateType.PercentageDiscount,
+					RateType = global::PMS.Domain.Enums.RateType.PercentageDiscount,
 					RateValue = 0m,
 					IsPublic = true,
 					IsActive = true,
@@ -223,7 +232,7 @@ namespace PMS.Infrastructure.Context
 					Code = "NONREF",
 					Name = "Non-Refundable",
 					Description = "Non-refundable rate with 10% discount.",
-					RateType = PMS.Domain.Enums.RateType.PercentageDiscount,
+					RateType = global::PMS.Domain.Enums.RateType.PercentageDiscount,
 					RateValue = 10m,
 					IsPublic = true,
 					IsActive = true,
@@ -262,6 +271,7 @@ namespace PMS.Infrastructure.Context
 				entity.HasOne(t => t.Folio)
 					  .WithMany(f => f.Transactions)
 					  .HasForeignKey(t => t.FolioId)
+					  .IsRequired(false)
 					  .OnDelete(DeleteBehavior.Cascade);
 
 				entity.HasOne(t => t.Shift)
@@ -313,6 +323,11 @@ namespace PMS.Infrastructure.Context
 				entity.HasOne(s => s.Employee)
 					  .WithMany()
 					  .HasForeignKey(s => s.EmployeeId)
+					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(s => s.ReconciliationTransaction)
+					  .WithMany()
+					  .HasForeignKey(s => s.ReconciliationTransactionId)
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 
@@ -439,6 +454,86 @@ namespace PMS.Infrastructure.Context
 				entity.HasOne(a => a.ARInvoice)
 					  .WithMany()
 					  .HasForeignKey(a => a.ARInvoiceId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// ─── AP Module Configuration ───────────────────────────
+
+			// Vendor
+			builder.Entity<Vendor>(entity =>
+			{
+				entity.HasIndex(v => v.TaxId)
+					  .IsUnique()
+					  .HasFilter("[IsDeleted] = 0");
+
+				entity.HasOne(v => v.APAccount)
+					  .WithMany()
+					  .HasForeignKey(v => v.APAccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(v => v.DefaultExpenseAccount)
+					  .WithMany()
+					  .HasForeignKey(v => v.DefaultExpenseAccountId)
+					  .IsRequired(false)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// APInvoice
+			builder.Entity<APInvoice>(entity =>
+			{
+				entity.Property(i => i.TotalAmount).HasColumnType("decimal(18,2)");
+				entity.Property(i => i.AmountPaid).HasColumnType("decimal(18,2)");
+
+				entity.HasIndex(i => new { i.VendorId, i.VendorInvoiceNo })
+					  .IsUnique()
+					  .HasFilter("[IsDeleted] = 0");
+
+				entity.HasOne(i => i.Vendor)
+					  .WithMany(v => v.Invoices)
+					  .HasForeignKey(i => i.VendorId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// APInvoiceLine
+			builder.Entity<APInvoiceLine>(entity =>
+			{
+				entity.Property(l => l.Amount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(l => l.APInvoice)
+					  .WithMany(i => i.Lines)
+					  .HasForeignKey(l => l.APInvoiceId)
+					  .OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(l => l.ExpenseAccount)
+					  .WithMany()
+					  .HasForeignKey(l => l.ExpenseAccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// APPayment
+			builder.Entity<APPayment>(entity =>
+			{
+				entity.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(p => p.Vendor)
+					  .WithMany(v => v.Payments)
+					  .HasForeignKey(p => p.VendorId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// APPaymentAllocation
+			builder.Entity<APPaymentAllocation>(entity =>
+			{
+				entity.Property(a => a.AllocatedAmount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(a => a.APPayment)
+					  .WithMany(p => p.Allocations)
+					  .HasForeignKey(a => a.APPaymentId)
+					  .OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(a => a.APInvoice)
+					  .WithMany(i => i.Allocations)
+					  .HasForeignKey(a => a.APInvoiceId)
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 

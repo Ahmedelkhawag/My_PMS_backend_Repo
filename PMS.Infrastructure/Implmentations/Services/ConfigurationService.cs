@@ -199,6 +199,26 @@ namespace PMS.Infrastructure.Implmentations.Services
 			return Task.FromResult(response);
 		}
 
+		public async Task<IEnumerable<AccountLookupDto>> GetAccountsLookupAsync()
+		{
+			return await _unitOfWork.Accounts
+				.GetQueryable()
+				.Where(a => a.IsActive)
+				.OrderBy(a => a.Code)
+				.Select(a => new AccountLookupDto
+				{
+					Id              = a.Id,
+					Code            = a.Code,
+					NameEn          = a.NameEn,
+					NameAr          = a.NameAr,
+					AccountType     = a.Type.ToString(),
+					IsGroup         = a.IsGroup,
+					ParentAccountId = a.ParentAccountId
+				})
+				.AsNoTracking()
+				.ToListAsync();
+		}
+
 		public async Task<ResponseObjectDto<AppLookupsDto>> GetAllLookupsAsync()
 		{
 			// NOTE:
@@ -213,6 +233,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var reservationStatuses = (await GetReservationStatusesAsync()).ToList();
 			var ratePlans = (await GetRatePlansAsync(null)).ToList();
 			var roles = await _authService.GetRolesAsync();
+			var accounts = (await GetAccountsLookupAsync()).ToList();
 
 			var transactionTypesResult = await GetTransactionTypesLookupAsync();
 			if (!transactionTypesResult.IsSuccess || transactionTypesResult.Data == null)
@@ -265,7 +286,8 @@ namespace PMS.Infrastructure.Implmentations.Services
 				TransactionTypes = transactionTypesResult.Data,
 				ReservationStatuses = reservationStatuses,
 				RatePlans = ratePlans,
-				Roles = roles
+				Roles = roles,
+				Accounts = accounts
 			};
 
 			return new ResponseObjectDto<AppLookupsDto>
