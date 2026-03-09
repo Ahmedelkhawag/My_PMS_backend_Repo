@@ -37,8 +37,9 @@ namespace PMS.Infrastructure.Implmentations.Services
         private const int RoomStatusOccupied = 5;
 
         private readonly ILogger<ReservationsService> _logger;
+        private readonly IARService _arService;
 
-        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFolioService folioService, IMapper mapper, ILogger<ReservationsService> logger)
+        public ReservationsService(IUnitOfWork unitOfWork, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFolioService folioService, IMapper mapper, ILogger<ReservationsService> logger, IARService arService)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
@@ -46,6 +47,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             _folioService = folioService;
             _mapper = mapper;
             _logger = logger;
+            _arService = arService;
         }
 
         public async Task<ResponseObjectDto<ReservationDto>> CreateReservationAsync(CreateReservationDto dto)
@@ -307,9 +309,10 @@ namespace PMS.Infrastructure.Implmentations.Services
             await _unitOfWork.BeginTransactionAsync();
             try
             {
-                // Load reservation with room, because we must update both atomically
+                // Load reservation with room and guest folio, because we must update both atomically and check the folio balance
                 reservation = await _unitOfWork.Reservations.GetQueryable()
                     .Include(r => r.Room)
+                    .Include(r => r.GuestFolio)
                     .FirstOrDefaultAsync(r => r.Id == dto.ReservationId);
 
                 if (reservation == null)
@@ -375,9 +378,30 @@ namespace PMS.Infrastructure.Implmentations.Services
                     }
                 }
 
-                // 2.5) For Check-Out, ensure folio can be closed (zero balance rule)
+                // 2.5) For Check-Out, handle Direct Bill/AR Transfer and ensure folio can be closed (zero balance rule)
                 if (newStatus == ReservationStatus.CheckOut)
                 {
+                    // If there's an active folio with a positive balance and a linked Company, try auto AR transfer
+                    if (reservation.GuestFolio != null && reservation.GuestFolio.IsActive && reservation.GuestFolio.Balance > 0 && reservation.CompanyId.HasValue)
+                    {
+                        var arTransferDto = new PMS.Application.DTOs.BackOffice.AR.TransferFolioDto(
+                            reservation.Id, 
+                            "Auto AR Transfer at Check-out");
+                            
+                        var transferResult = await _arService.TransferFolioToARAsync(arTransferDto);
+                        if (!transferResult.Succeeded)
+                        {
+                            await _unitOfWork.RollbackTransactionAsync();
+                            return new ResponseObjectDto<bool>
+                            {
+                                IsSuccess = false,
+                                StatusCode = 400,
+                                Message = $"Cannot Check-Out. Failed to transfer balance to AR: {transferResult.Message}",
+                                Data = false
+                            };
+                        }
+                    }
+
                     var closeResult = await _folioService.CloseFolioAsync(dto.ReservationId);
                     if (!closeResult.IsSuccess)
                     {

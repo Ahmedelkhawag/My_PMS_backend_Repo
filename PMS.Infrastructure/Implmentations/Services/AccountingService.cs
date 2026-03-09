@@ -8,6 +8,7 @@ using PMS.Domain.Entities.BackOffice;
 using PMS.Domain.Entities.BackOffice.AR;
 using PMS.Domain.Enums.BackOffice;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -28,7 +29,6 @@ namespace PMS.Infrastructure.Implmentations.Services
         {
             var transaction = await _unitOfWork.FolioTransactions
                 .GetQueryable()
-                .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.Id == folioTransactionId);
 
             if (transaction == null)
@@ -108,6 +108,12 @@ namespace PMS.Infrastructure.Implmentations.Services
             {
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
                 await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
+
+                await _unitOfWork.CompleteAsync(); // Generate journalEntry.Id
+
+                transaction.IsPostedToGL = true;
+                transaction.JournalEntryId = journalEntry.Id;
+                _unitOfWork.FolioTransactions.Update(transaction);
 
                 ApplyBalanceEffect(debitAccount, absAmount, isDebit: true);
                 ApplyBalanceEffect(creditAccount, absAmount, isDebit: false);
@@ -437,6 +443,18 @@ namespace PMS.Infrastructure.Implmentations.Services
             var report = new TrialBalanceReportDto(items, totalDebit, totalCredit, isBalanced);
 
             return new ApiResponse<TrialBalanceReportDto>(report, "Trial balance retrieved successfully.");
+        }
+
+        public async Task<ApiResponse<IEnumerable<int>>> GetUnpostedTransactionsAsync()
+        {
+            var unpostedIds = await _unitOfWork.FolioTransactions
+                .GetQueryable()
+                .AsNoTracking()
+                .Where(t => t.Type == Domain.Enums.TransactionType.RoomCharge && !t.IsVoided && !t.IsPostedToGL)
+                .Select(t => t.Id)
+                .ToListAsync();
+
+            return new ApiResponse<IEnumerable<int>>(unpostedIds, "Unposted transactions retrieved successfully.");
         }
 
         public async Task<ApiResponse<AccountStatementHeaderDto>> GetAccountStatementAsync(int accountId, DateTime startDate, DateTime endDate)

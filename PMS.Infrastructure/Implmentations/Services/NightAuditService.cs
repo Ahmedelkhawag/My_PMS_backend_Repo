@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PMS.Application.DTOs.Audit;
@@ -20,15 +19,18 @@ namespace PMS.Infrastructure.Implmentations.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<NightAuditService> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IAccountingService _accountingService;
 
         public NightAuditService(
             IUnitOfWork unitOfWork,
             ILogger<NightAuditService> logger,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAccountingService accountingService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
             _configuration = configuration;
+            _accountingService = accountingService;
         }
 
         public async Task RunAutoNightAuditAsync()
@@ -130,7 +132,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 await ValidatePendingArrivalsAsync(currentBusinessDate, force);
 
                 // Step B: Post Room Charges
-                response.ProcessedRooms = await PostRoomChargesAsync(currentBusinessDate);
+                var (processedRooms, newRoomCharges) = await PostRoomChargesAsync(currentBusinessDate);
+                response.ProcessedRooms = processedRooms;
 
                 // Step C: Handle No-Shows (Optimized)
                 response.NoShowsMarked = await HandleNoShowsAsync(currentBusinessDate);
@@ -165,6 +168,25 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 await _unitOfWork.CompleteAsync();
                 await _unitOfWork.CommitTransactionAsync();
+
+                _logger.LogInformation("Night audit database transaction committed. Proceeding to post {Count} room charges to GL.", newRoomCharges.Count);
+
+                // Post Room Charges to GL (Resilient Step)
+                foreach (var charge in newRoomCharges)
+                {
+                    try
+                    {
+                        var glResult = await _accountingService.PostTransactionToGLAsync(charge.Id);
+                        if (!glResult.Succeeded)
+                        {
+                            _logger.LogWarning("NightAudit GL Post failed for RoomCharge Tx {TxId}: {Error}", charge.Id, glResult.Message);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Exception posting NightAudit RoomCharge Tx {TxId} to GL.", charge.Id);
+                    }
+                }
 
                 _logger.LogInformation("Night audit completed successfully for BusinessDate={OldDate}. NewBusinessDate={NewDate}, ProcessedRooms={ProcessedRooms}, NoShows={NoShows}.",
                     currentBusinessDate, response.NewBusinessDate, response.ProcessedRooms, response.NoShowsMarked);
@@ -212,7 +234,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 currentBusinessDate);
         }
 
-        private async Task<int> PostRoomChargesAsync(DateTime currentBusinessDate)
+        private async Task<(int, List<FolioTransaction>)> PostRoomChargesAsync(DateTime currentBusinessDate)
         {
             var checkedInReservations = await _unitOfWork.Reservations
                 .GetQueryable()
@@ -226,7 +248,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             if (!checkedInReservations.Any())
             {
-                return 0;
+                return (0, new List<FolioTransaction>());
             }
 
             var reservationIds = checkedInReservations.Select(r => r.Id).ToList();
@@ -319,7 +341,7 @@ namespace PMS.Infrastructure.Implmentations.Services
             _logger.LogInformation("Posted room charges for {ProcessedRooms} reservations on BusinessDate={Date}.",
                 processedRooms, currentBusinessDate);
 
-            return processedRooms;
+            return (processedRooms, newTransactions);
         }
 
         private async Task<int> HandleNoShowsAsync(DateTime currentBusinessDate)

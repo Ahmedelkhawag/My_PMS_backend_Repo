@@ -12,6 +12,7 @@ namespace PMS.Application.Interfaces.Services
         Task<ApiResponse<bool>> CreateManualJournalEntryAsync(CreateJournalEntryDto dto);
         Task<ApiResponse<TrialBalanceReportDto>> GetTrialBalanceAsync();
         Task<ApiResponse<AccountStatementHeaderDto>> GetAccountStatementAsync(int accountId, DateTime startDate, DateTime endDate);
+        Task<ApiResponse<IEnumerable<int>>> GetUnpostedTransactionsAsync();
     }
 }
 

@@ -58,6 +58,9 @@ namespace PMS.Domain.Entities
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }
 
+        public bool IsPostedToGL { get; set; } = false;
+        public int? JournalEntryId { get; set; }
+
         public string? CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? LastModifiedBy { get; set; }

@@ -107,50 +107,66 @@ namespace PMS.Infrastructure.Implmentations
 			return DateTime.UtcNow.Date;
 		}
 
+        private int _transactionDepth = 0;
 
         public async Task BeginTransactionAsync()
         {
-            if (_currentTransaction != null)
-                throw new InvalidOperationException("A transaction is already in progress.");
-
-            _currentTransaction = await _context.Database.BeginTransactionAsync();
+            if (_transactionDepth == 0)
+            {
+                _currentTransaction = await _context.Database.BeginTransactionAsync();
+            }
+            _transactionDepth++;
         }
 
         public async Task CommitTransactionAsync()
         {
-            try
+            if (_transactionDepth > 0)
             {
-                await CompleteAsync();
-                if (_currentTransaction != null)
+                _transactionDepth--;
+
+                try
                 {
-                    await _currentTransaction.CommitAsync();
+                    await CompleteAsync();
+                    
+                    if (_transactionDepth == 0)
+                    {
+                        if (_currentTransaction != null)
+                        {
+                            await _currentTransaction.CommitAsync();
+                        }
+                    }
                 }
-            }
-            finally
-            {
-                if (_currentTransaction != null)
+                finally
                 {
-                    await _currentTransaction.DisposeAsync();
-                    _currentTransaction = null;
+                    if (_transactionDepth == 0 && _currentTransaction != null)
+                    {
+                        await _currentTransaction.DisposeAsync();
+                        _currentTransaction = null;
+                    }
                 }
             }
         }
 
         public async Task RollbackTransactionAsync()
         {
-            try
+            if (_transactionDepth > 0)
             {
-                if (_currentTransaction != null)
+                _transactionDepth = 0; // Force depth to zero to abort entirely
+
+                try
                 {
-                    await _currentTransaction.RollbackAsync();
+                    if (_currentTransaction != null)
+                    {
+                        await _currentTransaction.RollbackAsync();
+                    }
                 }
-            }
-            finally
-            {
-                if (_currentTransaction != null)
+                finally
                 {
-                    await _currentTransaction.DisposeAsync();
-                    _currentTransaction = null;
+                    if (_currentTransaction != null)
+                    {
+                        await _currentTransaction.DisposeAsync();
+                        _currentTransaction = null;
+                    }
                 }
             }
         }
