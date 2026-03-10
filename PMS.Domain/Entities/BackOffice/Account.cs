@@ -30,6 +30,8 @@ namespace PMS.Domain.Entities.BackOffice
 
         public int? ParentAccountId { get; set; }
 
+        public int Level { get; set; }
+
         public bool IsGroup { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]

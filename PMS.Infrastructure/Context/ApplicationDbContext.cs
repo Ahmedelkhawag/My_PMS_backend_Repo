@@ -34,6 +34,7 @@ namespace PMS.Infrastructure.Context
 		}
 		public DbSet<Status> Statuses { get; set; }
 		public DbSet<Country> Countries { get; set; }
+		public DbSet<Currency> Currencies { get; set; }
 		public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
 
 		public DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -59,6 +60,10 @@ namespace PMS.Infrastructure.Context
 		public DbSet<JournalEntry> JournalEntries { get; set; }
 		public DbSet<JournalEntryLine> JournalEntryLines { get; set; }
 		public DbSet<JournalEntryMapping> JournalEntryMappings { get; set; }
+		public DbSet<CostCenter> CostCenters { get; set; }
+
+		public DbSet<FiscalYear> FiscalYears { get; set; }
+		public DbSet<AccountingPeriod> AccountingPeriods { get; set; }
 
 		public DbSet<ARInvoice> ARInvoices { get; set; }
 		public DbSet<ARInvoiceLine> ARInvoiceLines { get; set; }
@@ -331,14 +336,49 @@ namespace PMS.Infrastructure.Context
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 
+			// Back-Office GL: FiscalYear configuration
+			builder.Entity<FiscalYear>(entity =>
+			{
+				entity.HasMany(f => f.AccountingPeriods)
+					  .WithOne(p => p.FiscalYear)
+					  .HasForeignKey(p => p.FiscalYearId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office GL: AccountingPeriod configuration
+			builder.Entity<AccountingPeriod>(entity =>
+			{
+				entity.HasOne(p => p.FiscalYear)
+					  .WithMany(f => f.AccountingPeriods)
+					  .HasForeignKey(p => p.FiscalYearId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
 			// Back-Office GL: Account configuration
 			builder.Entity<Account>(entity =>
 			{
 				entity.Property(a => a.CurrentBalance).HasColumnType("decimal(18,2)");
 
+				entity.HasIndex(a => a.Code)
+					  .IsUnique()
+					  .HasFilter("[IsDeleted] = 0");
+
 				entity.HasOne(a => a.ParentAccount)
 					  .WithMany(a => a.ChildAccounts)
 					  .HasForeignKey(a => a.ParentAccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office GL: CostCenter configuration
+			builder.Entity<CostCenter>(entity =>
+			{
+				entity.HasIndex(c => c.Code)
+					  .IsUnique()
+					  .HasFilter("[IsDeleted] = 0");
+
+				entity.HasOne(c => c.ParentCostCenter)
+					  .WithMany(c => c.ChildCostCenters)
+					  .HasForeignKey(c => c.ParentCostCenterId)
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 
@@ -364,10 +404,25 @@ namespace PMS.Infrastructure.Context
 			{
 				entity.Property(l => l.Debit).HasColumnType("decimal(18,2)");
 				entity.Property(l => l.Credit).HasColumnType("decimal(18,2)");
+				entity.Property(l => l.DebitForeign).HasColumnType("decimal(18,2)");
+				entity.Property(l => l.CreditForeign).HasColumnType("decimal(18,2)");
+				entity.Property(l => l.ExchangeRate).HasColumnType("decimal(18,4)");
 
 				entity.HasOne(l => l.Account)
 					  .WithMany()
 					  .HasForeignKey(l => l.AccountId)
+					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(l => l.Currency)
+					  .WithMany()
+					  .HasForeignKey(l => l.CurrencyId)
+					  .IsRequired(false)
+					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(l => l.CostCenter)
+					  .WithMany(c => c.JournalEntryLines)
+					  .HasForeignKey(l => l.CostCenterId)
+					  .IsRequired(false)
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 

@@ -8,6 +8,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using System.Linq;
+using PMS.Domain.Enums.BackOffice;
+using PMS.Domain.Entities.Configuration;
+
 namespace PMS.Infrastructure.Context
 {
     public static class ContextSeed
@@ -125,6 +129,49 @@ namespace PMS.Infrastructure.Context
 
                 await context.SaveChangesAsync();
             }
+
+            // 5. Seed GL Data (Currencies, Fiscal Periods)
+            await SeedGLDataAsync(context);
+        }
+
+        private static async Task SeedGLDataAsync(ApplicationDbContext context)
+        {
+            // Seed Currencies
+            if (!await context.Currencies.AnyAsync())
+            {
+                await context.Currencies.AddRangeAsync(
+                    new Currency { Code = "EGP", Name = "Egyptian Pound", Symbol = "ج.م", CurrentExchangeRate = 1m, IsActive = true, CreatedAt = DateTime.UtcNow, CreatedBy = "System" },
+                    new Currency { Code = "USD", Name = "US Dollar", Symbol = "$", CurrentExchangeRate = 50m, IsActive = true, CreatedAt = DateTime.UtcNow, CreatedBy = "System" },
+                    new Currency { Code = "EUR", Name = "Euro", Symbol = "€", CurrentExchangeRate = 54m, IsActive = true, CreatedAt = DateTime.UtcNow, CreatedBy = "System" }
+                );
+            }
+
+            // Seed Fiscal Year 2026 and its 12 Periods using the built-in factory logic
+            if (!await context.FiscalYears.AnyAsync(f => f.Name == "FY-2026"))
+            {
+                var startDate = new DateTimeOffset(new DateTime(2026, 1, 1), TimeSpan.Zero);
+                var fiscalYear = FiscalYear.CreateWithPeriods("FY-2026", startDate);
+                fiscalYear.CreatedAt = DateTime.UtcNow;
+                fiscalYear.CreatedBy = "System";
+
+                // March 2026 should be Open. Others Closed or Future depending on month.
+                foreach (var period in fiscalYear.AccountingPeriods)
+                {
+                    period.CreatedAt = DateTime.UtcNow;
+                    period.CreatedBy = "System";
+                    
+                    if (period.MonthNumber < 3)
+                        period.Status = AccountingPeriodStatus.Closed;
+                    else if (period.MonthNumber == 3)
+                        period.Status = AccountingPeriodStatus.Open;
+                    else
+                        period.Status = AccountingPeriodStatus.Future;
+                }
+
+                await context.FiscalYears.AddAsync(fiscalYear);
+            }
+
+            await context.SaveChangesAsync();
         }
 
         public static async Task SeedRoomsAsync(ApplicationDbContext context)

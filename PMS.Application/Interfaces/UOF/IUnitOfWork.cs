@@ -34,9 +34,12 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<RatePlan> RatePlans { get; }
 
         IBaseRepository<PMS.Domain.Entities.BackOffice.Account> Accounts { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.CostCenter> CostCenters { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntry> JournalEntries { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntryLine> JournalEntryLines { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.JournalEntryMapping> JournalEntryMappings { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AccountingPeriod> AccountingPeriods { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.FiscalYear> FiscalYears { get; }
 
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARInvoice> ARInvoices { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARInvoiceLine> ARInvoiceLines { get; }

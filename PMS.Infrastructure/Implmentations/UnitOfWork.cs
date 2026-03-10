@@ -38,9 +38,12 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<CompanyProfile> CompanyProfiles { get; private set; }
         public IBaseRepository<RatePlan> RatePlans { get; private set; }
         public IBaseRepository<Account> Accounts { get; private set; }
+        public IBaseRepository<CostCenter> CostCenters { get; private set; }
         public IBaseRepository<JournalEntry> JournalEntries { get; private set; }
         public IBaseRepository<JournalEntryLine> JournalEntryLines { get; private set; }
         public IBaseRepository<JournalEntryMapping> JournalEntryMappings { get; private set; }
+        public IBaseRepository<AccountingPeriod> AccountingPeriods { get; private set; }
+        public IBaseRepository<FiscalYear> FiscalYears { get; private set; }
         public IBaseRepository<ARInvoice> ARInvoices { get; private set; }
         public IBaseRepository<ARInvoiceLine> ARInvoiceLines { get; private set; }
         public IBaseRepository<ARPayment> ARPayments { get; private set; }
@@ -79,9 +82,12 @@ namespace PMS.Infrastructure.Implmentations
 			BusinessDays = new BaseRepository<BusinessDay>(_context);
 
             Accounts = new BaseRepository<Account>(_context);
+            CostCenters = new BaseRepository<CostCenter>(_context);
             JournalEntries = new BaseRepository<JournalEntry>(_context);
             JournalEntryLines = new BaseRepository<JournalEntryLine>(_context);
             JournalEntryMappings = new BaseRepository<JournalEntryMapping>(_context);
+            AccountingPeriods = new BaseRepository<AccountingPeriod>(_context);
+            FiscalYears = new BaseRepository<FiscalYear>(_context);
 
             ARInvoices = new BaseRepository<ARInvoice>(_context);
             ARInvoiceLines = new BaseRepository<ARInvoiceLine>(_context);

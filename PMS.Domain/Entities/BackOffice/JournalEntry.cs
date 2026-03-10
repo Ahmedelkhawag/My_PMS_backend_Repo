@@ -2,6 +2,7 @@ using PMS.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using PMS.Domain.Enums.BackOffice;
 
 namespace PMS.Domain.Entities.BackOffice
 {
@@ -23,6 +24,16 @@ namespace PMS.Domain.Entities.BackOffice
 
         [MaxLength(100)]
         public string? ReferenceNo { get; set; }
+
+        public JournalEntryStatus Status { get; set; } = JournalEntryStatus.Posted;
+
+        [MaxLength(450)]
+        public string? ApprovedById { get; set; }
+
+        public DateTimeOffset? ApprovedDate { get; set; }
+
+        [MaxLength(500)]
+        public string? RejectionReason { get; set; }
 
         public int BusinessDayId { get; set; }
 

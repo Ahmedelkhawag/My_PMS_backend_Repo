@@ -240,14 +240,20 @@ catch (Exception ex)
 
 app.MapControllers();
 
-// Error endpoint: returns JSON with 500 so CORS headers are applied (pipeline re-execution).
-app.MapGet("/error", (HttpContext context) =>
+// Error endpoint: returns JSON with appropriate status code so CORS headers are applied (pipeline re-execution).
+app.Map("/error", (HttpContext context) =>
 {
     var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
     var ex = feature?.Error;
     var isDev = context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
     var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
     logger.LogError(ex, "Unhandled exception: {Message}", ex?.Message);
+
+    if (ex is PMS.Application.Exceptions.BusinessException businessEx)
+    {
+        return Results.Json(new { message = businessEx.Message, isBusinessError = true }, statusCode: StatusCodes.Status400BadRequest);
+    }
+
     var payload = new { message = "An error occurred.", detail = isDev ? ex?.ToString() : (string?)null };
     return Results.Json(payload, statusCode: StatusCodes.Status500InternalServerError);
 });

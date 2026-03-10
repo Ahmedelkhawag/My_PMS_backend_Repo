@@ -18,11 +18,28 @@ namespace PMS.Domain.Entities.BackOffice
 
         public virtual Account Account { get; set; } = null!;
 
+        public int? CostCenterId { get; set; }
+
+        public virtual CostCenter? CostCenter { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal Debit { get; set; } = 0m;
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Credit { get; set; } = 0m;
+
+        public int? CurrencyId { get; set; }
+
+        public virtual PMS.Domain.Entities.Configuration.Currency? Currency { get; set; }
+
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal ExchangeRate { get; set; } = 1m;
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal DebitForeign { get; set; } = 0m;
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal CreditForeign { get; set; } = 0m;
 
         [MaxLength(500)]
         public string? Memo { get; set; }

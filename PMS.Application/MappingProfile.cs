@@ -93,6 +93,14 @@ namespace PMS.Application
             // ══════════════════════════════════════════════
             // Back-Office / GL
             // ══════════════════════════════════════════════
+            CreateMap<CreateAccountDto, PMS.Domain.Entities.BackOffice.Account>();
+            CreateMap<PMS.Domain.Entities.BackOffice.Account, AccountTreeDto>()
+                .ForMember(dest => dest.Children, opt => opt.Ignore());
+
+            CreateMap<CreateCostCenterDto, PMS.Domain.Entities.BackOffice.CostCenter>();
+            CreateMap<PMS.Domain.Entities.BackOffice.CostCenter, CostCenterDto>()
+                .ForMember(dest => dest.Children, opt => opt.Ignore());
+
             CreateMap<JournalEntryLineDto, PMS.Domain.Entities.BackOffice.JournalEntryLine>();
             CreateMap<CreateJournalEntryDto, PMS.Domain.Entities.BackOffice.JournalEntry>();
 

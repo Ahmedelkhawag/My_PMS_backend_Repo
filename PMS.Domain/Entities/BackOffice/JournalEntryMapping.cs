@@ -19,11 +19,17 @@ namespace PMS.Domain.Entities.BackOffice
         [Required]
         public int CreditAccountId { get; set; }
 
+        public decimal Percentage { get; set; } = 100m;
+
         public bool IsActive { get; set; } = true;
 
         public virtual Account DebitAccount { get; set; } = null!;
 
         public virtual Account CreditAccount { get; set; } = null!;
+
+        public int? CostCenterId { get; set; }
+
+        public virtual CostCenter? CostCenter { get; set; }
     }
 }
 

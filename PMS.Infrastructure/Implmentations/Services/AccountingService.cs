@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using PMS.Application.Exceptions;
 
 namespace PMS.Infrastructure.Implmentations.Services
 {
@@ -42,20 +43,20 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<bool>("Cannot post a voided transaction.");
             }
 
-            var mapping = await _unitOfWork.JournalEntryMappings
-                .FindAsync(m => m.TransactionType == transaction.Type && m.IsActive);
+            var mappings = await _unitOfWork.JournalEntryMappings
+                .GetQueryable()
+                .Where(m => m.TransactionType == transaction.Type && m.IsActive)
+                .ToListAsync();
 
-            if (mapping == null)
+            if (!mappings.Any())
             {
                 return new ApiResponse<bool>($"No journal entry mapping configured for transaction type '{transaction.Type}'.");
             }
 
-            var debitAccount = await _unitOfWork.Accounts.GetByIdAsync(mapping.DebitAccountId);
-            var creditAccount = await _unitOfWork.Accounts.GetByIdAsync(mapping.CreditAccountId);
-
-            if (debitAccount == null || creditAccount == null)
+            var totalPercentage = mappings.Sum(m => m.Percentage);
+            if (totalPercentage != 100m)
             {
-                return new ApiResponse<bool>("Mapped debit or credit account not found.");
+                return new ApiResponse<bool>($"Total mapping percentage for {transaction.Type} must equal 100%. Current: {totalPercentage}%.");
             }
 
             var absAmount = Math.Abs(transaction.Amount);
@@ -82,27 +83,48 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Date = businessDate,
                 Description = transaction.Description,
                 ReferenceNo = transaction.ReferenceNo,
-                BusinessDayId = businessDay.Id
+                BusinessDayId = businessDay.Id,
+                Status = JournalEntryStatus.PendingApproval
             };
 
-            var debitLine = new JournalEntryLine
+            foreach (var mapping in mappings)
             {
-                AccountId = mapping.DebitAccountId,
-                Debit = absAmount,
-                Credit = 0m,
-                Memo = transaction.Description
-            };
+                var portionAmount = Math.Round(absAmount * (mapping.Percentage / 100m), 2);
 
-            var creditLine = new JournalEntryLine
-            {
-                AccountId = mapping.CreditAccountId,
-                Debit = 0m,
-                Credit = absAmount,
-                Memo = transaction.Description
-            };
+                journalEntry.Lines.Add(new JournalEntryLine
+                {
+                    AccountId = mapping.DebitAccountId,
+                    Debit = portionAmount,
+                    Credit = 0m,
+                    Memo = transaction.Description,
+                    CostCenterId = mapping.CostCenterId
+                });
 
-            journalEntry.Lines.Add(debitLine);
-            journalEntry.Lines.Add(creditLine);
+                journalEntry.Lines.Add(new JournalEntryLine
+                {
+                    AccountId = mapping.CreditAccountId,
+                    Debit = 0m,
+                    Credit = portionAmount,
+                    Memo = transaction.Description,
+                    CostCenterId = mapping.CostCenterId
+                });
+            }
+
+            // Group identically mapped accounts
+            var groupedLines = journalEntry.Lines
+                .GroupBy(l => new { l.AccountId, l.CostCenterId })
+                .Select(g => new JournalEntryLine
+                {
+                    AccountId = g.Key.AccountId,
+                    CostCenterId = g.Key.CostCenterId,
+                    Debit = g.Sum(l => l.Debit),
+                    Credit = g.Sum(l => l.Credit),
+                    Memo = g.First().Memo
+                }).ToList();
+
+            journalEntry.Lines = groupedLines;
+
+            await ValidateJournalEntryAsync(journalEntry);
 
             await _unitOfWork.BeginTransactionAsync();
             try
@@ -116,15 +138,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 transaction.JournalEntryId = journalEntry.Id;
                 _unitOfWork.FolioTransactions.Update(transaction);
 
-                ApplyBalanceEffect(debitAccount, absAmount, isDebit: true);
-                ApplyBalanceEffect(creditAccount, absAmount, isDebit: false);
-
-                _unitOfWork.Accounts.Update(debitAccount);
-                _unitOfWork.Accounts.Update(creditAccount);
-
+                // Phase 2: Balances are explicitly NOT updated here; they await Approval.
+                await _unitOfWork.CompleteAsync();
                 await _unitOfWork.CommitTransactionAsync();
 
-                return new ApiResponse<bool>(true, "Transaction posted to GL successfully.");
+                return new ApiResponse<bool>(true, "Transaction generated Journal Entry successfully and is Pending Approval.");
             }
             catch
             {
@@ -296,6 +314,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Where(a => accountIds.Contains(a.Id))
                 .ToListAsync();
 
+            await ValidateJournalEntryAsync(journalEntry);
+
             await _unitOfWork.BeginTransactionAsync();
             try
             {
@@ -431,6 +451,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<bool>("Debit or credit account not found.");
             }
 
+            if (debitAccount.IsGroup || creditAccount.IsGroup)
+            {
+                throw new InvalidOperationException("Cannot post journal entries to group accounts.");
+            }
+
             var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
             var businessDay = await _unitOfWork.BusinessDays
                 .GetQueryable()
@@ -515,6 +540,11 @@ namespace PMS.Infrastructure.Implmentations.Services
             if (apControlAccount == null || creditAccount == null)
             {
                 return new ApiResponse<int>("AP control account or credit account not found.");
+            }
+
+            if (apControlAccount.IsGroup || creditAccount.IsGroup)
+            {
+                throw new InvalidOperationException("Cannot post journal entries to group accounts.");
             }
 
             var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
@@ -660,6 +690,11 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<bool>("Debit or credit account not found.");
             }
 
+            if (debitAccount.IsGroup || creditAccount.IsGroup)
+            {
+                throw new InvalidOperationException("Cannot post journal entries to group accounts.");
+            }
+
             var journalEntry = new JournalEntry
             {
                 EntryNumber = GenerateEntryNumber(businessDate),
@@ -715,29 +750,6 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<bool>("Journal entry must contain at least one line.");
             }
 
-            var totalDebit = dto.Lines.Sum(l => l.Debit);
-            var totalCredit = dto.Lines.Sum(l => l.Credit);
-
-            if (totalDebit != totalCredit)
-            {
-                return new ApiResponse<bool>("Journal entry is not balanced. Total debit must equal total credit.");
-            }
-
-            var accountIds = dto.Lines.Select(l => l.AccountId).Distinct().ToList();
-            var accounts = await _unitOfWork.Accounts.GetQueryable()
-                .Where(a => accountIds.Contains(a.Id))
-                .ToListAsync();
-
-            if (accounts.Count != accountIds.Count)
-            {
-                return new ApiResponse<bool>("One or more accounts do not exist.");
-            }
-
-            if (accounts.Any(a => a.IsGroup))
-            {
-                return new ApiResponse<bool>("Journal entries can only be posted to non-group (leaf) accounts.");
-            }
-
             var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
 
             var businessDay = await _unitOfWork.BusinessDays
@@ -753,6 +765,19 @@ namespace PMS.Infrastructure.Implmentations.Services
             var journalEntry = _mapper.Map<JournalEntry>(dto);
             journalEntry.BusinessDayId = businessDay.Id;
             journalEntry.EntryNumber = GenerateEntryNumber(businessDate);
+            journalEntry.Status = JournalEntryStatus.PendingApproval; // Phase 2: Set initial status
+
+            foreach (var line in journalEntry.Lines)
+            {
+                if (line.CurrencyId.HasValue)
+                {
+                    line.ExchangeRate = line.ExchangeRate > 0 ? line.ExchangeRate : 1m;
+                    line.Debit = line.DebitForeign * line.ExchangeRate;
+                    line.Credit = line.CreditForeign * line.ExchangeRate;
+                }
+            }
+
+            await ValidateJournalEntryAsync(journalEntry);
 
             await _unitOfWork.BeginTransactionAsync();
             try
@@ -760,18 +785,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
                 await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
 
-                foreach (var line in journalEntry.Lines)
-                {
-                    var account = accounts.First(a => a.Id == line.AccountId);
-                    var amount = line.Debit != 0 ? line.Debit : line.Credit;
-                    var isDebit = line.Debit > 0;
-                    ApplyBalanceEffect(account, amount, isDebit);
-                    _unitOfWork.Accounts.Update(account);
-                }
+                // CRITICAL CHANGE: ApplyBalanceEffect is NOT called during the initial creation.
+                // The Account.CurrentBalance will be updated only when a separate approval action happens.
 
                 await _unitOfWork.CommitTransactionAsync();
 
-                return new ApiResponse<bool>(true, "Manual journal entry created successfully.");
+                return new ApiResponse<bool>(true, "Manual journal entry created and is pending approval.");
             }
             catch
             {
@@ -793,23 +812,193 @@ namespace PMS.Infrastructure.Implmentations.Services
             decimal totalDebit = 0m;
             decimal totalCredit = 0m;
 
+            // Compute balances dynamically from JournalEntryLines where Status == Posted
+            var postedLines = await _unitOfWork.JournalEntryLines
+                .GetQueryable()
+                .AsNoTracking()
+                .Include(l => l.JournalEntry)
+                .Where(l => l.JournalEntry.Status == JournalEntryStatus.Posted)
+                .GroupBy(l => l.AccountId)
+                .Select(g => new
+                {
+                    AccountId = g.Key,
+                    TotalDebit = g.Sum(l => l.Debit),
+                    TotalCredit = g.Sum(l => l.Credit)
+                })
+                .ToDictionaryAsync(g => g.AccountId, g => g);
+
             foreach (var account in accounts)
             {
-                var (debit, credit) = GetTrialBalanceDebitCredit(account);
+                var isDebitNormal = account.Type == AccountType.Asset || account.Type == AccountType.Expense;
+                decimal accountDebit = 0m;
+                decimal accountCredit = 0m;
+
+                if (postedLines.TryGetValue(account.Id, out var lineTotals))
+                {
+                    var netBalance = isDebitNormal
+                        ? lineTotals.TotalDebit - lineTotals.TotalCredit
+                        : lineTotals.TotalCredit - lineTotals.TotalDebit;
+
+                    if (isDebitNormal)
+                    {
+                        if (netBalance >= 0) accountDebit = netBalance;
+                        else accountCredit = Math.Abs(netBalance);
+                    }
+                    else
+                    {
+                        if (netBalance >= 0) accountCredit = netBalance;
+                        else accountDebit = Math.Abs(netBalance);
+                    }
+                }
+
                 items.Add(new TrialBalanceItemDto(
                     account.Code,
                     account.NameEn,
-                    debit,
-                    credit
+                    accountDebit,
+                    accountCredit
                 ));
-                totalDebit += debit;
-                totalCredit += credit;
+                totalDebit += accountDebit;
+                totalCredit += accountCredit;
             }
 
             var isBalanced = totalDebit == totalCredit;
             var report = new TrialBalanceReportDto(items, totalDebit, totalCredit, isBalanced);
 
             return new ApiResponse<TrialBalanceReportDto>(report, "Trial balance retrieved successfully.");
+        }
+
+        public async Task<ApiResponse<int>> CreateAccountAsync(CreateAccountDto dto)
+        {
+            var exists = await _unitOfWork.Accounts.GetQueryable()
+                .AnyAsync(a => a.Code == dto.Code);
+            
+            if (exists)
+                return new ApiResponse<int>("Account Code already exists.");
+
+            int level = 1;
+            if (dto.ParentAccountId.HasValue)
+            {
+                var parent = await _unitOfWork.Accounts.GetByIdAsync(dto.ParentAccountId.Value);
+                if (parent == null)
+                    return new ApiResponse<int>("Parent account not found.");
+                if (!parent.IsGroup)
+                    return new ApiResponse<int>("Parent account must be a group account.");
+
+                level = parent.Level + 1;
+            }
+
+            var account = _mapper.Map<Account>(dto);
+            account.Level = level;
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.Accounts.AddAsync(account);
+                
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<int>(account.Id, "Account created successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        public async Task<ApiResponse<List<AccountTreeDto>>> GetAccountsTreeAsync()
+        {
+            var accounts = await _unitOfWork.Accounts.GetQueryable()
+                .AsNoTracking()
+                .ToListAsync();
+
+            var accountDict = accounts.Select(a => _mapper.Map<AccountTreeDto>(a))
+                                      .ToDictionary(a => a.Id);
+
+            var rootNodes = new List<AccountTreeDto>();
+
+            foreach (var account in accountDict.Values)
+            {
+                if (account.ParentAccountId.HasValue && accountDict.TryGetValue(account.ParentAccountId.Value, out var parent))
+                {
+                    parent.Children.Add(account);
+                }
+                else
+                {
+                    if (account.ParentAccountId == null)
+                    {
+                        rootNodes.Add(account);
+                    }
+                }
+            }
+
+            return new ApiResponse<List<AccountTreeDto>>(rootNodes, "Tree retrieved successfully.");
+        }
+
+        public async Task<ApiResponse<int>> CreateCostCenterAsync(CreateCostCenterDto dto)
+        {
+            var exists = await _unitOfWork.CostCenters.GetQueryable()
+                .AnyAsync(c => c.Code == dto.Code);
+            
+            if (exists)
+                return new ApiResponse<int>("Cost Center Code already exists.");
+
+            if (dto.ParentCostCenterId.HasValue)
+            {
+                var parent = await _unitOfWork.CostCenters.GetQueryable().FirstOrDefaultAsync(c => c.Id == dto.ParentCostCenterId.Value);
+                if (parent == null)
+                    return new ApiResponse<int>("Parent cost center not found.");
+                if (!parent.IsGroup)
+                    return new ApiResponse<int>("Parent cost center must be a group cost center.");
+            }
+
+            var costCenter = _mapper.Map<CostCenter>(dto);
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.CostCenters.AddAsync(costCenter);
+                
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<int>(costCenter.Id, "Cost Center created successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        public async Task<ApiResponse<List<CostCenterDto>>> GetCostCentersTreeAsync()
+        {
+            var costCenters = await _unitOfWork.CostCenters.GetQueryable()
+                .AsNoTracking()
+                .ToListAsync();
+
+            var costCenterDict = costCenters.Select(c => _mapper.Map<CostCenterDto>(c))
+                                            .ToDictionary(c => c.Id);
+
+            var rootNodes = new List<CostCenterDto>();
+
+            foreach (var costCenter in costCenterDict.Values)
+            {
+                if (costCenter.ParentCostCenterId.HasValue && costCenterDict.TryGetValue(costCenter.ParentCostCenterId.Value, out var parent))
+                {
+                    parent.Children.Add(costCenter);
+                }
+                else
+                {
+                    if (costCenter.ParentCostCenterId == null)
+                    {
+                        rootNodes.Add(costCenter);
+                    }
+                }
+            }
+
+            return new ApiResponse<List<CostCenterDto>>(rootNodes, "Cost centers retrieved successfully.");
         }
 
         public async Task<ApiResponse<IEnumerable<int>>> GetUnpostedTransactionsAsync()
@@ -847,7 +1036,7 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .GetQueryable()
                 .AsNoTracking()
                 .Include(l => l.JournalEntry)
-                .Where(l => l.AccountId == accountId);
+                .Where(l => l.AccountId == accountId && l.JournalEntry.Status == JournalEntryStatus.Posted);
 
             var openingBalance = await allLinesQuery
                 .Where(l => l.JournalEntry.Date < startDate)
@@ -934,6 +1123,340 @@ namespace PMS.Infrastructure.Implmentations.Services
             return $"JE-{businessDate:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8]}";
         }
 
+        private async Task ValidateJournalEntryAsync(JournalEntry entry)
+        {
+            var period = await _unitOfWork.AccountingPeriods.GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.StartDate <= entry.Date.Date && p.EndDate >= entry.Date.Date);
+
+            if (period == null)
+                throw new BusinessException("Transaction Date does not belong to any defined accounting period.");
+
+            if (period.Status == AccountingPeriodStatus.Closed || period.Status == AccountingPeriodStatus.Future)
+                throw new BusinessException("Transaction Date belongs to a Closed or Future period.");
+
+            decimal totalBaseDebit = 0m;
+            decimal totalBaseCredit = 0m;
+
+            var accountIds = entry.Lines.Select(l => l.AccountId).Distinct().ToList();
+            var accounts = await _unitOfWork.Accounts.GetQueryable()
+                .AsNoTracking()
+                .Where(a => accountIds.Contains(a.Id))
+                .ToListAsync();
+
+            if (accounts.Count != accountIds.Count)
+                throw new BusinessException("One or more accounts do not exist.");
+
+            foreach (var line in entry.Lines)
+            {
+                var account = accounts.FirstOrDefault(a => a.Id == line.AccountId);
+                if (account != null)
+                {
+                    if (account.IsGroup)
+                        throw new BusinessException("Journal entries can only be posted to non-group (leaf) accounts.");
+                        
+                    if ((account.Type == AccountType.Expense || account.Type == AccountType.Revenue) && !line.CostCenterId.HasValue)
+                        throw new BusinessException("Cost Center is required for Expense/Revenue accounts.");
+                }
+
+                if (line.CurrencyId.HasValue && line.ExchangeRate <= 0)
+                    throw new BusinessException("ExchangeRate must be greater than 0 for multi-currency lines.");
+
+                totalBaseDebit += line.Debit;
+                totalBaseCredit += line.Credit;
+            }
+
+            if (totalBaseDebit != totalBaseCredit)
+                throw new BusinessException("Journal entry is not balanced. Total debit must equal total credit in base currency.");
+        }
+
+        public async Task<ApiResponse<bool>> ApproveJournalEntryAsync(int id, string userId)
+        {
+            var journalEntry = await _unitOfWork.JournalEntries
+                .GetQueryable()
+                .Include(je => je.Lines)
+                .FirstOrDefaultAsync(je => je.Id == id);
+
+            if (journalEntry == null)
+            {
+                return new ApiResponse<bool>("Journal entry not found.");
+            }
+
+            if (journalEntry.Status != JournalEntryStatus.PendingApproval)
+            {
+                return new ApiResponse<bool>("Journal entry is not in PendingApproval status.");
+            }
+
+            journalEntry.Status = JournalEntryStatus.Posted;
+            journalEntry.ApprovedById = userId;
+            journalEntry.ApprovedDate = DateTimeOffset.UtcNow;
+
+            var accountIds = journalEntry.Lines.Select(l => l.AccountId).Distinct().ToList();
+            var accounts = await _unitOfWork.Accounts.GetQueryable()
+                .Where(a => accountIds.Contains(a.Id))
+                .ToListAsync();
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                foreach (var line in journalEntry.Lines)
+                {
+                    var account = accounts.FirstOrDefault(a => a.Id == line.AccountId);
+                    if (account != null)
+                    {
+                        var amount = line.Debit != 0 ? line.Debit : line.Credit;
+                        var isDebit = line.Debit > 0;
+                        ApplyBalanceEffect(account, amount, isDebit);
+                        _unitOfWork.Accounts.Update(account);
+                    }
+                }
+
+                _unitOfWork.JournalEntries.Update(journalEntry);
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<bool>(true, "Journal entry approved successfully.");
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        public async Task<ApiResponse<bool>> RejectJournalEntryAsync(int id, string userId, string reason)
+        {
+            var journalEntry = await _unitOfWork.JournalEntries
+                .GetQueryable()
+                .FirstOrDefaultAsync(je => je.Id == id);
+
+            if (journalEntry == null)
+            {
+                return new ApiResponse<bool>("Journal entry not found.");
+            }
+
+            if (journalEntry.Status != JournalEntryStatus.PendingApproval)
+            {
+                return new ApiResponse<bool>("Journal entry is not in PendingApproval status.");
+            }
+
+            journalEntry.Status = JournalEntryStatus.Rejected;
+            journalEntry.RejectionReason = reason;
+
+            // Save changes (do not affect account balances)
+            _unitOfWork.JournalEntries.Update(journalEntry);
+            await _unitOfWork.CompleteAsync();
+
+            return new ApiResponse<bool>(true, "Journal entry rejected successfully.");
+        }
+
+        public async Task<ApiResponse<PnLReportDto>> GetPnLReportAsync(DateTime startDate, DateTime endDate, int? costCenterId = null)
+        {
+            var accounts = await _unitOfWork.Accounts.GetQueryable()
+                .AsNoTracking()
+                .Where(a => a.IsActive && (a.Type == AccountType.Revenue || a.Type == AccountType.Expense))
+                .ToListAsync();
+
+            var lineQuery = _unitOfWork.JournalEntryLines.GetQueryable()
+                .AsNoTracking()
+                .Include(l => l.Account)
+                .Where(l => l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                            l.JournalEntry.Date.Date >= startDate.Date && l.JournalEntry.Date.Date <= endDate.Date &&
+                            (l.Account.Type == AccountType.Revenue || l.Account.Type == AccountType.Expense));
+
+            if (costCenterId.HasValue)
+            {
+                lineQuery = lineQuery.Where(l => l.CostCenterId == costCenterId.Value);
+            }
+
+            var groupedLines = await lineQuery
+                .GroupBy(l => l.AccountId)
+                .Select(g => new
+                {
+                    AccountId = g.Key,
+                    TotalDebit = g.Sum(l => l.Debit),
+                    TotalCredit = g.Sum(l => l.Credit)
+                })
+                .ToDictionaryAsync(g => g.AccountId, g => g);
+
+            var leafBalances = new Dictionary<int, decimal>();
+            foreach (var account in accounts.Where(a => !a.IsGroup))
+            {
+                if (groupedLines.TryGetValue(account.Id, out var lineTotals))
+                {
+                    var isDebitNormal = account.Type == AccountType.Expense;
+                    var netBalance = isDebitNormal
+                        ? lineTotals.TotalDebit - lineTotals.TotalCredit
+                        : lineTotals.TotalCredit - lineTotals.TotalDebit;
+                    
+                    leafBalances[account.Id] = netBalance;
+                }
+                else
+                {
+                    leafBalances[account.Id] = 0m;
+                }
+            }
+
+            var revenues = GetHierarchicalBalances(accounts.Where(a => a.Type == AccountType.Revenue).ToList(), leafBalances, null);
+            var expenses = GetHierarchicalBalances(accounts.Where(a => a.Type == AccountType.Expense).ToList(), leafBalances, null);
+
+            var totalRevenue = revenues.Sum(r => r.Balance);
+            var totalExpense = expenses.Sum(e => e.Balance);
+            var netProfitLoss = totalRevenue - totalExpense;
+
+            var report = new PnLReportDto
+            {
+                Revenues = revenues,
+                Expenses = expenses,
+                TotalRevenue = totalRevenue,
+                TotalExpense = totalExpense,
+                NetProfitLoss = netProfitLoss
+            };
+
+            return new ApiResponse<PnLReportDto>(report, "P&L Report generated successfully.");
+        }
+
+        public async Task<ApiResponse<BalanceSheetDto>> GetBalanceSheetAsync(DateTime asOfDate)
+        {
+            var accounts = await _unitOfWork.Accounts.GetQueryable()
+                .AsNoTracking()
+                .Where(a => a.IsActive && 
+                           (a.Type == AccountType.Asset || a.Type == AccountType.Liability || a.Type == AccountType.Equity))
+                .ToListAsync();
+
+            var lineQuery = _unitOfWork.JournalEntryLines.GetQueryable()
+                .AsNoTracking()
+                .Include(l => l.Account)
+                .Where(l => l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                            l.JournalEntry.Date.Date <= asOfDate.Date &&
+                            (l.Account.Type == AccountType.Asset || l.Account.Type == AccountType.Liability || l.Account.Type == AccountType.Equity));
+
+            var groupedLines = await lineQuery
+                .GroupBy(l => l.AccountId)
+                .Select(g => new
+                {
+                    AccountId = g.Key,
+                    TotalDebit = g.Sum(l => l.Debit),
+                    TotalCredit = g.Sum(l => l.Credit)
+                })
+                .ToDictionaryAsync(g => g.AccountId, g => g);
+
+            var leafBalances = new Dictionary<int, decimal>();
+            foreach (var account in accounts.Where(a => !a.IsGroup))
+            {
+                if (groupedLines.TryGetValue(account.Id, out var lineTotals))
+                {
+                    var isDebitNormal = account.Type == AccountType.Asset;
+                    var netBalance = isDebitNormal
+                        ? lineTotals.TotalDebit - lineTotals.TotalCredit
+                        : lineTotals.TotalCredit - lineTotals.TotalDebit;
+                    
+                    leafBalances[account.Id] = netBalance;
+                }
+                else
+                {
+                    leafBalances[account.Id] = 0m;
+                }
+            }
+
+            // Calculate Net Profit up to asOfDate to add to Retained Earnings
+            var pnlQuery = _unitOfWork.JournalEntryLines.GetQueryable()
+                .AsNoTracking()
+                .Include(l => l.Account)
+                .Where(l => l.JournalEntry.Status == JournalEntryStatus.Posted &&
+                            l.JournalEntry.Date.Date <= asOfDate.Date &&
+                            (l.Account.Type == AccountType.Revenue || l.Account.Type == AccountType.Expense));
+
+            var pnlLines = await pnlQuery
+                .Select(l => new { l.Account.Type, l.Debit, l.Credit })
+                .ToListAsync();
+
+            decimal totalRev = pnlLines.Where(l => l.Type == AccountType.Revenue).Sum(l => l.Credit - l.Debit);
+            decimal totalExp = pnlLines.Where(l => l.Type == AccountType.Expense).Sum(l => l.Debit - l.Credit);
+            // In a real accounting system, Revenues are credits, Expenses are debits.
+            // Net income is Credit - Debit. 
+            decimal netProfit = totalRev - totalExp;
+
+            // Find Retained Earnings account
+            var retainedEarningsAcc = accounts.FirstOrDefault(a => a.Type == AccountType.Equity && !a.IsGroup && a.NameEn.Contains("Retained Earnings", StringComparison.OrdinalIgnoreCase));
+            if (retainedEarningsAcc != null)
+            {
+                if (leafBalances.ContainsKey(retainedEarningsAcc.Id))
+                    leafBalances[retainedEarningsAcc.Id] += netProfit;
+                else
+                    leafBalances[retainedEarningsAcc.Id] = netProfit;
+            }
+
+            var assets = GetHierarchicalBalances(accounts.Where(a => a.Type == AccountType.Asset).ToList(), leafBalances, null);
+            var liabilities = GetHierarchicalBalances(accounts.Where(a => a.Type == AccountType.Liability).ToList(), leafBalances, null);
+            var equities = GetHierarchicalBalances(accounts.Where(a => a.Type == AccountType.Equity).ToList(), leafBalances, null);
+            
+            // If Retained Earnings wasn't found as a real account, append it as a virtual line to Equity root level.
+            if (retainedEarningsAcc == null)
+            {
+                equities.Add(new FinancialReportLineDto
+                {
+                    AccountId = 0,
+                    AccountCode = "EQ-RE",
+                    AccountName = "Retained Earnings (Calculated)",
+                    Level = 1,
+                    IsGroup = false,
+                    Balance = netProfit
+                });
+            }
+
+            var totalAssets = assets.Sum(a => a.Balance);
+            var totalLiabilities = liabilities.Sum(l => l.Balance);
+            var totalEquity = equities.Sum(e => e.Balance);
+
+            var report = new BalanceSheetDto
+            {
+                Assets = assets,
+                Liabilities = liabilities,
+                Equities = equities,
+                TotalAssets = totalAssets,
+                TotalLiabilities = totalLiabilities,
+                TotalEquity = totalEquity
+            };
+
+            return new ApiResponse<BalanceSheetDto>(report, "Balance Sheet generated successfully.");
+        }
+
+        private List<FinancialReportLineDto> GetHierarchicalBalances(List<Account> allReportAccounts, Dictionary<int, decimal> leafBalances, int? parentAccountId)
+        {
+            var nodes = allReportAccounts.Where(a => a.ParentAccountId == parentAccountId).ToList();
+            var reportLines = new List<FinancialReportLineDto>();
+
+            foreach (var node in nodes)
+            {
+                var line = new FinancialReportLineDto
+                {
+                    AccountId = node.Id,
+                    AccountCode = node.Code,
+                    AccountName = node.NameEn,
+                    Level = node.Level,
+                    IsGroup = node.IsGroup
+                };
+
+                if (node.IsGroup)
+                {
+                    line.ChildLines = GetHierarchicalBalances(allReportAccounts, leafBalances, node.Id);
+                    line.Balance = line.ChildLines.Sum(c => c.Balance);
+                }
+                else
+                {
+                    line.Balance = leafBalances.TryGetValue(node.Id, out var bal) ? bal : 0m;
+                }
+
+                // Only include if there's a balance or it's a group with children
+                if (line.Balance != 0 || (line.IsGroup && line.ChildLines.Any()))
+                {
+                    reportLines.Add(line);
+                }
+            }
+
+            return reportLines;
+        }
     }
 }
 
