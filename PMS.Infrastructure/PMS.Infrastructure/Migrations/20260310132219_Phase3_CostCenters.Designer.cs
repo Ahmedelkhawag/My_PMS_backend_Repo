@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
 #nullable disable
 
-namespace PMS.Infrastructure.Migrations
+namespace PMS.Infrastructure.PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310132219_Phase3_CostCenters")]
+    partial class Phase3_CostCenters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1243,9 +1246,6 @@ namespace PMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CostCenterId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1283,8 +1283,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CostCenterId");
 
                     b.HasIndex("CreditAccountId");
 
@@ -2981,10 +2979,6 @@ namespace PMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.JournalEntryMapping", b =>
                 {
-                    b.HasOne("PMS.Domain.Entities.BackOffice.CostCenter", "CostCenter")
-                        .WithMany()
-                        .HasForeignKey("CostCenterId");
-
                     b.HasOne("PMS.Domain.Entities.BackOffice.Account", "CreditAccount")
                         .WithMany()
                         .HasForeignKey("CreditAccountId")
@@ -2996,8 +2990,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasForeignKey("DebitAccountId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("CostCenter");
 
                     b.Navigation("CreditAccount");
 

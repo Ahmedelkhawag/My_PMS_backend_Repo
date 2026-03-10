@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
 #nullable disable
 
-namespace PMS.Infrastructure.Migrations
+namespace PMS.Infrastructure.PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260309201628_AddMultiCurrencySupport")]
+    partial class AddMultiCurrencySupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -987,62 +990,6 @@ namespace PMS.Infrastructure.Migrations
                     b.ToTable("AccountingPeriods");
                 });
 
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.CostCenter", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsGroup")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int?>("ParentCostCenterId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("ParentCostCenterId");
-
-                    b.ToTable("CostCenters");
-                });
-
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.FiscalYear", b =>
                 {
                     b.Property<int>("Id")
@@ -1098,13 +1045,6 @@ namespace PMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApprovedById")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTimeOffset?>("ApprovedDate")
-                        .HasColumnType("datetimeoffset");
-
                     b.Property<int>("BusinessDayId")
                         .HasColumnType("int");
 
@@ -1145,13 +1085,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("BusinessDayId");
@@ -1171,9 +1104,6 @@ namespace PMS.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("CostCenterId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1226,8 +1156,6 @@ namespace PMS.Infrastructure.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.HasIndex("CostCenterId");
-
                     b.HasIndex("CurrencyId");
 
                     b.HasIndex("JournalEntryId");
@@ -1242,9 +1170,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CostCenterId")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1276,15 +1201,10 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("Percentage")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<int>("TransactionType")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CostCenterId");
 
                     b.HasIndex("CreditAccountId");
 
@@ -2925,16 +2845,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Navigation("FiscalYear");
                 });
 
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.CostCenter", b =>
-                {
-                    b.HasOne("PMS.Domain.Entities.BackOffice.CostCenter", "ParentCostCenter")
-                        .WithMany("ChildCostCenters")
-                        .HasForeignKey("ParentCostCenterId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ParentCostCenter");
-                });
-
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.JournalEntry", b =>
                 {
                     b.HasOne("PMS.Domain.Entities.BusinessDay", "BusinessDay")
@@ -2954,11 +2864,6 @@ namespace PMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("PMS.Domain.Entities.BackOffice.CostCenter", "CostCenter")
-                        .WithMany("JournalEntryLines")
-                        .HasForeignKey("CostCenterId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("PMS.Domain.Entities.Configuration.Currency", "Currency")
                         .WithMany()
                         .HasForeignKey("CurrencyId")
@@ -2972,8 +2877,6 @@ namespace PMS.Infrastructure.Migrations
 
                     b.Navigation("Account");
 
-                    b.Navigation("CostCenter");
-
                     b.Navigation("Currency");
 
                     b.Navigation("JournalEntry");
@@ -2981,10 +2884,6 @@ namespace PMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.JournalEntryMapping", b =>
                 {
-                    b.HasOne("PMS.Domain.Entities.BackOffice.CostCenter", "CostCenter")
-                        .WithMany()
-                        .HasForeignKey("CostCenterId");
-
                     b.HasOne("PMS.Domain.Entities.BackOffice.Account", "CreditAccount")
                         .WithMany()
                         .HasForeignKey("CreditAccountId")
@@ -2996,8 +2895,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasForeignKey("DebitAccountId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("CostCenter");
 
                     b.Navigation("CreditAccount");
 
@@ -3216,13 +3113,6 @@ namespace PMS.Infrastructure.Migrations
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.Account", b =>
                 {
                     b.Navigation("ChildAccounts");
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.CostCenter", b =>
-                {
-                    b.Navigation("ChildCostCenters");
-
-                    b.Navigation("JournalEntryLines");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.FiscalYear", b =>
