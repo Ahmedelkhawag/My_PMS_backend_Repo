@@ -57,6 +57,7 @@ namespace PMS.Infrastructure.Context
 		public DbSet<RatePlan> RatePlans { get; set; }
 
 		public DbSet<Account> Accounts { get; set; }
+		public DbSet<PaymentTerm> PaymentTerms { get; set; }
 		public DbSet<JournalEntry> JournalEntries { get; set; }
 		public DbSet<JournalEntryLine> JournalEntryLines { get; set; }
 		public DbSet<JournalEntryMapping> JournalEntryMappings { get; set; }
@@ -70,6 +71,8 @@ namespace PMS.Infrastructure.Context
 		public DbSet<ARPayment> ARPayments { get; set; }
 		public DbSet<ARPaymentAllocation> ARPaymentAllocations { get; set; }
 		public DbSet<ARAdjustment> ARAdjustments { get; set; }
+		public DbSet<ARAllocation> ARAllocations { get; set; }
+		public DbSet<TACommissionRecord> TACommissionRecords { get; set; }
 
 		// AP Module
 		public DbSet<Vendor> Vendors { get; set; }
@@ -440,6 +443,18 @@ namespace PMS.Infrastructure.Context
 					  .WithMany()
 					  .HasForeignKey(m => m.CreditAccountId)
 					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.Property(m => m.Percentage).HasColumnType("decimal(5,2)");
+			});
+
+			// AR Stage 2: CompanyProfile -> PaymentTerm
+			builder.Entity<CompanyProfile>(entity =>
+			{
+				entity.HasOne(c => c.PaymentTerm)
+					  .WithMany()
+					  .HasForeignKey(c => c.PaymentTermId)
+					  .IsRequired(false)
+					  .OnDelete(DeleteBehavior.Restrict);
 			});
 
 			// Back-Office AR: ARInvoice configuration
@@ -483,6 +498,12 @@ namespace PMS.Infrastructure.Context
 					  .WithMany()
 					  .HasForeignKey(p => p.CompanyId)
 					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(p => p.Invoice)
+					  .WithMany()
+					  .HasForeignKey(p => p.InvoiceId)
+					  .IsRequired(false)
+					  .OnDelete(DeleteBehavior.Restrict);
 			});
 
 			// Back-Office AR: ARPaymentAllocation configuration
@@ -501,6 +522,22 @@ namespace PMS.Infrastructure.Context
 					  .OnDelete(DeleteBehavior.Cascade);
 			});
 
+			// Back-Office AR: ARAllocation configuration
+			builder.Entity<ARAllocation>(entity =>
+			{
+				entity.Property(a => a.Amount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(a => a.Payment)
+					  .WithMany()
+					  .HasForeignKey(a => a.PaymentId)
+					  .OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(a => a.Invoice)
+					  .WithMany()
+					  .HasForeignKey(a => a.InvoiceId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
 			// Back-Office AR: ARAdjustment configuration
 			builder.Entity<ARAdjustment>(entity =>
 			{
@@ -509,6 +546,30 @@ namespace PMS.Infrastructure.Context
 				entity.HasOne(a => a.ARInvoice)
 					  .WithMany()
 					  .HasForeignKey(a => a.ARInvoiceId)
+					  .OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// Back-Office AR: TACommissionRecord configuration
+			builder.Entity<TACommissionRecord>(entity =>
+			{
+				entity.Property(c => c.EligibleRevenue).HasColumnType("decimal(18,2)");
+				entity.Property(c => c.CommissionRate).HasColumnType("decimal(18,2)");
+				entity.Property(c => c.CommissionAmount).HasColumnType("decimal(18,2)");
+
+				entity.HasOne(c => c.Company)
+					  .WithMany()
+					  .HasForeignKey(c => c.CompanyId)
+					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(c => c.Reservation)
+					  .WithMany()
+					  .HasForeignKey(c => c.ReservationId)
+					  .OnDelete(DeleteBehavior.Restrict);
+
+				entity.HasOne(c => c.JournalEntry)
+					  .WithMany()
+					  .HasForeignKey(c => c.JournalEntryId)
+					  .IsRequired(false)
 					  .OnDelete(DeleteBehavior.Restrict);
 			});
 

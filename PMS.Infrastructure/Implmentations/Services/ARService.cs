@@ -21,12 +21,18 @@ namespace PMS.Infrastructure.Implmentations.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAccountingService _accountingService;
+        private readonly ICommissionService _commissionService;
         private readonly ILogger<ARService> _logger;
 
-        public ARService(IUnitOfWork unitOfWork, IAccountingService accountingService, ILogger<ARService> logger)
+        public ARService(
+            IUnitOfWork unitOfWork,
+            IAccountingService accountingService,
+            ICommissionService commissionService,
+            ILogger<ARService> logger)
         {
             _unitOfWork = unitOfWork;
             _accountingService = accountingService;
+            _commissionService = commissionService;
             _logger = logger;
         }
 
@@ -39,6 +45,8 @@ namespace PMS.Infrastructure.Implmentations.Services
                     .GetQueryable()
                     .Include(r => r.GuestFolio)
                         .ThenInclude(f => f.Transactions)
+                    .Include(r => r.Company)
+                        .ThenInclude(c => c.PaymentTerm)
                     .FirstOrDefaultAsync(r => r.Id == dto.ReservationId);
 
                 if (reservation == null)
@@ -82,11 +90,17 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
 
+                var calculatedDueDate = businessDate;
+                if (reservation.Company?.PaymentTerm != null)
+                {
+                    calculatedDueDate = businessDate.AddDays(reservation.Company.PaymentTerm.Days);
+                }
+
                 var invoice = new ARInvoice
                 {
                     CompanyId = reservation.CompanyId.Value,
                     InvoiceDate = businessDate,
-                    DueDate = businessDate,
+                    DueDate = calculatedDueDate,
                     TotalAmount = outstandingAmount,
                     PaidAmount = 0m,
                     Status = ARInvoiceStatus.Draft,
@@ -136,6 +150,16 @@ namespace PMS.Infrastructure.Implmentations.Services
                 {
                     _logger.LogError("Posting CityLedgerPayment {TransactionId} to GL failed: {Message}", cityLedgerPayment.Id, glResult.Message);
                     return new ApiResponse<bool>(glResult.Message);
+                }
+
+                // ── Trigger TA Commission Calculation ────────────────────────────
+                // Run fire-and-forget style: commission failure must NOT roll back the transfer.
+                var commissionResult = await _commissionService.CalculateForReservationAsync(dto.ReservationId);
+                if (!commissionResult.Succeeded)
+                {
+                    _logger.LogWarning(
+                        "Commission calculation skipped for reservation {ReservationId}: {Message}",
+                        dto.ReservationId, commissionResult.Message);
                 }
 
                 return new ApiResponse<bool>(true, "Folio balance transferred to AR and posted to GL successfully.");
@@ -500,6 +524,62 @@ namespace PMS.Infrastructure.Implmentations.Services
                 _logger.LogError(ex, "Error while creating AR adjustment for invoice {InvoiceId}.", dto.InvoiceId);
                 return new ApiResponse<bool>("An error occurred while creating the adjustment.");
             }
+        }
+
+        public async Task<ApiResponse<bool>> MarkInvoiceAsDisputedAsync(int invoiceId, string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+                return new ApiResponse<bool>("A dispute reason is required.");
+
+            var invoice = await _unitOfWork.ARInvoices.GetByIdAsync(invoiceId);
+            if (invoice == null)
+            {
+                return new ApiResponse<bool>("Invoice not found.");
+            }
+
+            if (invoice.PaidAmount >= invoice.TotalAmount || invoice.Status == ARInvoiceStatus.Paid)
+            {
+                return new ApiResponse<bool>("Cannot dispute a fully paid invoice.");
+            }
+
+            if (invoice.IsDisputed)
+            {
+                return new ApiResponse<bool>("Invoice is already marked as disputed.");
+            }
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+
+            invoice.IsDisputed = true;
+            invoice.DisputeReason = reason;
+            invoice.DisputeDate = businessDate;
+
+            _unitOfWork.ARInvoices.Update(invoice);
+            await _unitOfWork.CompleteAsync();
+
+            return new ApiResponse<bool>(true, "Invoice marked as disputed successfully.");
+        }
+
+        public async Task<ApiResponse<bool>> ResolveInvoiceDisputeAsync(int invoiceId)
+        {
+            var invoice = await _unitOfWork.ARInvoices.GetByIdAsync(invoiceId);
+            if (invoice == null)
+            {
+                return new ApiResponse<bool>("Invoice not found.");
+            }
+
+            if (!invoice.IsDisputed)
+            {
+                return new ApiResponse<bool>("Invoice is not currently disputed.");
+            }
+
+            invoice.IsDisputed = false;
+            invoice.DisputeReason = null;
+            invoice.DisputeDate = null;
+
+            _unitOfWork.ARInvoices.Update(invoice);
+            await _unitOfWork.CompleteAsync();
+
+            return new ApiResponse<bool>(true, "Invoice dispute resolved successfully.");
         }
 
         private async Task<string> GenerateAdjustmentReferenceAsync(ARAdjustmentType type, int year)

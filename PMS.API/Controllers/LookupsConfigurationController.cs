@@ -111,6 +111,14 @@ namespace PMS.API.Controllers
 			return Ok(result);
 		}
 
+		[HttpGet("payment-terms")]
+		[ProducesResponseType(typeof(IEnumerable<LookupDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
+		public async Task<IActionResult> GetPaymentTerms()
+		{
+			return Ok(await _configService.GetPaymentTermsAsync());
+		}
+
 		[HttpGet("all")]
 		[ProducesResponseType(typeof(ResponseObjectDto<AppLookupsDto>), StatusCodes.Status200OK)]
 		[ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]

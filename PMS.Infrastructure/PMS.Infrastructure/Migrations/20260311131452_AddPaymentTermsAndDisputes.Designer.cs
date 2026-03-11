@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
 #nullable disable
 
-namespace PMS.Infrastructure.Migrations
+namespace PMS.Infrastructure.PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311131452_AddPaymentTermsAndDisputes")]
+    partial class AddPaymentTermsAndDisputes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -941,67 +944,6 @@ namespace PMS.Infrastructure.Migrations
                     b.ToTable("ARPaymentAllocations");
                 });
 
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.TACommissionRecord", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("CommissionAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("CommissionRate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("EligibleRevenue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("JournalEntryId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ReservationId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("JournalEntryId");
-
-                    b.HasIndex("ReservationId");
-
-                    b.ToTable("TACommissionRecords");
-                });
-
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.Account", b =>
                 {
                     b.Property<int>("Id")
@@ -1481,9 +1423,6 @@ namespace PMS.Infrastructure.Migrations
 
                     b.Property<string>("Address")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("CommissionRate")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ContactPerson")
                         .IsRequired()
@@ -3129,32 +3068,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Navigation("ARInvoice");
 
                     b.Navigation("ARPayment");
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.TACommissionRecord", b =>
-                {
-                    b.HasOne("PMS.Domain.Entities.CompanyProfile", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("PMS.Domain.Entities.BackOffice.JournalEntry", "JournalEntry")
-                        .WithMany()
-                        .HasForeignKey("JournalEntryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("PMS.Domain.Entities.Reservation", "Reservation")
-                        .WithMany()
-                        .HasForeignKey("ReservationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("JournalEntry");
-
-                    b.Navigation("Reservation");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.Account", b =>

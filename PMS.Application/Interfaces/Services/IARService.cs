@@ -12,6 +12,10 @@ namespace PMS.Application.Interfaces.Services
         Task<ApiResponse<ARAgingReportDto>> GetARAgingReportAsync();
         Task<ApiResponse<bool>> CreateAdjustmentAsync(CreateARAdjustmentDto dto);
         Task<ApiResponse<CompanySOAPdfResultDto>> GenerateCompanySOAInPdfAsync(int companyId, DateTime startDate, DateTime endDate);
+
+        // ── Stage 2: Dispute Management ──────────────────────────────────────
+        Task<ApiResponse<bool>> MarkInvoiceAsDisputedAsync(int invoiceId, string reason);
+        Task<ApiResponse<bool>> ResolveInvoiceDisputeAsync(int invoiceId);
     }
 }
 

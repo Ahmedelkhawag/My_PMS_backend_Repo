@@ -250,17 +250,15 @@ namespace PMS.Infrastructure.Context
 
         public static async Task SeedAccountsAsync(ApplicationDbContext context)
         {
-            if (await context.Accounts.AnyAsync())
+            // ── Full initial seed (only runs on a fresh database) ────────────────
+            if (!await context.Accounts.AnyAsync())
             {
-                return;
-            }
+                using var transaction = await context.Database.BeginTransactionAsync();
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT Accounts ON;");
 
-            using var transaction = await context.Database.BeginTransactionAsync();
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT Accounts ON;");
-
-                var now = DateTime.UtcNow;
+                    var now = DateTime.UtcNow;
 
                 var accounts = new List<Account>
                 {
@@ -283,6 +281,8 @@ namespace PMS.Infrastructure.Context
                     new Account { Id = 2111, Code = "2111", NameAr = "الدائنون التجاريون (الموردون)", NameEn = "Trade Creditors (Suppliers)", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 211, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
                     new Account { Id = 212, Code = "212", NameAr = "الضرائب", NameEn = "Taxes", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 21, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
                     new Account { Id = 2121, Code = "2121", NameAr = "ضريبة القيمة المضافة مستحقة السداد", NameEn = "VAT Payable", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 212, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
+                    new Account { Id = 213, Code = "213", NameAr = "الدفعات المقدمة", NameEn = "Advance Deposits", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 21, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
+                    new Account { Id = 2131, Code = "2131", NameAr = "دفعات مقدمة - عملاء", NameEn = "Advance Deposits - Customers", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 213, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
 
                     // 3. EQUITY
                     new Account { Id = 3, Code = "3", NameAr = "حقوق الملكية", NameEn = "Equity", Type = Domain.Enums.BackOffice.AccountType.Equity, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
@@ -301,7 +301,14 @@ namespace PMS.Infrastructure.Context
                     new Account { Id = 51, Code = "51", NameAr = "المصروفات التشغيلية", NameEn = "Operating Expenses", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 5, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
                     new Account { Id = 511, Code = "511", NameAr = "الرواتب والأجور", NameEn = "Salaries and Wages", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 51, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
                     new Account { Id = 512, Code = "512", NameAr = "الكهرباء والمياه", NameEn = "Electricity & Water", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 51, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
-                    new Account { Id = 513, Code = "513", NameAr = "تكلفة البضائع المباعة", NameEn = "Cost of Goods Sold", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 51, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" }
+                    new Account { Id = 513, Code = "513", NameAr = "تكلفة البضائع المباعة", NameEn = "Cost of Goods Sold", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 51, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
+                    // Stage 3: TA Commission Expense accounts
+                    new Account { Id = 515, Code = "515", NameAr = "عمولات وكلاء السياحة", NameEn = "TA Commission Expenses", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 51, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
+                    new Account { Id = 5151, Code = "5151", NameAr = "مصروف عمولة وكيل السياحة", NameEn = "TA Commission Expense", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 515, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
+
+                    // Stage 3: Commissions Payable (Liability) accounts
+                    new Account { Id = 214, Code = "214", NameAr = "عمولات مستحقة الدفع", NameEn = "Commission-Related Payables", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 21, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" },
+                    new Account { Id = 2141, Code = "2141", NameAr = "عمولات مستحقة لوكلاء السياحة", NameEn = "Commissions Payable", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 214, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now, CreatedBy = "System" }
                 };
 
                 await context.Accounts.AddRangeAsync(accounts);
@@ -314,6 +321,50 @@ namespace PMS.Infrastructure.Context
             {
                 await transaction.RollbackAsync();
                 throw;
+            }
+        }
+
+            // ── Incremental Stage 3 seed (runs on every startup, inserts only what's missing) ──
+            var stageThreeIds = new[] { 214, 2141, 515, 5151 };
+            var existingStage3 = await context.Accounts
+                .Where(a => stageThreeIds.Contains(a.Id))
+                .Select(a => a.Id)
+                .ToListAsync();
+
+            var missingIds = stageThreeIds.Except(existingStage3).ToList();
+            if (missingIds.Count > 0)
+            {
+                var now2 = DateTime.UtcNow;
+                using var tx2 = await context.Database.BeginTransactionAsync();
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT Accounts ON;");
+
+                    var newAccounts = new List<Account>();
+
+                    if (missingIds.Contains(214))
+                        newAccounts.Add(new Account { Id = 214, Code = "214", NameAr = "عمولات مستحقة الدفع", NameEn = "Commission-Related Payables", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 21, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now2, CreatedBy = "System" });
+
+                    if (missingIds.Contains(2141))
+                        newAccounts.Add(new Account { Id = 2141, Code = "2141", NameAr = "عمولات مستحقة لوكلاء السياحة", NameEn = "Commissions Payable", Type = Domain.Enums.BackOffice.AccountType.Liability, ParentAccountId = 214, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now2, CreatedBy = "System" });
+
+                    if (missingIds.Contains(515))
+                        newAccounts.Add(new Account { Id = 515, Code = "515", NameAr = "عمولات وكلاء السياحة", NameEn = "TA Commission Expenses", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 51, IsGroup = true, CurrentBalance = 0m, IsActive = true, CreatedAt = now2, CreatedBy = "System" });
+
+                    if (missingIds.Contains(5151))
+                        newAccounts.Add(new Account { Id = 5151, Code = "5151", NameAr = "مصروف عمولة وكيل السياحة", NameEn = "TA Commission Expense", Type = Domain.Enums.BackOffice.AccountType.Expense, ParentAccountId = 515, IsGroup = false, CurrentBalance = 0m, IsActive = true, CreatedAt = now2, CreatedBy = "System" });
+
+                    await context.Accounts.AddRangeAsync(newAccounts);
+                    await context.SaveChangesAsync();
+
+                    await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT Accounts OFF;");
+                    await tx2.CommitAsync();
+                }
+                catch
+                {
+                    await tx2.RollbackAsync();
+                    throw;
+                }
             }
         }
 

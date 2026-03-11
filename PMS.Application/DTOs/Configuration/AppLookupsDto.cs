@@ -20,5 +20,6 @@ namespace PMS.Application.DTOs.Configuration
         public List<RatePlanLookupDto> RatePlans { get; init; } = new();
         public List<string> Roles { get; set; } = new List<string>();
         public List<AccountLookupDto> Accounts { get; init; } = new();
+        public List<LookupDto> PaymentTerms { get; init; } = new();
     }
 }

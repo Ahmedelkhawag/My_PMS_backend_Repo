@@ -126,7 +126,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             await ValidateJournalEntryAsync(journalEntry);
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
@@ -140,13 +145,19 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 // Phase 2: Balances are explicitly NOT updated here; they await Approval.
                 await _unitOfWork.CompleteAsync();
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<bool>(true, "Transaction generated Journal Entry successfully and is Pending Approval.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }
@@ -214,7 +225,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 reversalJournalEntry.Lines.Add(reversedLine);
             }
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(reversalJournalEntry);
@@ -238,13 +254,19 @@ namespace PMS.Infrastructure.Implmentations.Services
                     }
                 }
 
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<bool>(true, "Transaction reversed in GL successfully.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }
@@ -316,7 +338,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             await ValidateJournalEntryAsync(journalEntry);
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
@@ -339,13 +366,19 @@ namespace PMS.Infrastructure.Implmentations.Services
                 _unitOfWork.APInvoices.Update(invoice);
 
                 await _unitOfWork.CompleteAsync();
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<int>(journalEntry.Id, "AP Invoice posted to GL successfully.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }
@@ -394,7 +427,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 });
             }
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(reversalEntry);
@@ -404,17 +442,23 @@ namespace PMS.Infrastructure.Implmentations.Services
                 {
                     var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
                     if (account == null) continue;
-                    if (line.Debit  > 0) ApplyBalanceEffect(account, line.Debit,  isDebit: true);
+                    if (line.Debit > 0) ApplyBalanceEffect(account, line.Debit, isDebit: true);
                     if (line.Credit > 0) ApplyBalanceEffect(account, line.Credit, isDebit: false);
                     _unitOfWork.Accounts.Update(account);
                 }
 
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
                 return new ApiResponse<bool>(true, "Journal entry reversed successfully.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }
@@ -442,13 +486,13 @@ namespace PMS.Infrastructure.Implmentations.Services
                 return new ApiResponse<bool>($"Unknown payment method '{payment.PaymentMethod}'; cannot determine debit account.");
             }
 
-            const int CityLedgerAccountId = 1131;
+            const int AdvanceDepositAccountId = 2131;
             var debitAccount = await _unitOfWork.Accounts.GetByIdAsync(debitAccountId.Value);
-            var creditAccount = await _unitOfWork.Accounts.GetByIdAsync(CityLedgerAccountId);
+            var creditAccount = await _unitOfWork.Accounts.GetByIdAsync(AdvanceDepositAccountId);
 
             if (debitAccount == null || creditAccount == null)
             {
-                return new ApiResponse<bool>("Debit or credit account not found.");
+                return new ApiResponse<bool>("Debit or Advance Deposit credit account not found.");
             }
 
             if (debitAccount.IsGroup || creditAccount.IsGroup)
@@ -487,13 +531,18 @@ namespace PMS.Infrastructure.Implmentations.Services
             });
             journalEntry.Lines.Add(new JournalEntryLine
             {
-                AccountId = CityLedgerAccountId,
+                AccountId = AdvanceDepositAccountId,
                 Debit = 0m,
                 Credit = absAmount,
                 Memo = description
             });
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
@@ -505,13 +554,127 @@ namespace PMS.Infrastructure.Implmentations.Services
                 _unitOfWork.Accounts.Update(debitAccount);
                 _unitOfWork.Accounts.Update(creditAccount);
 
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<bool>(true, "AR payment posted to GL successfully.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
+                throw;
+            }
+        }
+
+        public async Task<ApiResponse<bool>> PostARAllocationToGLAsync(int arAllocationId)
+        {
+            var allocation = await _unitOfWork.ARAllocations
+                .GetQueryable()
+                .Include(a => a.Payment)
+                .Include(a => a.Invoice)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == arAllocationId);
+
+            if (allocation == null)
+            {
+                return new ApiResponse<bool>("AR allocation not found.");
+            }
+
+            if (allocation.Amount <= 0)
+            {
+                return new ApiResponse<bool>("AR allocation amount is zero; nothing to post.");
+            }
+
+            const int AdvanceDepositAccountId = 2131;
+            const int CityLedgerAccountId = 1131;
+
+            var debitAccount = await _unitOfWork.Accounts.GetByIdAsync(AdvanceDepositAccountId);
+            var creditAccount = await _unitOfWork.Accounts.GetByIdAsync(CityLedgerAccountId);
+
+            if (debitAccount == null || creditAccount == null)
+            {
+                return new ApiResponse<bool>("Advance deposits or city ledger account not found.");
+            }
+
+            if (debitAccount.IsGroup || creditAccount.IsGroup)
+            {
+                throw new InvalidOperationException("Cannot post journal entries to group accounts.");
+            }
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+            {
+                return new ApiResponse<bool>("No open BusinessDay found to attach the journal entry.");
+            }
+
+            var description = $"AR Allocation - Pmt Ref: {allocation.Payment?.ReferenceNumber ?? "N/A"} to Inv: {allocation.Invoice?.InvoiceNumber ?? "N/A"}";
+            var journalEntry = new JournalEntry
+            {
+                EntryNumber = GenerateEntryNumber(businessDate),
+                Date = allocation.AllocatedDate,
+                Description = description,
+                ReferenceNo = allocation.Payment?.ReferenceNumber ?? string.Empty,
+                BusinessDayId = businessDay.Id
+            };
+
+            var absAmount = Math.Abs(allocation.Amount);
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = AdvanceDepositAccountId,
+                Debit = absAmount,
+                Credit = 0m,
+                Memo = description
+            });
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = CityLedgerAccountId,
+                Debit = 0m,
+                Credit = absAmount,
+                Memo = description
+            });
+
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
+            try
+            {
+                await _unitOfWork.JournalEntries.AddAsync(journalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
+
+                // Note: Balance effects might be omitted here if we wait for Journal Entry approval
+                // per maker-checker workflow, but keeping consistent with original logic first:
+                ApplyBalanceEffect(debitAccount, absAmount, isDebit: true);
+                ApplyBalanceEffect(creditAccount, absAmount, isDebit: false);
+
+                _unitOfWork.Accounts.Update(debitAccount);
+                _unitOfWork.Accounts.Update(creditAccount);
+
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
+
+                return new ApiResponse<bool>(true, "AR allocation posted to GL successfully.");
+            }
+            catch
+            {
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }
@@ -589,7 +752,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Memo      = description
             });
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
@@ -610,13 +778,19 @@ namespace PMS.Infrastructure.Implmentations.Services
                     _unitOfWork.APPayments.Update(paymentToUpdate);
                 }
 
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<int>(journalEntry.Id, "AP payment posted to GL successfully.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }
@@ -720,7 +894,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 Memo = description
             });
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
@@ -732,13 +911,129 @@ namespace PMS.Infrastructure.Implmentations.Services
                 _unitOfWork.Accounts.Update(debitAccount);
                 _unitOfWork.Accounts.Update(creditAccount);
 
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<bool>(true, "AR adjustment posted to GL successfully.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
+                throw;
+            }
+        }
+
+        public async Task<ApiResponse<bool>> PostTACommissionToGLAsync(int commissionRecordId)
+        {
+            var record = await _unitOfWork.TACommissionRecords
+                .GetQueryable()
+                .Include(c => c.Company)
+                .FirstOrDefaultAsync(c => c.Id == commissionRecordId);
+
+            if (record == null)
+                return new ApiResponse<bool>("Commission record not found.");
+
+            if (record.Status != CommissionStatus.Approved)
+                return new ApiResponse<bool>("Commission record must be Approved before posting to GL.");
+
+            if (record.JournalEntryId.HasValue)
+                return new ApiResponse<bool>($"Commission already posted to GL (JE ID: {record.JournalEntryId}).");
+
+            // Hardcoded IDs from ContextSeed
+            const int commissionExpenseAccountId = 5151;
+            const int commissionsPayableAccountId = 2141;
+
+            var expenseAccount = await _unitOfWork.Accounts.GetByIdAsync(commissionExpenseAccountId);
+            if (expenseAccount == null)
+                return new ApiResponse<bool>($"GL Account {commissionExpenseAccountId} (TA Commission Expense) not found.");
+
+            var payableAccount = await _unitOfWork.Accounts.GetByIdAsync(commissionsPayableAccountId);
+            if (payableAccount == null)
+                return new ApiResponse<bool>($"GL Account {commissionsPayableAccountId} (Commissions Payable) not found.");
+
+            var businessDate = await _unitOfWork.GetCurrentBusinessDateAsync();
+            var businessDay = await _unitOfWork.BusinessDays
+                .GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Date == businessDate);
+
+            if (businessDay == null)
+                return new ApiResponse<bool>("No open BusinessDay found; cannot post GL entry.");
+
+            var entryNumber = GenerateEntryNumber(businessDate);
+            var description = $"TA Commission Approved – Company: {record.Company?.Name ?? record.CompanyId.ToString()}, Reservation: {record.ReservationId}";
+
+            var journalEntry = new JournalEntry
+            {
+                EntryNumber = entryNumber,
+                Date = businessDate,
+                Description = description,
+                Status = JournalEntryStatus.Posted,
+                BusinessDayId = businessDay.Id
+            };
+
+            // Debit Commission Expense
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = commissionExpenseAccountId,
+                Debit = record.CommissionAmount,
+                Credit = 0m,
+                Memo = description
+            });
+
+            // Credit Commissions Payable
+            journalEntry.Lines.Add(new JournalEntryLine
+            {
+                AccountId = commissionsPayableAccountId,
+                Debit = 0m,
+                Credit = record.CommissionAmount,
+                Memo = description
+            });
+
+            // ── Architectural Fix: Validate against closed periods/integrity ──
+            await ValidateJournalEntryAsync(journalEntry);
+
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
+
+            try
+            {
+                // Save Journal Entry
+                await _unitOfWork.JournalEntries.AddAsync(journalEntry);
+                await _unitOfWork.JournalEntryLines.AddRangeAsync(journalEntry.Lines);
+
+                // Update account balances
+                expenseAccount.CurrentBalance += record.CommissionAmount;
+                payableAccount.CurrentBalance += record.CommissionAmount;
+                _unitOfWork.Accounts.Update(expenseAccount);
+                _unitOfWork.Accounts.Update(payableAccount);
+
+                await _unitOfWork.CompleteAsync(); // Generate journalEntry.Id
+
+                // Update Commission Record with the JE ID
+                record.JournalEntryId = journalEntry.Id;
+                _unitOfWork.TACommissionRecords.Update(record);
+                
+                await _unitOfWork.CompleteAsync();
+
+                if (isLocalTransaction)
+                    await _unitOfWork.CommitTransactionAsync();
+
+                return new ApiResponse<bool>(true, "Commission posted to GL successfully");
+            }
+            catch (Exception)
+            {
+                if (isLocalTransaction)
+                    await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
         }
@@ -779,7 +1074,12 @@ namespace PMS.Infrastructure.Implmentations.Services
 
             await ValidateJournalEntryAsync(journalEntry);
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 await _unitOfWork.JournalEntries.AddAsync(journalEntry);
@@ -788,13 +1088,19 @@ namespace PMS.Infrastructure.Implmentations.Services
                 // CRITICAL CHANGE: ApplyBalanceEffect is NOT called during the initial creation.
                 // The Account.CurrentBalance will be updated only when a separate approval action happens.
 
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<bool>(true, "Manual journal entry created and is pending approval.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }
@@ -1196,7 +1502,12 @@ namespace PMS.Infrastructure.Implmentations.Services
                 .Where(a => accountIds.Contains(a.Id))
                 .ToListAsync();
 
-            await _unitOfWork.BeginTransactionAsync();
+            bool isLocalTransaction = false;
+            if (!_unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                isLocalTransaction = true;
+            }
             try
             {
                 foreach (var line in journalEntry.Lines)
@@ -1213,13 +1524,19 @@ namespace PMS.Infrastructure.Implmentations.Services
 
                 _unitOfWork.JournalEntries.Update(journalEntry);
                 await _unitOfWork.CompleteAsync();
-                await _unitOfWork.CommitTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.CommitTransactionAsync();
+                }
 
                 return new ApiResponse<bool>(true, "Journal entry approved successfully.");
             }
             catch
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                if (isLocalTransaction)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                }
                 throw;
             }
         }

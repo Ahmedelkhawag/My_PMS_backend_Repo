@@ -120,6 +120,7 @@ builder.Services.AddScoped<IRatePlanService, RatePlanService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IFolioService, FolioService>();
 builder.Services.AddScoped<IARService, ARService>();
+builder.Services.AddScoped<IARPaymentService, ARPaymentService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<INightAuditService, NightAuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
@@ -128,6 +129,8 @@ builder.Services.AddScoped<IAccountingService, AccountingService>();
 builder.Services.AddScoped<IVendorService, VendorService>();
 builder.Services.AddScoped<IAPInvoiceService, APInvoiceService>();
 builder.Services.AddScoped<IAPPaymentService, APPaymentService>();
+builder.Services.AddScoped<ICreditService, CreditService>();
+builder.Services.AddScoped<ICommissionService, CommissionService>();
 
 builder.Services.AddPdfInfrastructure();
 

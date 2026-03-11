@@ -37,6 +37,7 @@ namespace PMS.Infrastructure.Implmentations
 		public IBaseRepository<ExtraService> ExtraServices { get; private set; }
 		public IBaseRepository<CompanyProfile> CompanyProfiles { get; private set; }
         public IBaseRepository<RatePlan> RatePlans { get; private set; }
+        public IBaseRepository<PaymentTerm> PaymentTerms { get; private set; }
         public IBaseRepository<Account> Accounts { get; private set; }
         public IBaseRepository<CostCenter> CostCenters { get; private set; }
         public IBaseRepository<JournalEntry> JournalEntries { get; private set; }
@@ -48,7 +49,9 @@ namespace PMS.Infrastructure.Implmentations
         public IBaseRepository<ARInvoiceLine> ARInvoiceLines { get; private set; }
         public IBaseRepository<ARPayment> ARPayments { get; private set; }
         public IBaseRepository<ARPaymentAllocation> ARPaymentAllocations { get; private set; }
+        public IBaseRepository<ARAllocation> ARAllocations { get; private set; }
         public IBaseRepository<ARAdjustment> ARAdjustments { get; private set; }
+        public IBaseRepository<TACommissionRecord> TACommissionRecords { get; private set; }
 
         public IBaseRepository<Vendor> Vendors { get; private set; }
         public IBaseRepository<APInvoice> APInvoices { get; private set; }
@@ -79,6 +82,7 @@ namespace PMS.Infrastructure.Implmentations
 			ExtraServices = new BaseRepository<ExtraService>(_context);
 			CompanyProfiles = new BaseRepository<CompanyProfile>(_context);
 			RatePlans = new BaseRepository<RatePlan>(_context);
+			PaymentTerms = new BaseRepository<PaymentTerm>(_context);
 			BusinessDays = new BaseRepository<BusinessDay>(_context);
 
             Accounts = new BaseRepository<Account>(_context);
@@ -93,7 +97,9 @@ namespace PMS.Infrastructure.Implmentations
             ARInvoiceLines = new BaseRepository<ARInvoiceLine>(_context);
             ARPayments = new BaseRepository<ARPayment>(_context);
             ARPaymentAllocations = new BaseRepository<ARPaymentAllocation>(_context);
+            ARAllocations = new BaseRepository<ARAllocation>(_context);
             ARAdjustments = new BaseRepository<ARAdjustment>(_context);
+            TACommissionRecords = new BaseRepository<TACommissionRecord>(_context);
 
             Vendors = new BaseRepository<Vendor>(_context);
             APInvoices = new BaseRepository<APInvoice>(_context);
@@ -127,6 +133,8 @@ namespace PMS.Infrastructure.Implmentations
 		}
 
         private int _transactionDepth = 0;
+
+        public bool HasActiveTransaction => _currentTransaction != null || _transactionDepth > 0;
 
         public async Task BeginTransactionAsync()
         {

@@ -32,6 +32,17 @@ namespace PMS.Domain.Entities.BackOffice.AR
         public ARInvoiceStatus Status { get; set; } = ARInvoiceStatus.Draft;
 
         public virtual ICollection<ARInvoiceLine> Lines { get; set; } = new List<ARInvoiceLine>();
+
+        [Timestamp]
+        public byte[]? RowVersion { get; set; }
+
+        // ── Stage 2: Dispute Management ──────────────────────────────────────
+        public bool IsDisputed { get; set; } = false;
+
+        [MaxLength(500)]
+        public string? DisputeReason { get; set; }
+
+        public DateTime? DisputeDate { get; set; }
     }
 }
 

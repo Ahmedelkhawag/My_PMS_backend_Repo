@@ -32,6 +32,7 @@ namespace PMS.Application.Interfaces.UOF
 		IBaseRepository<ExtraService> ExtraServices { get; }
 		IBaseRepository<CompanyProfile> CompanyProfiles { get; }
 		IBaseRepository<RatePlan> RatePlans { get; }
+		IBaseRepository<PaymentTerm> PaymentTerms { get; }
 
         IBaseRepository<PMS.Domain.Entities.BackOffice.Account> Accounts { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.CostCenter> CostCenters { get; }
@@ -45,7 +46,9 @@ namespace PMS.Application.Interfaces.UOF
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARInvoiceLine> ARInvoiceLines { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARPayment> ARPayments { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARPaymentAllocation> ARPaymentAllocations { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARAllocation> ARAllocations { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.AR.ARAdjustment> ARAdjustments { get; }
+        IBaseRepository<PMS.Domain.Entities.BackOffice.AR.TACommissionRecord> TACommissionRecords { get; }
 
         IBaseRepository<PMS.Domain.Entities.BackOffice.AP.Vendor> Vendors { get; }
         IBaseRepository<PMS.Domain.Entities.BackOffice.AP.APInvoice> APInvoices { get; }
@@ -55,6 +58,8 @@ namespace PMS.Application.Interfaces.UOF
 
 		//  SaveChanges
 		Task<int> CompleteAsync();
+
+		bool HasActiveTransaction { get; }
 
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();

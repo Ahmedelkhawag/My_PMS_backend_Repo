@@ -144,6 +144,45 @@ namespace PMS.API.Controllers
 
             return Ok(result);
         }
+
+        // ── Stage 2: Dispute Management ──────────────────────────────────────
+
+        [HttpPost("invoices/{id:int}/dispute")]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> DisputeInvoice(int id, [FromBody] DisputeInvoiceDto dto)
+        {
+            if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.Reason))
+            {
+                return BadRequest(new ApiResponse<bool>("Invalid dispute payload. A reason is required."));
+            }
+
+            var result = await _arService.MarkInvoiceAsDisputedAsync(id, dto.Reason);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("invoices/{id:int}/resolve-dispute")]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ResolveDispute(int id)
+        {
+            var result = await _arService.ResolveInvoiceDisputeAsync(id);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
     }
+
+    public record DisputeInvoiceDto(string Reason);
 }
 

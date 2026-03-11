@@ -2,6 +2,7 @@ using PMS.Domain.Entities;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using PMS.Domain.Enums.BackOffice;
 
 namespace PMS.Domain.Entities.BackOffice.AR
 {
@@ -29,6 +30,14 @@ namespace PMS.Domain.Entities.BackOffice.AR
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal UnallocatedAmount { get; set; }
+
+        public int? InvoiceId { get; set; }
+        public virtual ARInvoice? Invoice { get; set; }
+
+        public PaymentStatus Status { get; set; }
+
+        [Timestamp]
+        public byte[]? RowVersion { get; set; }
     }
 }
 

@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.Infrastructure.Context;
 
 #nullable disable
 
-namespace PMS.Infrastructure.Migrations
+namespace PMS.Infrastructure.PMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310211054_UpdateARModuleEntities")]
+    partial class UpdateARModuleEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -714,13 +717,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("DisputeDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DisputeReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
 
@@ -735,9 +731,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsDisputed")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");
 
@@ -746,11 +739,6 @@ namespace PMS.Infrastructure.Migrations
 
                     b.Property<decimal>("PaidAmount")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -874,11 +862,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -939,67 +922,6 @@ namespace PMS.Infrastructure.Migrations
                     b.HasIndex("ARPaymentId");
 
                     b.ToTable("ARPaymentAllocations");
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.TACommissionRecord", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("CommissionAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("CommissionRate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("EligibleRevenue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("JournalEntryId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ReservationId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("JournalEntryId");
-
-                    b.HasIndex("ReservationId");
-
-                    b.ToTable("TACommissionRecords");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.Account", b =>
@@ -1416,7 +1338,7 @@ namespace PMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Percentage")
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("TransactionType")
                         .HasColumnType("int");
@@ -1482,9 +1404,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal?>("CommissionRate")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("ContactPerson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1530,9 +1449,6 @@ namespace PMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("PaymentTermId")
-                        .HasColumnType("int");
-
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1544,8 +1460,6 @@ namespace PMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("PaymentTermId");
 
                     b.HasIndex("RatePlanId");
 
@@ -1832,51 +1746,6 @@ namespace PMS.Infrastructure.Migrations
                             Name = "Full Board (إفطار وغداء وعشاء)",
                             Price = 700m
                         });
-                });
-
-            modelBuilder.Entity("PMS.Domain.Entities.Configuration.PaymentTerm", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Days")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PaymentTerms");
                 });
 
             modelBuilder.Entity("PMS.Domain.Entities.Configuration.RatePlan", b =>
@@ -3131,32 +3000,6 @@ namespace PMS.Infrastructure.Migrations
                     b.Navigation("ARPayment");
                 });
 
-            modelBuilder.Entity("PMS.Domain.Entities.BackOffice.AR.TACommissionRecord", b =>
-                {
-                    b.HasOne("PMS.Domain.Entities.CompanyProfile", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("PMS.Domain.Entities.BackOffice.JournalEntry", "JournalEntry")
-                        .WithMany()
-                        .HasForeignKey("JournalEntryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("PMS.Domain.Entities.Reservation", "Reservation")
-                        .WithMany()
-                        .HasForeignKey("ReservationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("JournalEntry");
-
-                    b.Navigation("Reservation");
-                });
-
             modelBuilder.Entity("PMS.Domain.Entities.BackOffice.Account", b =>
                 {
                     b.HasOne("PMS.Domain.Entities.BackOffice.Account", "ParentAccount")
@@ -3269,16 +3112,9 @@ namespace PMS.Infrastructure.Migrations
 
             modelBuilder.Entity("PMS.Domain.Entities.CompanyProfile", b =>
                 {
-                    b.HasOne("PMS.Domain.Entities.Configuration.PaymentTerm", "PaymentTerm")
-                        .WithMany()
-                        .HasForeignKey("PaymentTermId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("PMS.Domain.Entities.Configuration.RatePlan", "RatePlan")
                         .WithMany("Companies")
                         .HasForeignKey("RatePlanId");
-
-                    b.Navigation("PaymentTerm");
 
                     b.Navigation("RatePlan");
                 });

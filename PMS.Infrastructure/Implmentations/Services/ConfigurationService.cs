@@ -161,6 +161,14 @@ namespace PMS.Infrastructure.Implmentations.Services
 				.ToListAsync();
 		}
 
+		public async Task<IEnumerable<LookupDto>> GetPaymentTermsAsync()
+		{
+			return await _unitOfWork.PaymentTerms.GetQueryable()
+				.Where(x => x.IsActive)
+				.Select(x => new LookupDto { Id = x.Id, Name = x.Name })
+				.ToListAsync();
+		}
+
 		public Task<IEnumerable<LookupDto>> GetReservationStatusesAsync()
 		{
 			var values = Enum.GetValues(typeof(ReservationStatus))
@@ -234,6 +242,7 @@ namespace PMS.Infrastructure.Implmentations.Services
 			var ratePlans = (await GetRatePlansAsync(null)).ToList();
 			var roles = await _authService.GetRolesAsync();
 			var accounts = (await GetAccountsLookupAsync()).ToList();
+			var paymentTerms = (await GetPaymentTermsAsync()).ToList();
 
 			var transactionTypesResult = await GetTransactionTypesLookupAsync();
 			if (!transactionTypesResult.IsSuccess || transactionTypesResult.Data == null)
@@ -287,7 +296,8 @@ namespace PMS.Infrastructure.Implmentations.Services
 				ReservationStatuses = reservationStatuses,
 				RatePlans = ratePlans,
 				Roles = roles,
-				Accounts = accounts
+				Accounts = accounts,
+				PaymentTerms = paymentTerms
 			};
 
 			return new ResponseObjectDto<AppLookupsDto>

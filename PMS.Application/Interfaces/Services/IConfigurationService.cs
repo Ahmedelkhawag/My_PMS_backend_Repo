@@ -17,6 +17,7 @@ namespace PMS.Application.Interfaces.Services
 		Task<IEnumerable<ExtraServiceLookupDto>> GetExtraServicesAsync();
 		Task<IEnumerable<LookupDto>> GetReservationStatusesAsync();
 		Task<IEnumerable<RatePlanLookupDto>> GetRatePlansAsync(bool? isPublicOnly = null);
+		Task<IEnumerable<LookupDto>> GetPaymentTermsAsync();
 
 		Task<ResponseObjectDto<List<EnumLookupDto>>> GetTransactionTypesLookupAsync();
 

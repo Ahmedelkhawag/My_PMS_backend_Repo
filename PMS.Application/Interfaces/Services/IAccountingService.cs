@@ -17,8 +17,10 @@ namespace PMS.Application.Interfaces.Services
         Task<ApiResponse<int>> PostAPInvoiceToGLAsync(int invoiceId);
         Task<ApiResponse<bool>> ReverseJournalEntryAsync(int journalEntryId, string referenceCode, string description);
         Task<ApiResponse<bool>> PostARPaymentToGLAsync(int arPaymentId);
+        Task<ApiResponse<bool>> PostARAllocationToGLAsync(int arAllocationId);
         Task<ApiResponse<bool>> PostARAdjustmentToGLAsync(int arAdjustmentId);
         Task<ApiResponse<int>> PostAPPaymentToGLAsync(int paymentId, int creditAccountId);
+        Task<ApiResponse<bool>> PostTACommissionToGLAsync(int commissionRecordId);
         Task<ApiResponse<bool>> CreateManualJournalEntryAsync(CreateJournalEntryDto dto);
         Task<ApiResponse<TrialBalanceReportDto>> GetTrialBalanceAsync();
         Task<ApiResponse<PnLReportDto>> GetPnLReportAsync(DateTime startDate, DateTime endDate, int? costCenterId = null);
